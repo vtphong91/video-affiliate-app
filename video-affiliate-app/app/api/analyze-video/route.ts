@@ -1,0 +1,133 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getVideoInfoFromUrl, extractVideoId, detectVideoPlatform } from '@/lib/utils';
+import { analyzeVideo } from '@/lib/ai';
+import type { AnalyzeVideoRequest, AnalyzeVideoResponse } from '@/types';
+
+// Enable MOCK mode for testing without API keys
+const MOCK_MODE = false; // ✅ Đã tắt - dùng AI thật (Google Gemini)
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: AnalyzeVideoRequest = await request.json();
+    const { videoUrl } = body;
+
+    if (!videoUrl) {
+      return NextResponse.json(
+        { error: 'Video URL is required' },
+        { status: 400 }
+      );
+    }
+
+    // MOCK MODE: Return fake data for testing UI
+    if (MOCK_MODE) {
+      const platform = detectVideoPlatform(videoUrl);
+      const videoId = extractVideoId(videoUrl);
+
+      if (!platform || !videoId) {
+        return NextResponse.json(
+          { error: 'Invalid video URL' },
+          { status: 400 }
+        );
+      }
+
+      const mockVideoInfo = {
+        platform,
+        videoId,
+        title: 'Review Chi Tiết iPhone 16 Pro Max - Đáng Mua Hay Không?',
+        thumbnail: 'https://i.ytimg.com/vi/' + videoId + '/maxresdefault.jpg',
+        duration: '15:30',
+        description: 'Đánh giá chi tiết iPhone 16 Pro Max với camera mới, chip A18 Pro và nhiều tính năng đột phá',
+        channelName: 'Tech Review Vietnam',
+        channelUrl: 'https://www.youtube.com/channel/test',
+        viewCount: 125000,
+      };
+
+      const mockAnalysis = {
+        summary: 'iPhone 16 Pro Max là flagship mới nhất của Apple với nhiều cải tiến đáng chú ý. Máy được trang bị chip A18 Pro mạnh mẽ, camera 48MP với khả năng zoom quang học 5x, màn hình ProMotion 120Hz và pin lớn hơn 10% so với thế hệ trước. Thiết kế titanium cao cấp, viền bezel mỏng hơn tạo cảm giác sang trọng.',
+        pros: [
+          'Hiệu năng cực mạnh với chip A18 Pro, xử lý mọi tác vụ mượt mà',
+          'Camera chất lượng tuyệt vời, chụp đêm và zoom xa rất tốt',
+          'Pin trâu, dùng cả ngày không lo hết pin',
+          'Màn hình ProMotion 120Hz siêu mượt, màu sắc chuẩn xác',
+          'Thiết kế titanium cao cấp, nhẹ hơn nhưng bền hơn'
+        ],
+        cons: [
+          'Giá khá cao, từ 30 triệu trở lên',
+          'Sạc nhanh chỉ 27W, chậm hơn đối thủ Android',
+          'Không có nhiều thay đổi về thiết kế so với đời trước'
+        ],
+        keyPoints: [
+          { time: '02:15', content: 'Giới thiệu thiết kế titanium mới, nhẹ hơn 10g so với đời trước' },
+          { time: '05:30', content: 'Demo camera 48MP với zoom quang 5x, chụp đêm cực tốt' },
+          { time: '08:45', content: 'Test hiệu năng chip A18 Pro, điểm Geekbench cao nhất phân khúc' },
+          { time: '11:20', content: 'Đánh giá pin, dùng liên tục 8-9 tiếng màn hình' },
+          { time: '13:50', content: 'So sánh với Galaxy S24 Ultra và các đối thủ Android' }
+        ],
+        comparisonTable: {
+          headers: ['Tính năng', 'iPhone 16 Pro Max', 'Galaxy S24 Ultra', 'Pixel 9 Pro XL'],
+          rows: [
+            ['Chip', 'A18 Pro', 'Snapdragon 8 Gen 3', 'Tensor G4'],
+            ['RAM', '8GB', '12GB', '12GB'],
+            ['Camera chính', '48MP', '200MP', '50MP'],
+            ['Pin', '4685 mAh', '5000 mAh', '5060 mAh'],
+            ['Giá', '30-35 triệu', '28-33 triệu', '25-30 triệu'],
+            ['Điểm mạnh', 'Hệ sinh thái iOS', 'S Pen, camera zoom', 'AI features']
+          ]
+        },
+        targetAudience: [
+          'Người dùng Apple muốn nâng cấp từ iPhone 13/14',
+          'Người làm content creator cần camera tốt',
+          'Người thích hệ sinh thái Apple (Mac, iPad, Watch)'
+        ],
+        cta: 'iPhone 16 Pro Max là lựa chọn tuyệt vời nếu bạn muốn một chiếc flagship mạnh mẽ với camera đỉnh cao. Mua ngay hôm nay để nhận ưu đãi tốt nhất!',
+        seoKeywords: [
+          'iPhone 16 Pro Max',
+          'review iPhone 16',
+          'giá iPhone 16 Pro Max',
+          'mua iPhone 16',
+          'so sánh iPhone 16',
+          'đánh giá iPhone',
+          'điện thoại flagship',
+          'Apple 2024',
+          'chip A18 Pro',
+          'camera iPhone 16'
+        ]
+      };
+
+      const response: AnalyzeVideoResponse = {
+        videoInfo: mockVideoInfo,
+        analysis: mockAnalysis,
+      };
+
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      return NextResponse.json(response);
+    }
+
+    // REAL MODE: Use actual APIs
+    // Step 1: Get video info from URL
+    const videoInfo = await getVideoInfoFromUrl(videoUrl);
+
+    // Step 2: Analyze video with AI
+    const analysis = await analyzeVideo(videoInfo);
+
+    // Step 3: Return combined response
+    const response: AnalyzeVideoResponse = {
+      videoInfo,
+      analysis,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error('Error analyzing video:', error);
+
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to analyze video';
+
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
+  }
+}
