@@ -23,8 +23,20 @@ export async function POST() {
       },
       body: JSON.stringify({
         test: true,
-        message: '🧪 Test từ Video Affiliate App',
+        noi_dung_dang: '🧪 Test từ Video Affiliate App - Nội dung đăng',
+        video_url: 'https://www.youtube.com/watch?v=test123',
+        affiliate_links: [
+          {
+            platform: 'Shopee',
+            url: 'https://shopee.vn/test-product',
+            price: '299,000 VNĐ',
+            discount: 'Giảm 10%'
+          }
+        ],
+        url_landing_page: 'https://example.com/review/test-review',
+        video_thumbnail: 'https://i.ytimg.com/vi/test123/maxresdefault.jpg',
         timestamp: new Date().toISOString(),
+        source: 'video-affiliate-app',
       }),
     });
 

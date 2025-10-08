@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { Share2, Loader2, ExternalLink, Copy, Zap } from 'lucide-react';
+import { Share2, Loader2, ExternalLink, Copy, Zap, Calendar, X } from 'lucide-react';
 import { formatFacebookPost } from '@/lib/apis/facebook';
 import { getLandingPageUrl, copyToClipboard } from '@/lib/utils';
 import { useSettings } from '@/lib/contexts/settings-context';
@@ -55,7 +56,9 @@ export function FacebookPoster({
   );
 
   const [isPosting, setIsPosting] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
   const [postUrl, setPostUrl] = useState<string | null>(null);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
   const handleCopyLink = async () => {
     const success = await copyToClipboard(landingUrl);
@@ -97,8 +100,10 @@ export function FacebookPoster({
           reviewId,
           message,
           videoUrl,
-          link: landingUrl,
-          imageUrl: videoThumbnail,
+          affiliateLinks,
+          landingPageUrl: landingUrl,
+          videoThumbnail,
+          imageUrl: videoThumbnail, // sử dụng videoThumbnail làm imageUrl
           affiliateComment,
         }),
       });
@@ -125,6 +130,58 @@ export function FacebookPoster({
       });
     } finally {
       setIsPosting(false);
+    }
+  };
+
+  const handleSchedule = async (scheduledFor: Date) => {
+    setIsScheduling(true);
+    try {
+      // scheduledFor is a Date object representing the local time selected by the user.
+      // Calling toISOString() on it will correctly convert it to the equivalent UTC string.
+      const scheduledForUTCString = scheduledFor.toISOString();
+      
+      console.log('📅 FacebookPoster timezone conversion:');
+      console.log('  Local time (selected):', scheduledFor.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
+      console.log('  UTC time (sent to API):', scheduledForUTCString);
+
+      const response = await fetch('/api/debug-datetime-picker', { // Use debug API
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reviewId,
+          scheduledFor: scheduledForUTCString,
+          targetType: 'page',
+          targetId: 'make-com-handled',
+          targetName: 'Make.com Auto',
+          postMessage: message,
+          landingPageUrl: landingUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Có lỗi xảy ra');
+      }
+
+      console.log('📅 Schedule created successfully:', data.data);
+      
+      toast({
+        title: '✅ Đã thêm vào lịch đăng bài!',
+        description: `Bài viết sẽ được đăng vào ${scheduledFor.toLocaleString('vi-VN')}`,
+      });
+
+      setShowScheduleDialog(false);
+    } catch (error) {
+      console.error('Schedule error:', error);
+      toast({
+        title: 'Lỗi',
+        description:
+          error instanceof Error ? error.message : 'Không thể thêm vào lịch đăng bài',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -203,25 +260,37 @@ export function FacebookPoster({
           </div>
         </div>
 
-        {/* Post Button */}
-        <Button
-          onClick={handlePost}
-          disabled={isPosting || !message}
-          className="w-full"
-          size="lg"
-        >
-          {isPosting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Đang gửi...
-            </>
-          ) : (
-            <>
-              <Zap className="mr-2 h-4 w-4" />
-              Gửi tới Make.com
-            </>
-          )}
-        </Button>
+        {/* Post Buttons */}
+        <div className="flex gap-3">
+          <Button
+            onClick={handlePost}
+            disabled={isPosting || !message}
+            className="flex-1"
+            size="lg"
+          >
+            {isPosting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang gửi...
+              </>
+            ) : (
+              <>
+                <Zap className="mr-2 h-4 w-4" />
+                Gửi ngay
+              </>
+            )}
+          </Button>
+          
+          <Button
+            onClick={() => setShowScheduleDialog(true)}
+            disabled={!message}
+            variant="outline"
+            size="lg"
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            Lên lịch
+          </Button>
+        </div>
 
         {/* Success Message */}
         {postUrl && (
@@ -277,6 +346,151 @@ export function FacebookPoster({
           </ul>
         </div>
       </CardContent>
+      
+      {/* Schedule Dialog */}
+      {showScheduleDialog && (
+        <ScheduleDialog
+          open={showScheduleDialog}
+          onOpenChange={setShowScheduleDialog}
+          onSubmit={handleSchedule}
+          loading={isScheduling}
+        />
+      )}
     </Card>
+  );
+}
+
+// Simple Schedule Dialog Component
+interface ScheduleDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (scheduledFor: Date) => void;
+  loading?: boolean;
+}
+
+function ScheduleDialog({ open, onOpenChange, onSubmit, loading: externalLoading }: ScheduleDialogProps) {
+  const [scheduledFor, setScheduledFor] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0); // 9:00 AM tomorrow
+    return tomorrow;
+  });
+  const [loading, setLoading] = useState(false);
+  const isLoading = loading || externalLoading;
+
+  // Helper function to get safe date string
+  const getSafeDateString = (date: Date) => {
+    if (!date || isNaN(date.getTime())) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 1);
+      fallback.setHours(9, 0, 0, 0);
+      return fallback.toISOString().split('T')[0];
+    }
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper function to get safe time string
+  const getSafeTimeString = (date: Date) => {
+    if (!date || isNaN(date.getTime())) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 1);
+      fallback.setHours(9, 0, 0, 0);
+      return fallback.toTimeString().slice(0, 5);
+    }
+    return date.toTimeString().slice(0, 5);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await onSubmit(scheduledFor);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    onOpenChange(false);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <Card className="max-w-md w-full mx-4">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Lên lịch đăng bài</CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Chọn thời gian để đăng bài tự động
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Thời gian đăng bài</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={getSafeDateString(scheduledFor)}
+                  onChange={(e) => {
+                    if (!e.target.value) return; // Don't update if empty
+                    
+                    const newDate = new Date(scheduledFor);
+                    const [year, month, day] = e.target.value.split('-').map(Number);
+                    
+                    // Validate the parsed values
+                    if (year && month && day && !isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                      newDate.setFullYear(year, month - 1, day);
+                      setScheduledFor(newDate);
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Input
+                  type="time"
+                  value={getSafeTimeString(scheduledFor)}
+                  onChange={(e) => {
+                    if (!e.target.value) return; // Don't update if empty
+                    
+                    const newDate = new Date(scheduledFor);
+                    const [hours, minutes] = e.target.value.split(':').map(Number);
+                    
+                    // Validate the parsed values
+                    if (hours !== undefined && minutes !== undefined && !isNaN(hours) && !isNaN(minutes)) {
+                      newDate.setHours(hours, minutes, 0, 0);
+                      setScheduledFor(newDate);
+                    }
+                  }}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>💡 Lưu ý:</strong> Make.com sẽ tự động xử lý việc chọn fanpage/group và đăng bài.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-4">
+              <Button type="submit" disabled={isLoading} className="flex-1">
+                {isLoading ? 'Đang tạo...' : 'Tạo lịch đăng bài'}
+              </Button>
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Hủy
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

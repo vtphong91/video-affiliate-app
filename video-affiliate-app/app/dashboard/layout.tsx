@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Video, LayoutDashboard, PlusCircle, List, Settings, Tag, Home } from 'lucide-react';
+import { Video, LayoutDashboard, PlusCircle, List, Settings, Tag, Home, Calendar } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -63,6 +63,12 @@ export default function DashboardLayout({
                 <Button variant="ghost" className="w-full justify-start">
                   <List className="h-4 w-4 mr-2" />
                   Reviews
+                </Button>
+              </Link>
+              <Link href="/dashboard/schedules">
+                <Button variant="ghost" className="w-full justify-start">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Lịch Đăng Bài
                 </Button>
               </Link>
               <Link href="/dashboard/categories">

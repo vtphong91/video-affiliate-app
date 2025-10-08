@@ -1,29 +1,69 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Eye, MousePointer, TrendingUp, FileText, PlusCircle, Settings, Loader2, ExternalLink } from 'lucide-react';
-import type { Review } from '@/types';
+import { useState, useEffect } from 'react';
+import { StatsCard } from '@/components/dashboard/StatsCard';
+import { Chart } from '@/components/dashboard/Chart';
+import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { SystemStatus } from '@/components/dashboard/SystemStatus';
+import { 
+  FileText, 
+  Calendar, 
+  CheckCircle, 
+  Clock,
+  TrendingUp,
+  Users,
+  AlertTriangle,
+  Zap
+} from 'lucide-react';
 
 interface DashboardStats {
   totalReviews: number;
-  totalViews: number;
-  totalClicks: number;
-  totalConversions: number;
+  totalSchedules: number;
+  publishedPosts: number;
+  pendingSchedules: number;
+  failedPosts: number;
+  reviewsToday: number;
+  postsToday: number;
+  averageResponseTime: number;
+}
+
+interface ChartData {
+  label: string;
+  value: number;
+  color?: string;
+}
+
+interface ActivityItem {
+  id: string;
+  type: 'review_created' | 'post_scheduled' | 'post_published' | 'post_failed' | 'webhook_sent';
+  title: string;
+  description: string;
+  timestamp: Date | string;
+  status?: 'success' | 'error' | 'pending' | 'processing';
+  metadata?: {
+    reviewId?: string;
+    scheduleId?: string;
+    facebookPostUrl?: string;
+    errorMessage?: string;
+  };
+}
+
+interface DashboardData {
+  stats: DashboardStats;
+  charts: {
+    reviewsByDay: ChartData[];
+    postsByDay: ChartData[];
+    platformStats: ChartData[];
+    statusStats: ChartData[];
+  };
+  activities: ActivityItem[];
 }
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalReviews: 0,
-    totalViews: 0,
-    totalClicks: 0,
-    totalConversions: 0,
-  });
-  const [recentReviews, setRecentReviews] = useState<Review[]>([]);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -32,259 +72,176 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-
-      // Fetch all reviews
-      const response = await fetch('/api/reviews?limit=10');
-      const data = await response.json();
-
-      if (data.success && data.reviews) {
-        const reviews = data.reviews;
-
-        // Calculate stats
-        const totalReviews = reviews.length;
-        const totalViews = reviews.reduce((sum: number, r: Review) => sum + (r.views || 0), 0);
-        const totalClicks = reviews.reduce((sum: number, r: Review) => sum + (r.clicks || 0), 0);
-        const totalConversions = reviews.reduce((sum: number, r: Review) => sum + (r.conversions || 0), 0);
-
-        setStats({
-          totalReviews,
-          totalViews,
-          totalClicks,
-          totalConversions,
-        });
-
-        // Get recent 5 reviews
-        setRecentReviews(reviews.slice(0, 5));
+      const response = await fetch('/api/dashboard/stats');
+      const result = await response.json();
+      
+      if (result.success) {
+        setData(result.data);
+      } else {
+        setError(result.error || 'Failed to fetch dashboard data');
       }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+    } catch (err) {
+      setError('Network error occurred');
+      console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600 mt-2">Tổng quan hệ thống Video Affiliate App</p>
+          </div>
+          
+          {/* Loading skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg p-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-gray-600 mt-1">
-            Tổng quan về reviews và hiệu suất
-          </p>
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-red-800 mb-2">Lỗi tải dữ liệu</h2>
+            <p className="text-red-600">{error}</p>
+            <button 
+              onClick={fetchDashboardData}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Thử lại
+            </button>
+          </div>
         </div>
-        <Link href="/dashboard/create">
-          <Button size="lg">
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Tạo Review Mới
-          </Button>
-        </Link>
       </div>
+    );
+  }
 
-      {/* Stats Cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Tổng Reviews
-            </CardTitle>
-            <FileText className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.totalReviews}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              Landing pages đã tạo
-            </p>
-          </CardContent>
-        </Card>
+  if (!data) return null;
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Lượt Xem
-            </CardTitle>
-            <Eye className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {stats.totalViews.toLocaleString('vi-VN')}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Tổng lượt xem tất cả reviews
-            </p>
-          </CardContent>
-        </Card>
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-2">Tổng quan hệ thống Video Affiliate App</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Clicks
-            </CardTitle>
-            <MousePointer className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {stats.totalClicks.toLocaleString('vi-VN')}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Clicks vào affiliate links
-            </p>
-          </CardContent>
-        </Card>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatsCard
+            title="Tổng Reviews"
+            value={data.stats.totalReviews}
+            change={{ value: 12, type: 'increase' }}
+            icon={FileText}
+            description="Tổng số reviews đã tạo"
+          />
+          <StatsCard
+            title="Lịch Đăng Bài"
+            value={data.stats.totalSchedules}
+            change={{ value: 8, type: 'increase' }}
+            icon={Calendar}
+            description="Số lịch đã lên"
+          />
+          <StatsCard
+            title="Đã Đăng"
+            value={data.stats.publishedPosts}
+            change={{ value: 5, type: 'increase' }}
+            icon={CheckCircle}
+            description="Bài đã đăng thành công"
+          />
+          <StatsCard
+            title="Chờ Đăng"
+            value={data.stats.pendingSchedules}
+            change={{ value: -2, type: 'decrease' }}
+            icon={Clock}
+            description="Đang chờ lịch đăng"
+          />
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Conversions
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {stats.totalConversions.toLocaleString('vi-VN')}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Chuyển đổi thành công
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <Chart
+            title="Reviews theo ngày (7 ngày qua)"
+            data={data.charts.reviewsByDay}
+            type="bar"
+            height={300}
+          />
+          <Chart
+            title="Bài đăng theo ngày (7 ngày qua)"
+            data={data.charts.postsByDay}
+            type="line"
+            height={300}
+          />
+        </div>
 
-      {/* Recent Reviews */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Reviews Gần Đây</CardTitle>
-          <Link href="/dashboard/reviews">
-            <Button variant="ghost" size="sm">
-              Xem tất cả
-              <ExternalLink className="ml-2 h-3 w-3" />
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {recentReviews.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-lg font-medium mb-2">
-                Chưa có review nào
-              </p>
-              <p className="mb-4">
-                Bắt đầu tạo landing page review đầu tiên của bạn
-              </p>
-              <Link href="/dashboard/create">
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Tạo Review Ngay
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {recentReviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition"
-                >
-                  <img
-                    src={review.video_thumbnail}
-                    alt={review.video_title}
-                    className="w-24 h-16 object-cover rounded"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">
-                      {review.custom_title || review.video_title}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(review.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-4 w-4" />
-                      {review.views}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MousePointer className="h-4 w-4" />
-                      {review.clicks}
-                    </div>
-                  </div>
-                  <Badge
-                    variant={review.status === 'published' ? 'default' : 'secondary'}
-                  >
-                    {review.status === 'published' ? 'Published' : 'Draft'}
-                  </Badge>
-                  <Link href={`/dashboard/reviews/${review.id}`}>
-                    <Button variant="ghost" size="sm">
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Platform & Status Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <Chart
+            title="Phân bố theo Platform"
+            data={data.charts.platformStats}
+            type="doughnut"
+            height={300}
+          />
+          <Chart
+            title="Trạng thái đăng bài"
+            data={data.charts.statusStats}
+            type="doughnut"
+            height={300}
+          />
+        </div>
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Bắt Đầu Nhanh</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Link href="/dashboard/create">
-              <Button variant="outline" className="w-full justify-start">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Tạo review từ video YouTube/TikTok
-              </Button>
-            </Link>
-            <Link href="/dashboard/categories">
-              <Button variant="outline" className="w-full justify-start">
-                <FileText className="mr-2 h-4 w-4" />
-                Quản lý danh mục
-              </Button>
-            </Link>
-            <Link href="/dashboard/settings">
-              <Button variant="outline" className="w-full justify-start">
-                <Settings className="mr-2 h-4 w-4" />
-                Cấu hình API keys
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        {/* Bottom Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <RecentActivity 
+            activities={data.activities}
+            className="lg:col-span-2"
+          />
+          <div className="space-y-6">
+            <QuickActions />
+            <SystemStatus />
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Hướng Dẫn</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
-              <li>Tạo danh mục cho reviews (Xe máy, Điện gia dụng...)</li>
-              <li>Nhập link video YouTube hoặc TikTok</li>
-              <li>Chọn danh mục và AI tự động phân tích</li>
-              <li>Chỉnh sửa và thêm affiliate links</li>
-              <li>Đăng lên Facebook và chia sẻ</li>
-              <li>Theo dõi views, clicks và conversions</li>
-            </ol>
-          </CardContent>
-        </Card>
+        {/* Additional Stats */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatsCard
+            title="Reviews Hôm Nay"
+            value={data.stats.reviewsToday}
+            icon={TrendingUp}
+            description="Reviews được tạo hôm nay"
+            className="bg-gradient-to-r from-blue-50 to-blue-100"
+          />
+          <StatsCard
+            title="Bài Đăng Hôm Nay"
+            value={data.stats.postsToday}
+            icon={Users}
+            description="Bài đã đăng hôm nay"
+            className="bg-gradient-to-r from-green-50 to-green-100"
+          />
+          <StatsCard
+            title="Thời Gian Phản Hồi TB"
+            value={`${data.stats.averageResponseTime}ms`}
+            icon={Zap}
+            description="Thời gian phản hồi trung bình"
+            className="bg-gradient-to-r from-purple-50 to-purple-100"
+          />
+        </div>
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ export default function BlogPage() {
       const categoriesData = await categoriesRes.json();
 
       if (reviewsData.success) {
-        setReviews(reviewsData.reviews);
+        setReviews(reviewsData.data || []);
       }
 
       if (categoriesData.success) {
@@ -44,7 +44,7 @@ export default function BlogPage() {
     }
   };
 
-  const filteredReviews = reviews.filter((review) => {
+  const filteredReviews = (reviews || []).filter((review) => {
     return !selectedCategory || review.category_id === selectedCategory;
   });
 
@@ -62,7 +62,7 @@ export default function BlogPage() {
   };
 
   // Get top reviews by views
-  const topReviews = [...reviews].sort((a, b) => b.views - a.views).slice(0, 5);
+  const topReviews = [...(reviews || [])].sort((a, b) => b.views - a.views).slice(0, 5);
 
   return (
     <div className="min-h-screen bg-white">
@@ -340,7 +340,7 @@ export default function BlogPage() {
                       <span className="mr-2">{cat.icon}</span>
                       <span className="flex-1">{cat.name}</span>
                       <span className="text-gray-400 text-xs">
-                        {reviews.filter(r => r.category_id === cat.id).length}
+                        {(reviews || []).filter(r => r.category_id === cat.id).length}
                       </span>
                     </button>
                   ))}

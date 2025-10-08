@@ -6,12 +6,18 @@ export const dynamic = 'force-dynamic';
 
 interface PostWebhookRequest {
   reviewId: string;
-  message: string;
-  videoUrl: string;
-  link: string;
-  imageUrl?: string;
-  affiliateComment?: string | null;
-  // Note: webhookUrl and webhookSecret now come from environment variables
+  message: string; // nội dung đăng
+  videoUrl: string; // video_url
+  affiliateLinks: Array<{
+    platform: string;
+    url: string;
+    price?: string;
+    discount?: string;
+  }>; // Affiliate Links
+  landingPageUrl: string; // url_landing_page
+  videoThumbnail: string; // video_thumbnail
+  imageUrl?: string; // optional image
+  affiliateComment?: string | null; // optional affiliate comment
 }
 
 interface MakeWebhookResponse {
@@ -28,7 +34,9 @@ export async function POST(request: NextRequest) {
       reviewId,
       message,
       videoUrl,
-      link,
+      affiliateLinks,
+      landingPageUrl,
+      videoThumbnail,
       imageUrl,
       affiliateComment,
     } = body;
@@ -49,11 +57,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate required fields
-    if (!reviewId || !message || !videoUrl || !link) {
+    if (!reviewId || !message || !videoUrl || !affiliateLinks || !landingPageUrl || !videoThumbnail) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Missing required fields: reviewId, message, videoUrl, link'
+          error: 'Missing required fields: reviewId, message, videoUrl, affiliateLinks, landingPageUrl, videoThumbnail'
         },
         { status: 400 }
       );
@@ -70,12 +78,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare webhook payload
+    // Prepare webhook payload với các trường theo yêu cầu
     const webhookPayload: any = {
+      // Các trường chính theo yêu cầu
+      noi_dung_dang: message, // nội dung đăng
+      video_url: videoUrl, // video_url
+      affiliate_links: affiliateLinks, // Affiliate Links
+      url_landing_page: landingPageUrl, // url_landing_page
+      video_thumbnail: videoThumbnail, // video_thumbnail
+      
+      // Metadata bổ sung
       reviewId,
-      message,
-      videoUrl,
-      link,
       timestamp: new Date().toISOString(),
       source: 'video-affiliate-app',
     };
@@ -162,7 +175,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       postId: result.postId || 'posted',
-      postUrl: result.postUrl || link,
+      postUrl: result.postUrl || landingPageUrl,
       message: 'Successfully sent to Make.com for posting',
     });
   } catch (error) {
