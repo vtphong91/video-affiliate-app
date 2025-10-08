@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -11,18 +9,18 @@ export default function HomePage() {
           AI-powered video analysis and automated Facebook posting
         </p>
         <div className="space-x-4">
-          <Link 
+          <a 
             href="/dashboard" 
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-block"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go to Dashboard
-          </Link>
-          <Link 
+          </a>
+          <a 
             href="/dashboard/create" 
-            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors inline-block"
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
           >
             Create Review
-          </Link>
+          </a>
         </div>
       </div>
     </div>
