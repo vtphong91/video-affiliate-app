@@ -1,30 +1,19 @@
-import Link from 'next/link';
-
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Video Affiliate App
-        </h1>
-        <p className="text-lg text-gray-600 mb-8">
-          AI-powered video analysis and automated Facebook posting
-        </p>
-        <div className="space-x-4">
-          <Link 
-            href="/dashboard" 
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-block"
-          >
-            Go to Dashboard
-          </Link>
-          <Link 
-            href="/dashboard/create" 
-            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors inline-block"
-          >
-            Create Review
-          </Link>
-        </div>
-      </div>
+    <div style={{ padding: '50px', textAlign: 'center' }}>
+      <h1>Video Affiliate App</h1>
+      <p>AI-powered video analysis and automated Facebook posting</p>
+      <a href="/dashboard" style={{ 
+        display: 'inline-block', 
+        padding: '10px 20px', 
+        backgroundColor: '#0070f3', 
+        color: 'white', 
+        textDecoration: 'none',
+        borderRadius: '5px',
+        margin: '10px'
+      }}>
+        Go to Dashboard
+      </a>
     </div>
   );
 }
