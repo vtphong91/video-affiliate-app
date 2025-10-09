@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
 
     // Transform categories to trending topics format
     const topics = categories.map(category => ({
-      id: category.slug,
+      id: category.id, // Use actual UUID instead of slug
+      slug: category.slug, // Keep slug for reference
       name: category.name,
       color: getCategoryColor(category.color)
     }));

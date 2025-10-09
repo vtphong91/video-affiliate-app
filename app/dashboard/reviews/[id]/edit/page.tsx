@@ -23,6 +23,10 @@ export default function EditReviewPage() {
   const [review, setReview] = useState<Review | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
 
   // Basic fields
   const [customTitle, setCustomTitle] = useState('');
@@ -96,6 +100,7 @@ export default function EditReviewPage() {
   const handleSave = async () => {
     try {
       setSaving(true);
+      setSaveStatus({ type: null, message: '' }); // Clear previous status
 
       const response = await fetch(`/api/reviews/${reviewId}`, {
         method: 'PATCH',
@@ -117,20 +122,38 @@ export default function EditReviewPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Set success status message
+        setSaveStatus({
+          type: 'success',
+          message: '✅ Lưu thành công! Review đã được cập nhật.'
+        });
+        
+        // Also show toast for consistency
         toast({
           title: '✅ Lưu thành công!',
           description: 'Review đã được cập nhật thành công.',
         });
         
-        // Redirect after a short delay to show the success message
+        // Reload review data to show updated information
+        await fetchReview();
+        
+        // Clear status message after 3 seconds
         setTimeout(() => {
-          router.push('/dashboard/reviews');
-        }, 1500);
+          setSaveStatus({ type: null, message: '' });
+        }, 3000);
       } else {
         throw new Error(data.error || 'Có lỗi xảy ra khi lưu review');
       }
     } catch (error) {
       console.error('Error saving review:', error);
+      
+      // Set error status message
+      setSaveStatus({
+        type: 'error',
+        message: '❌ Lưu thất bại! ' + (error instanceof Error ? error.message : 'Không thể lưu review. Vui lòng thử lại.')
+      });
+      
+      // Also show toast for consistency
       toast({
         title: '❌ Lưu thất bại!',
         description: error instanceof Error ? error.message : 'Không thể lưu review. Vui lòng thử lại.',
@@ -222,19 +245,32 @@ export default function EditReviewPage() {
             </p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Đang lưu...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Lưu thay đổi
-            </>
+        <div className="flex flex-col items-end gap-2">
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Đang lưu...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Lưu thay đổi
+              </>
+            )}
+          </Button>
+          
+          {/* Status Message */}
+          {saveStatus.type && (
+            <div className={`text-sm px-3 py-2 rounded-md ${
+              saveStatus.type === 'success' 
+                ? 'bg-green-100 text-green-700 border border-green-200' 
+                : 'bg-red-100 text-red-700 border border-red-200'
+            }`}>
+              {saveStatus.message}
+            </div>
           )}
-        </Button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">

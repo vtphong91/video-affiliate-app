@@ -164,7 +164,7 @@ export function FacebookPoster({
 
       console.log('🔍 FacebookPoster - Sending schedule data:', scheduleData);
 
-      const response = await fetch('/api/debug-datetime-picker', { // Use debug API
+      const response = await fetch('/api/schedules', { // Use correct API endpoint
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scheduleData),

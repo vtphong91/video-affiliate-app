@@ -49,6 +49,22 @@ export const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Add webhook log functions to db object
+export const createWebhookLog = async (logData: Omit<WebhookLog, 'id' | 'created_at'>) => {
+  const { data, error } = await supabaseAdmin
+    .from('webhook_logs')
+    .insert([logData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Error creating webhook log:', error);
+    throw new Error(`Failed to create webhook log: ${error.message}`);
+  }
+
+  return data;
+};
+
 // Database queries
 export const db = {
   // Reviews

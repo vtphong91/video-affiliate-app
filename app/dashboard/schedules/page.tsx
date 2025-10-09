@@ -77,7 +77,7 @@ export default function SchedulesPage() {
   const fetchSchedules = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/schedules-get'); // Use working API
+      const response = await fetch('/api/schedules'); // Use correct API endpoint
       const result = await response.json();
       
       if (result.success) {

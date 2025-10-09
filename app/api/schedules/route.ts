@@ -7,12 +7,16 @@ export const dynamic = 'force-dynamic';
 // Validation schemas
 const createScheduleSchema = z.object({
   reviewId: z.string().min(1), // Keep as string, not UUID
-  scheduledFor: z.string().datetime(),
+  scheduledFor: z.string().min(1), // Accept any string, we'll validate manually
   targetType: z.enum(['page', 'group']),
   targetId: z.string().optional(), // Make.com sẽ xử lý
   targetName: z.string().optional(),
   postMessage: z.string().optional(), // Make.com sẽ xử lý
   landingPageUrl: z.string().optional(), // Make.com sẽ xử lý
+  videoUrl: z.string().optional(), // Additional fields from frontend
+  videoThumbnail: z.string().optional(),
+  affiliateLinks: z.array(z.any()).optional(),
+  channelName: z.string().optional(),
 });
 
 const updateScheduleSchema = z.object({
@@ -79,6 +83,17 @@ export async function POST(request: NextRequest) {
     const validatedData = createScheduleSchema.parse(body);
     console.log('✅ Validation passed:', validatedData);
     
+    // Manual datetime validation for GMT+7 format
+    const scheduledForDate = new Date(validatedData.scheduledFor);
+    if (isNaN(scheduledForDate.getTime())) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid datetime format',
+        details: `scheduledFor must be a valid datetime string, got: ${validatedData.scheduledFor}`
+      }, { status: 400 });
+    }
+    console.log('✅ Datetime validation passed:', scheduledForDate.toISOString());
+    
     // Get user ID from request (you might need to implement auth)
     const userId = 'default-user-id'; // TODO: Get from auth context
     console.log('👤 User ID:', userId);
@@ -100,7 +115,27 @@ export async function POST(request: NextRequest) {
     const landingUrl = `https://yourdomain.com/review/${review.slug}`;
     const realPostMessage = `🔥 ${review.custom_title || review.video_title}\n\n${review.summary}\n\n📺 Xem video: ${review.video_url}\n\n🔗 Đọc review đầy đủ: ${landingUrl}`;
     
+    // Format affiliate links
+    const formatAffiliateLinks = (affiliateLinks: any[] | null | undefined): string => {
+      if (!affiliateLinks || !Array.isArray(affiliateLinks) || affiliateLinks.length === 0) {
+        return 'Đặt mua giá tốt lại: Không có thông tin';
+      }
+
+      const formattedLinks = affiliateLinks.map((link, index) => {
+        const platform = link.platform || 'Nền tảng';
+        const price = link.price || 'Giá liên hệ';
+        const url = link.url || '#';
+        
+        return `${index + 1}. ${platform} - ${price}: ${url}`;
+      }).join('\n');
+
+      return `Đặt mua giá tốt lại:\n${formattedLinks}`;
+    };
+
+    const formattedAffiliateLinks = formatAffiliateLinks(review.affiliate_links);
+    
     console.log('📝 Generated real post message:', realPostMessage.substring(0, 100) + '...');
+    console.log('🔗 Formatted affiliate links:', formattedAffiliateLinks.substring(0, 100) + '...');
     
     // Create schedule
     console.log('📤 Creating schedule in database...');
@@ -114,6 +149,11 @@ export async function POST(request: NextRequest) {
       target_name: validatedData.targetName || 'Make.com Auto',
       post_message: validatedData.postMessage || realPostMessage, // Use real post message
       landing_page_url: validatedData.landingPageUrl || landingUrl, // Use real landing URL
+      // Add formatted affiliate links
+      affiliate_links: formattedAffiliateLinks,
+      video_url: validatedData.videoUrl || review.video_url,
+      video_thumbnail: validatedData.videoThumbnail || review.video_thumbnail,
+      channel_name: validatedData.channelName || review.channel_name,
       status: 'pending',
       retry_count: 0,
       max_retries: 3,
