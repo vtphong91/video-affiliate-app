@@ -1,0 +1,160 @@
+# Video Affiliate App - Cursor Rules
+
+## Project Overview
+This is a Next.js 14 video affiliate application that analyzes videos, generates AI content, and posts to Facebook. It uses TypeScript, Tailwind CSS, Supabase, and multiple AI providers (OpenAI, Claude, Gemini).
+
+## Tech Stack
+- Next.js 14 with App Router
+- TypeScript (strict mode)
+- Tailwind CSS + Radix UI components
+- Supabase for database
+- AI providers: OpenAI, Anthropic Claude, Google Gemini
+- Social APIs: Facebook, YouTube, TikTok
+
+## Code Style & Standards
+
+### TypeScript
+- Use strict TypeScript with proper type definitions
+- Prefer interfaces over types for object shapes
+- Use Zod for runtime validation and type inference
+- Always define return types for functions
+- Use proper error handling with try-catch blocks
+
+### React/Next.js
+- Use functional components with hooks
+- Prefer Server Components when possible, Client Components only when needed
+- Use proper Next.js patterns: `use client`, `async` server components
+- Implement proper loading and error states
+- Use Next.js Image component for images
+- Follow App Router conventions
+
+### File Structure
+- Components in `/components` with proper organization
+- API routes in `/app/api` following RESTful patterns
+- Database schema and migrations in `/lib/db`
+- Utility functions in `/lib/utils.ts`
+- Type definitions in `/types/index.ts`
+- AI-related code in `/lib/ai`
+
+### Styling
+- Use Tailwind CSS for styling
+- Follow mobile-first responsive design
+- Use Radix UI components for accessibility
+- Implement proper dark/light mode support
+- Use CSS variables for theming
+
+### Database & API
+- Use Supabase client properly with error handling
+- Implement proper data validation with Zod
+- Use proper HTTP status codes in API routes
+- Implement rate limiting and error handling
+- Use environment variables for sensitive data
+
+### AI Integration
+- Implement proper error handling for AI API calls
+- Use streaming responses when appropriate
+- Implement fallback mechanisms for AI failures
+- Cache AI responses when possible
+- Use proper prompt engineering techniques
+
+### Security
+- Never commit API keys or sensitive data
+- Use environment variables for all secrets
+- Implement proper input validation
+- Use HTTPS for all external API calls
+- Implement proper CORS policies
+
+### Performance
+- Implement proper caching strategies
+- Use Next.js Image optimization
+- Implement lazy loading for components
+- Optimize bundle size
+- Use proper SEO meta tags
+
+### Testing
+- Write unit tests for utility functions
+- Test API routes with proper mocking
+- Test AI integrations with mock responses
+- Implement proper error boundary testing
+
+### Code Organization
+- Keep components small and focused
+- Use proper separation of concerns
+- Implement proper error boundaries
+- Use custom hooks for reusable logic
+- Follow DRY principles
+
+### Documentation
+- Write clear JSDoc comments for complex functions
+- Document API endpoints properly
+- Maintain README with setup instructions
+- Document environment variables needed
+
+## Specific Patterns
+
+### API Routes
+```typescript
+// Use this pattern for API routes
+export async function GET(request: Request) {
+  try {
+    // Implementation
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ error: 'Message' }, { status: 500 });
+  }
+}
+```
+
+### Database Operations
+```typescript
+// Use this pattern for Supabase operations
+const { data, error } = await supabase
+  .from('table')
+  .select('*')
+  .eq('column', value);
+
+if (error) {
+  throw new Error(`Database error: ${error.message}`);
+}
+```
+
+### AI API Calls
+```typescript
+// Use this pattern for AI API calls
+try {
+  const response = await aiProvider.generateContent(prompt);
+  return response;
+} catch (error) {
+  console.error('AI API error:', error);
+  throw new Error('Failed to generate content');
+}
+```
+
+## Environment Variables
+Required environment variables should be documented and properly typed:
+- Database URLs and keys
+- AI API keys (OpenAI, Claude, Gemini)
+- Social media API keys
+- Next.js public URLs
+
+## Error Handling
+- Always implement proper error boundaries
+- Use try-catch blocks for async operations
+- Provide meaningful error messages to users
+- Log errors properly for debugging
+- Implement fallback UI states
+
+## Accessibility
+- Use semantic HTML elements
+- Implement proper ARIA labels
+- Ensure keyboard navigation works
+- Use proper color contrast ratios
+- Test with screen readers
+
+## Performance Guidelines
+- Implement proper loading states
+- Use React.memo for expensive components
+- Implement proper caching strategies
+- Optimize images and assets
+- Use proper code splitting
+
