@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
+import { handleError, createErrorResponse, createSuccessResponse, logError } from '@/lib/utils/error-handler';
 
 // Mark as dynamic route
 export const dynamic = 'force-dynamic';
@@ -11,9 +12,28 @@ export async function GET(request: NextRequest) {
     const excludeScheduled = searchParams.get('excludeScheduled') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
+    const page = parseInt(searchParams.get('page') || '1');
+
+    // Calculate offset from page if page is provided
+    const actualOffset = page ? (page - 1) * limit : offset;
+
+    // Validate parameters
+    if (limit < 1 || limit > 100) {
+      return NextResponse.json(
+        createErrorResponse('VALIDATION_ERROR', 'Limit must be between 1 and 100'),
+        { status: 400 }
+      );
+    }
+
+    if (actualOffset < 0) {
+      return NextResponse.json(
+        createErrorResponse('VALIDATION_ERROR', 'Offset must be non-negative'),
+        { status: 400 }
+      );
+    }
 
     // Fetch reviews from database
-    const reviews = await db.getReviews({ status, limit, offset });
+    const reviews = await db.getReviews({ status, limit, offset: actualOffset });
 
     let filteredReviews = reviews;
 
@@ -23,16 +43,29 @@ export async function GET(request: NextRequest) {
       filteredReviews = reviews.filter(review => !scheduledReviewIds.includes(review.id));
     }
 
-    return NextResponse.json({
-      success: true,
-      data: filteredReviews, // Changed from 'reviews' to 'data' for consistency
-      total: filteredReviews.length,
-    });
+    // Get total count for pagination
+    const totalCount = await db.getReviewsCount({ status });
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return NextResponse.json(
+      createSuccessResponse({
+        reviews: filteredReviews,
+        total: totalCount,
+        totalPages,
+        currentPage: page,
+        pagination: {
+          limit,
+          offset: actualOffset,
+          hasMore: filteredReviews.length === limit,
+        },
+      })
+    );
   } catch (error) {
-    console.error('Error fetching reviews:', error);
+    const appError = handleError(error);
+    logError(appError, 'GET /api/reviews');
     
     return NextResponse.json(
-      { error: 'Failed to fetch reviews' },
+      createErrorResponse('DATABASE_ERROR', 'Failed to fetch reviews', appError.details),
       { status: 500 }
     );
   }

@@ -1,5 +1,5 @@
-// Video Platform Types
-export type VideoPlatform = 'youtube' | 'tiktok';
+// Export API types
+export * from './api';
 
 // Video Info
 export interface VideoInfo {
@@ -109,6 +109,81 @@ export interface Review {
   updated_at: string;
 }
 
+// User
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'user' | 'guest';
+  created_at: string;
+  updated_at: string;
+}
+
+// Schedule
+export interface Schedule {
+  id: string;
+  user_id: string;
+  review_id: string;
+  scheduled_for: string;
+  timezone: string;
+  target_type: 'page' | 'group';
+  target_id: string;
+  target_name?: string;
+  post_message: string;
+  landing_page_url: string;
+  status: 'pending' | 'processing' | 'posted' | 'failed' | 'cancelled';
+  posted_at?: string;
+  facebook_post_id?: string;
+  facebook_post_url?: string;
+  error_message?: string;
+  retry_count: number;
+  max_retries: number;
+  next_retry_at?: string;
+  created_at: string;
+  updated_at: string;
+  
+  // Additional fields for webhook payload (optional, can be populated from reviews table)
+  video_url?: string;
+  video_thumbnail?: string;
+  affiliate_links?: AffiliateLink[];
+  channel_name?: string;
+  video_title?: string;
+  review_summary?: string;
+  review_pros?: string[];
+  review_cons?: string[];
+  review_key_points?: KeyPoint[];
+  review_target_audience?: string[];
+  review_cta?: string;
+  review_seo_keywords?: string[];
+}
+
+// Webhook Log
+export interface WebhookLog {
+  id: string;
+  schedule_id: string;
+  request_payload?: any;
+  request_sent_at: string;
+  response_payload?: any;
+  response_status?: number;
+  response_received_at?: string;
+  error_message?: string;
+  retry_attempt: number;
+  created_at: string;
+}
+
+// Activity Log
+export interface ActivityLog {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  description: string;
+  status: 'success' | 'error' | 'warning' | 'info';
+  metadata?: any;
+  created_at: string;
+  updated_at: string;
+}
+
 // User Settings
 export interface UserSettings {
   user_id: string;
@@ -169,4 +244,16 @@ export interface DashboardStats {
 export interface ErrorResponse {
   error: string;
   message: string;
+}
+
+// Auth Context Type
+export interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  logout: () => Promise<{ success: boolean }>;
+  register: (email: string, password: string, name: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  hasRole: (role: string) => boolean;
+  hasPermission: (permission: string) => boolean;
+  updateProfile?: (data: any) => Promise<{ error?: any }>;
 }

@@ -18,6 +18,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { calculateTimeRemaining, formatTimestampForDisplay } from '@/lib/utils/timezone-utils';
 import { cn } from '@/lib/utils';
 import type { Schedule } from '@/lib/db/supabase';
 
@@ -40,42 +41,39 @@ export function ScheduleCard({ schedule, onDelete, onRetry }: ScheduleCardProps)
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
-  const formatScheduledTime = (timestamp: string) => {
-    // GMT+7 Direct Storage - Parse database time directly
-    const dbTime = timestamp; // "2025-10-09T10:45:00+00:00"
-    
-    // Extract date and time from database string
-    const dateTimeMatch = dbTime.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/);
-    if (dateTimeMatch) {
-      const [, datePart, timePart] = dateTimeMatch;
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hour, minute, second] = timePart.split(':').map(Number);
-      
-      // Create GMT+7 date object
-      const scheduledGMT7 = new Date(year, month - 1, day, hour, minute, second);
-      const nowGMT7 = new Date();
-      
-      const diffMs = scheduledGMT7.getTime() - nowGMT7.getTime();
-      
-      if (diffMs < 0) {
-        return 'Đã quá hạn';
-      }
-      
-      const minutes = Math.floor(diffMs / 60000);
-      const hours = Math.floor(diffMs / 3600000);
-      const days = Math.floor(diffMs / 86400000);
-      
-      if (minutes < 60) {
-        return `${minutes} phút nữa`;
-      } else if (hours < 24) {
-        return `${hours} giờ nữa`;
-      } else {
-        return `${days} ngày nữa`;
-      }
+  const formatScheduledTime = (timestamp: string, status: string) => {
+    // Nếu đã đăng hoặc thất bại, không hiển thị countdown
+    if (status === 'posted' || status === 'failed') {
+      return null;
     }
     
-    // Fallback if regex fails
-    return 'Không xác định';
+    // Sử dụng utility function để tính thời gian còn lại
+    const timeRemaining = calculateTimeRemaining(timestamp);
+    
+    if (timeRemaining.isOverdue) {
+      return `Quá hạn ${timeRemaining.days}d ${timeRemaining.hours}h ${timeRemaining.minutes}m`;
+    } else {
+      return `Còn ${timeRemaining.days}d ${timeRemaining.hours}h ${timeRemaining.minutes}m`;
+    }
+  };
+
+  const formatDateTime = (timestamp: string, status: string) => {
+    console.log('🔍 formatDateTime - Input timestamp:', timestamp);
+    
+    // Parse GMT+7 string từ database trực tiếp
+    const gmt7Date = new Date(timestamp);
+    console.log('🔍 GMT+7 Date from database:', gmt7Date);
+    
+    const day = gmt7Date.getDate().toString().padStart(2, '0');
+    const month = (gmt7Date.getMonth() + 1).toString().padStart(2, '0');
+    const year = gmt7Date.getFullYear();
+    const hours = gmt7Date.getHours().toString().padStart(2, '0');
+    const minutes = gmt7Date.getMinutes().toString().padStart(2, '0');
+    
+    const formatted = `${day}/${month}/${year} - ${hours}:${minutes}`;
+    console.log('🔍 Formatted GMT+7 time:', formatted);
+    
+    return formatted;
   };
 
   const getStatusIcon = (status: string) => {
@@ -95,16 +93,37 @@ export function ScheduleCard({ schedule, onDelete, onRetry }: ScheduleCardProps)
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: 'Chờ đăng', className: 'bg-yellow-100 text-yellow-800' },
-      processing: { label: 'Đang xử lý', className: 'bg-blue-100 text-blue-800' },
-      posted: { label: 'Đã đăng', className: 'bg-green-100 text-green-800' },
-      failed: { label: 'Thất bại', className: 'bg-red-100 text-red-800' },
-      cancelled: { label: 'Đã hủy', className: 'bg-gray-100 text-gray-800' },
+      pending: { 
+        label: 'Chờ đăng', 
+        className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: <Clock className="h-3 w-3" />
+      },
+      processing: { 
+        label: 'Đang xử lý', 
+        className: 'bg-blue-100 text-blue-800 border-blue-200',
+        icon: <RefreshCw className="h-3 w-3 animate-spin" />
+      },
+      posted: { 
+        label: 'Đã đăng', 
+        className: 'bg-green-100 text-green-800 border-green-200',
+        icon: <CheckCircle className="h-3 w-3" />
+      },
+      failed: { 
+        label: 'Thất bại', 
+        className: 'bg-red-100 text-red-800 border-red-200',
+        icon: <XCircle className="h-3 w-3" />
+      },
+      cancelled: { 
+        label: 'Đã hủy', 
+        className: 'bg-gray-100 text-gray-800 border-gray-200',
+        icon: <XCircle className="h-3 w-3" />
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return (
-      <Badge className={`text-xs ${config.className}`}>
+      <Badge className={`text-xs border ${config.className} flex items-center gap-1`}>
+        {config.icon}
         {config.label}
       </Badge>
     );
@@ -128,7 +147,13 @@ export function ScheduleCard({ schedule, onDelete, onRetry }: ScheduleCardProps)
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className={cn(
+      "hover:shadow-lg transition-all duration-200 border-l-4",
+      schedule.status === 'posted' && "border-l-green-500 bg-green-50/30",
+      schedule.status === 'failed' && "border-l-red-500 bg-red-50/30",
+      schedule.status === 'pending' && "border-l-yellow-500 bg-yellow-50/30",
+      schedule.status === 'processing' && "border-l-blue-500 bg-blue-50/30"
+    )}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -179,35 +204,34 @@ export function ScheduleCard({ schedule, onDelete, onRetry }: ScheduleCardProps)
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="h-4 w-4 text-gray-500" />
-            <span className="text-gray-600">
-              {(() => {
-                // GMT+7 Direct Storage - Parse database time correctly
-                const dbTime = schedule.scheduled_for; // "2025-10-09T10:45:00+00:00"
-                
-                // Extract date and time parts from database string
-                const dateTimeMatch = dbTime.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/);
-                if (dateTimeMatch) {
-                  const [, datePart, timePart] = dateTimeMatch;
-                  const [year, month, day] = datePart.split('-');
-                  const [hour, minute] = timePart.split(':');
-                  
-                  // Format for display: "10:45 09/10/2025"
-                  return `${hour}:${minute} ${day}/${month}/${year}`;
-                }
-                
-                // Fallback to original parsing if regex fails
-                return new Date(schedule.scheduled_for).toLocaleString('vi-VN', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-              })()}
+            <span className={cn(
+              "font-medium",
+              schedule.status === 'posted' && "text-green-600",
+              schedule.status === 'failed' && "text-red-600",
+              schedule.status === 'pending' && "text-gray-600",
+              schedule.status === 'processing' && "text-blue-600"
+            )}>
+              {formatDateTime(schedule.scheduled_for, schedule.status)}
             </span>
-            {schedule.status === 'pending' && (
-              <span className="text-yellow-600 font-medium">
-                ({formatScheduledTime(schedule.scheduled_for)})
+            {formatScheduledTime(schedule.scheduled_for, schedule.status) && (
+              <span className={cn(
+                "text-xs px-2 py-1 rounded-full",
+                schedule.status === 'pending' && "bg-yellow-100 text-yellow-800",
+                schedule.status === 'processing' && "bg-blue-100 text-blue-800"
+              )}>
+                ({formatScheduledTime(schedule.scheduled_for, schedule.status)})
+              </span>
+            )}
+            {schedule.status === 'posted' && (
+              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Đã đăng thành công
+              </span>
+            )}
+            {schedule.status === 'failed' && (
+              <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 flex items-center gap-1">
+                <XCircle className="h-3 w-3" />
+                Đăng thất bại
               </span>
             )}
           </div>
@@ -219,20 +243,9 @@ export function ScheduleCard({ schedule, onDelete, onRetry }: ScheduleCardProps)
             </span>
           </div>
 
-          {schedule.posted_at && (
-            <div className="flex items-center gap-2 text-sm">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span className="text-gray-600">
-                Đã đăng: {new Date(schedule.posted_at).toLocaleString('vi-VN')}
-              </span>
-            </div>
-          )}
+          {/* Posted time removed - UTC format not needed on UI */}
 
-          {schedule.error_message && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-              <strong>Lỗi:</strong> {schedule.error_message}
-            </div>
-          )}
+          {/* Error details removed - only show status */}
         </div>
 
         {/* Post message preview */}

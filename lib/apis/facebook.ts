@@ -164,8 +164,6 @@ export function formatFacebookPost(params: {
   videoUrl: string;
   channelName?: string;
   landingUrl: string;
-  comparisonTable?: any[];
-  cta?: string;
 }): string {
   const {
     title,
@@ -176,9 +174,7 @@ export function formatFacebookPost(params: {
     keywords,
     videoUrl,
     channelName,
-    landingUrl,
-    comparisonTable,
-    cta
+    landingUrl
   } = params;
 
   let message = `🔥 ${title}\n\n`;
@@ -213,27 +209,8 @@ export function formatFacebookPost(params: {
     message += '\n';
   }
 
-  // Comparison Table
-  if (comparisonTable && comparisonTable.length > 0) {
-    message += '⚖️ SO SÁNH VỚI SẢN PHẨM KHÁC:\n';
-    comparisonTable.slice(0, 3).forEach((item, index) => {
-      if (item.product && item.rating) {
-        message += `• ${item.product}: ${item.rating}/5 ⭐\n`;
-      }
-    });
-    message += '\n';
-  }
-
-  // Call To Action
-  if (cta && cta.trim()) {
-    message += `🎯 ${cta}\n\n`;
-  }
-
   // Video link
   message += `🎥 Xem video gốc:\n${videoUrl}\n\n`;
-
-  // Landing page for more details
-  message += `📱 Xem phân tích chi tiết + so sánh:\n${landingUrl}\n\n`;
 
   // Copyright notice
   const channelCredit = channelName || 'kênh gốc';

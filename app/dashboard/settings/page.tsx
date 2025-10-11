@@ -164,8 +164,8 @@ export default function SettingsPage() {
           <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
             <h4 className="font-medium text-sm">📝 Cấu hình trong .env.local:</h4>
             <pre className="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto">
-{`MAKE_WEBHOOK_URL=https://hook.eu2.make.com/...
-MAKE_WEBHOOK_SECRET=your-secret-key`}
+{`MAKECOM_WEBHOOK_URL=https://hook.eu2.make.com/...
+MAKECOM_WEBHOOK_SECRET=your-secret-key`}
             </pre>
           </div>
 

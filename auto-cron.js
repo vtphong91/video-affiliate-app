@@ -1,55 +1,62 @@
-// Auto cron job runner
-const http = require('http');
+require('dotenv').config({ path: '.env.local' });
 
-function runCronJob() {
-  console.log(`🕐 Running cron job at ${new Date().toLocaleString('vi-VN')}...`);
+const CRON_SECRET = process.env.CRON_SECRET || 'dev-secret';
+const CRON_INTERVAL = 30000; // 30 seconds in development
+const API_URL = 'http://localhost:3000';
+
+console.log('🚀 Auto Cron Job Started');
+console.log(`⏰ Interval: ${CRON_INTERVAL / 1000} seconds`);
+console.log(`🔗 API URL: ${API_URL}`);
+console.log(`🔐 Cron Secret: ${CRON_SECRET.substring(0, 10)}...`);
+
+async function runCronJob() {
+  const timestamp = new Date().toISOString();
+  console.log(`\n🕐 [${timestamp}] Running cron job...`);
   
-  const options = {
-    hostname: 'localhost',
-    port: 3000,
-    path: '/api/cron/process-schedules',
-    method: 'GET',
-    headers: {
-      'x-cron-secret': '4c32057816828f973d578326de17767caac3e8befa4167f4bbbf01b1a46bad46',
-      'Content-Type': 'application/json'
-    }
-  };
-
-  const req = http.request(options, (res) => {
-    let data = '';
-    res.on('data', (chunk) => {
-      data += chunk;
+  try {
+    // Call process-schedules API
+    const response = await fetch(`${API_URL}/api/cron/process-schedules`, {
+      method: 'POST',
+      headers: {
+        'x-cron-secret': CRON_SECRET,
+        'Content-Type': 'application/json',
+      },
     });
     
-    res.on('end', () => {
-      try {
-        const json = JSON.parse(data);
-        if (json.success) {
-          console.log(`✅ Cron job completed: ${json.processed} processed, ${json.posted} posted, ${json.failed} failed`);
-          if (json.results && json.results.length > 0) {
-            json.results.forEach(result => {
-              console.log(`  - Schedule ${result.scheduleId}: ${result.status}`);
-            });
-          }
-        } else {
-          console.log(`❌ Cron job failed: ${json.error}`);
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`✅ Cron job completed:`, result);
+      
+      if (result.processed > 0) {
+        console.log(`📤 Processed ${result.processed} schedules`);
+        if (result.failed > 0) {
+          console.log(`❌ Failed: ${result.failed} schedules`);
         }
-      } catch (e) {
-        console.log('❌ JSON Parse Error:', e.message);
+      } else {
+        console.log(`📋 No schedules to process`);
       }
-    });
-  });
-
-  req.on('error', (e) => {
-    console.error(`❌ Cron job error: ${e.message}`);
-  });
-
-  req.end();
+    } else {
+      const error = await response.text();
+      console.error(`❌ Cron job failed: ${response.status} - ${error}`);
+    }
+  } catch (error) {
+    console.error(`❌ Cron job error:`, error.message);
+  }
 }
 
-// Run every 30 seconds
-console.log('🚀 Starting auto cron job (every 30 seconds)...');
-console.log('Press Ctrl+C to stop');
+// Run immediately
+runCronJob();
 
-runCronJob(); // Run immediately
-setInterval(runCronJob, 30000); // Then every 30 seconds
+// Then run every interval
+setInterval(runCronJob, CRON_INTERVAL);
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 Auto Cron Job Stopped');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Auto Cron Job Stopped');
+  process.exit(0);
+});

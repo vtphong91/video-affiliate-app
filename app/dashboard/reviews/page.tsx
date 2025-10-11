@@ -5,26 +5,40 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Pagination } from '@/components/ui/pagination';
 import { Eye, MousePointer, ExternalLink, Edit, Trash2, PlusCircle, Loader2 } from 'lucide-react';
+import { withUserRoute } from '@/lib/auth/middleware/route-protection';
+import { useAuth } from '@/lib/auth/providers/SupabaseAuthProvider';
+import { useUser } from '@/lib/auth/hooks/useUser';
 import type { Review } from '@/types';
 
-export default function ReviewsPage() {
+function ReviewsPage() {
+  const { user } = useAuth();
+  const { displayName } = useUser();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 6; // Show 6 reviews per page
 
   useEffect(() => {
     fetchReviews();
-  }, []);
+  }, [currentPage]); // Refetch when page changes
 
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/reviews');
+      const response = await fetch(`/api/reviews?page=${currentPage}&limit=${itemsPerPage}`);
       const data = await response.json();
       
       if (data.success) {
-        setReviews(data.data || []);
+        setReviews(data.data?.reviews || []);
+        setTotalPages(data.data?.totalPages || 1);
+        setTotalItems(data.data?.total || 0);
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);
@@ -70,7 +84,7 @@ export default function ReviewsPage() {
         <div>
           <h1 className="text-3xl font-bold">Reviews</h1>
           <p className="text-gray-600 mt-1">
-            Quản lý tất cả landing pages đã tạo ({reviews.length})
+            Quản lý tất cả landing pages đã tạo
           </p>
         </div>
         <Link href="/dashboard/create">
@@ -180,6 +194,23 @@ export default function ReviewsPage() {
           ))}
         </div>
       )}
+
+      {/* Pagination */}
+      {reviews.length > 0 && totalPages > 1 && (
+        <div className="mt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            totalItems={totalItems}
+            showInfo={true}
+          />
+        </div>
+      )}
     </div>
   );
 }
+
+// Export with user route protection
+export default withUserRoute(ReviewsPage);

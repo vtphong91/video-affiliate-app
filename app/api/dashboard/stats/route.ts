@@ -116,58 +116,17 @@ export async function GET(request: NextRequest) {
       { label: 'Đang xử lý', value: schedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
     ];
 
-    // Recent activities (mock data for now)
-    const activities: ActivityItem[] = [
-      {
-        id: '1',
-        type: 'review_created',
-        title: 'Review mới được tạo',
-        description: 'iPhone 16 Pro Max - Review chi tiết',
-        timestamp: new Date(Date.now() - 300000), // 5 minutes ago
-        status: 'success',
-        metadata: {
-          reviewId: '45e448df-d4ef-4d5d-9303-33109f9d6c30',
-        },
-      },
-      {
-        id: '2',
-        type: 'post_published',
-        title: 'Bài đăng đã được đăng',
-        description: 'Máy hút bụi LocknLock ENV136WHT',
-        timestamp: new Date(Date.now() - 900000), // 15 minutes ago
-        status: 'success',
-        metadata: {
-          facebookPostUrl: 'https://facebook.com/posts/123456789',
-        },
-      },
-      {
-        id: '3',
-        type: 'post_scheduled',
-        title: 'Lịch đăng bài mới',
-        description: 'Samsung Galaxy S24 Ultra - 20:00 hôm nay',
-        timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
-        status: 'pending',
-      },
-      {
-        id: '4',
-        type: 'post_failed',
-        title: 'Đăng bài thất bại',
-        description: 'MacBook Pro M3 - Lỗi kết nối Facebook API',
-        timestamp: new Date(Date.now() - 3600000), // 1 hour ago
-        status: 'error',
-        metadata: {
-          errorMessage: 'Facebook API rate limit exceeded',
-        },
-      },
-      {
-        id: '5',
-        type: 'webhook_sent',
-        title: 'Webhook đã gửi',
-        description: 'Gửi tới Make.com thành công',
-        timestamp: new Date(Date.now() - 7200000), // 2 hours ago
-        status: 'success',
-      },
-    ];
+    // Get real activity logs
+    const activityLogs = await db.getActivityLogs();
+    const activities: ActivityItem[] = activityLogs.map(log => ({
+      id: log.id,
+      type: log.type as ActivityItem['type'],
+      title: log.title,
+      description: log.description,
+      timestamp: log.created_at,
+      status: log.status as ActivityItem['status'],
+      metadata: log.metadata,
+    }));
 
     return NextResponse.json({
       success: true,

@@ -11,6 +11,7 @@ import { Share2, Loader2, ExternalLink, Copy, Zap, Calendar, X } from 'lucide-re
 import { formatFacebookPost } from '@/lib/apis/facebook';
 import { getLandingPageUrl, copyToClipboard } from '@/lib/utils';
 import type { AIAnalysis, AffiliateLink } from '@/types';
+import { createTimestampFromDatePicker, debugTimezone } from '@/lib/utils/timezone-utils';
 
 interface FacebookPosterProps {
   reviewId: string;
@@ -19,7 +20,7 @@ interface FacebookPosterProps {
   videoUrl: string;
   videoThumbnail: string;
   channelName?: string;
-  analysis?: AIAnalysis;
+  analysis: AIAnalysis;
   affiliateLinks?: AffiliateLink[];
 }
 
@@ -39,24 +40,19 @@ export function FacebookPoster({
   // Note: Webhook is now configured server-side via .env
   // This component no longer needs to check client-side settings
 
-  const [message, setMessage] = useState(() => {
-    const postData = {
+  const [message, setMessage] = useState(() =>
+    formatFacebookPost({
       title: videoTitle,
-      summary: analysis?.summary || '',
-      pros: analysis?.pros || [],
-      cons: analysis?.cons || [],
-      targetAudience: analysis?.targetAudience || [],
-      keywords: analysis?.seoKeywords || [],
+      summary: analysis.summary,
+      pros: analysis.pros,
+      cons: analysis.cons,
+      targetAudience: analysis.targetAudience,
+      keywords: analysis.seoKeywords,
       videoUrl,
       channelName,
       landingUrl,
-      cta: analysis?.cta || '',
-    };
-    
-    console.log('🔍 FacebookPoster - Creating message with data:', postData);
-    
-    return formatFacebookPost(postData);
-  });
+    })
+  );
 
   const [isPosting, setIsPosting] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
@@ -88,7 +84,7 @@ export function FacebookPoster({
 
     try {
       // Prepare affiliate links for comment
-      const affiliateComment = affiliateLinks && affiliateLinks.length > 0
+      const affiliateComment = affiliateLinks.length > 0
         ? `🛒 LINK MUA HÀNG:\n\n` +
           affiliateLinks
             .map((link, index) => `${index + 1}. ${link.platform}: ${link.url}${link.price ? ` - ${link.price}` : ''}${link.discount ? ` (${link.discount})` : ''}`)
@@ -139,35 +135,27 @@ export function FacebookPoster({
   const handleSchedule = async (scheduledFor: Date) => {
     setIsScheduling(true);
     try {
-      // GMT+7 Direct Storage Solution
-      // Convert local time to GMT+7 format (no UTC conversion)
-      const gmt7Time = new Date(scheduledFor.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours
-      const scheduledForGMT7 = gmt7Time.toISOString().replace('Z', ''); // Remove Z, keep GMT+7
+      // scheduledFor is a Date object representing the local time selected by the user.
+      // Sử dụng utility function để xử lý thời gian
       
-      console.log('📅 FacebookPoster GMT+7 Direct Storage:');
-      console.log('  Local time (selected):', scheduledFor.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
-      console.log('  GMT+7 time (sent to API):', scheduledForGMT7);
+      // Tạo timestamp từ datetimepicker theo timezone được cấu hình
+      const scheduledForString = createTimestampFromDatePicker(scheduledFor);
+      
+      // Debug timezone handling
+      debugTimezone(scheduledForString, 'FacebookPoster - Before API call');
 
-      const scheduleData = {
-        reviewId,
-        scheduledFor: scheduledForGMT7, // Send GMT+7 time
-        targetType: 'page',
-        targetId: 'facebook-page-real', // Real target ID
-        targetName: 'Facebook Page Real', // Real target name
-        postMessage: message, // Use real message from component
-        landingPageUrl: landingUrl, // Use real landing URL from component
-        videoUrl: videoUrl, // Real video URL
-        videoThumbnail: videoThumbnail, // Real video thumbnail
-        affiliateLinks: affiliateLinks, // Real affiliate links
-        channelName: channelName, // Real channel name
-      };
-
-      console.log('🔍 FacebookPoster - Sending schedule data:', scheduleData);
-
-      const response = await fetch('/api/schedules', { // Use correct API endpoint
+      const response = await fetch('/api/schedules', { // Use main schedules API
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(scheduleData),
+        body: JSON.stringify({
+          reviewId,
+          scheduledFor: scheduledForString,
+          targetType: 'page',
+          targetId: 'make-com-handled',
+          targetName: 'Make.com Auto',
+          postMessage: message,
+          landingPageUrl: landingUrl,
+        }),
       });
 
       const data = await response.json();
@@ -288,7 +276,7 @@ export function FacebookPoster({
             ) : (
               <>
                 <Zap className="mr-2 h-4 w-4" />
-                Gửi ngay lên Make.com
+                Gửi ngay
               </>
             )}
           </Button>

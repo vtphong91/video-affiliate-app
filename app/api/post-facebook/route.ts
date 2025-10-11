@@ -78,19 +78,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare webhook payload với các trường theo yêu cầu
+    // Get review data to populate additional fields
+    let reviewData = null;
+    try {
+      reviewData = await db.getReview(reviewId);
+    } catch (error) {
+      console.warn('Could not fetch review data:', error);
+    }
+
+    // Prepare webhook payload với tên biến đồng bộ với cron service
     const webhookPayload: any = {
-      // Các trường chính theo yêu cầu
-      noi_dung_dang: message, // nội dung đăng
-      video_url: videoUrl, // video_url
-      affiliate_links: affiliateLinks, // Affiliate Links
-      url_landing_page: landingPageUrl, // url_landing_page
-      video_thumbnail: videoThumbnail, // video_thumbnail
-      
-      // Metadata bổ sung
-      reviewId,
-      timestamp: new Date().toISOString(),
-      source: 'video-affiliate-app',
+      // Các trường chính theo chuẩn cron service
+      scheduleId: `manual-${Date.now()}`, // ID cho manual post
+      reviewId: reviewId,
+      targetType: 'page', // Mặc định là page
+      targetId: 'make-com-handled', // Mặc định là make-com-handled
+      targetName: 'Make.com Manual', // Mặc định là manual
+      message: message,
+      link: landingPageUrl,
+      imageUrl: imageUrl || videoThumbnail,
+      videoUrl: videoUrl,
+      videoTitle: reviewData?.video_title || reviewData?.custom_title || '',
+      channelName: reviewData?.channel_name || '',
+      affiliateLinks: affiliateLinks,
+      reviewSummary: reviewData?.summary || '',
+      reviewPros: reviewData?.pros || [],
+      reviewCons: reviewData?.cons || [],
+      reviewKeyPoints: reviewData?.key_points || [],
+      reviewTargetAudience: reviewData?.target_audience || [],
+      reviewCta: reviewData?.cta || '',
+      reviewSeoKeywords: reviewData?.seo_keywords || [],
+      scheduledFor: new Date().toISOString(), // Thời gian hiện tại
+      triggeredAt: new Date().toISOString(),
+      retryAttempt: 0, // Manual post không có retry
     };
 
     // Add optional fields

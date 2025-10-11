@@ -13,11 +13,16 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Save } from 'lucide-react';
+import { withUserRoute } from '@/lib/auth/middleware/route-protection';
+import { useAuth } from '@/lib/auth/providers/SupabaseAuthProvider';
+import { useUser } from '@/lib/auth/hooks/useUser';
 import type { VideoInfo, AIAnalysis, AffiliateLink, Category } from '@/types';
 
-export default function CreateReviewPage() {
+function CreateReviewPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { displayName } = useUser();
 
   const [step, setStep] = useState<'analyze' | 'edit' | 'preview'>('analyze');
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
@@ -42,7 +47,7 @@ export default function CreateReviewPage() {
       
       if (data.success) {
         // API trả về 'topics' chứ không phải 'categories'
-        const categoriesData = (data.topics || data.categories || []).map((topic: any) => ({
+        const categoriesData = (data.data?.topics || data.topics || data.categories || []).map((topic: any) => ({
           ...topic,
           icon: topic.icon || '📁' // Thêm icon mặc định nếu không có
         }));
@@ -80,7 +85,7 @@ export default function CreateReviewPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          videoUrl: videoInfo.videoId, // Store original URL if available
+          videoUrl: videoInfo.videoUrl || `https://youtube.com/watch?v=${videoInfo.videoId}`, // Store original URL if available
           videoInfo,
           analysis,
           customTitle,
@@ -342,3 +347,6 @@ export default function CreateReviewPage() {
     </div>
   );
 }
+
+// Export with user route protection
+export default withUserRoute(CreateReviewPage);

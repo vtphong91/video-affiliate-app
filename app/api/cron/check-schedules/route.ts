@@ -79,13 +79,27 @@ export async function GET(request: NextRequest) {
           videoUrl: schedule.video_url || schedule.reviews?.video_url,
           videoTitle: schedule.video_title || schedule.reviews?.video_title,
           channelName: schedule.channel_name || schedule.reviews?.channel_name,
-          affiliateLinks: schedule.affiliate_links || schedule.reviews?.affiliate_links,
+          affiliateLinks: (() => {
+            const links = Array.isArray(schedule.affiliate_links) 
+              ? schedule.affiliate_links 
+              : Array.isArray(schedule.reviews?.affiliate_links) 
+                ? schedule.reviews.affiliate_links 
+                : [];
+            
+            // Format affiliate links for make.com
+            return links.map((link: any) => ({
+              url: link.url || '',
+              price: link.price || '',
+              discount: link.discount || '',
+              platform: link.platform || ''
+            }));
+          })(),
           reviewSummary: schedule.review_summary || schedule.reviews?.summary,
           reviewPros: schedule.review_pros || schedule.reviews?.pros,
           reviewCons: schedule.review_cons || schedule.reviews?.cons,
-          reviewKeyPoints: schedule.review_key_points || schedule.reviews?.key_points,
-          reviewTargetAudience: schedule.review_target_audience || schedule.reviews?.target_audience,
-          reviewCta: schedule.review_cta || schedule.reviews?.cta,
+          reviewKeyPoints: schedule.review_key_points || schedule.reviews?.key_points || [],
+          reviewTargetAudience: schedule.review_target_audience || schedule.reviews?.target_audience || [],
+          reviewCta: schedule.review_cta || schedule.reviews?.cta || '',
           reviewSeoKeywords: schedule.review_seo_keywords || schedule.reviews?.seo_keywords,
           scheduledFor: schedule.scheduled_for,
           triggeredAt: new Date().toISOString(),
@@ -96,6 +110,7 @@ export async function GET(request: NextRequest) {
         await db.createWebhookLog({
           schedule_id: schedule.id,
           request_payload: webhookPayload,
+          request_sent_at: new Date().toISOString(),
           retry_attempt: schedule.retry_count,
         });
 
@@ -104,9 +119,10 @@ export async function GET(request: NextRequest) {
         if (!webhookUrl) {
           console.warn('⚠️ MAKECOM_WEBHOOK_URL not configured - marking as posted without webhook');
           // Mark as posted anyway to avoid infinite retries
+          const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
           await db.updateSchedule(schedule.id, {
             status: 'posted',
-            posted_at: new Date().toISOString(),
+            posted_at: getCurrentTimestamp(),
             error_message: 'Webhook URL not configured - posted without webhook'
           });
           
@@ -141,9 +157,10 @@ export async function GET(request: NextRequest) {
         }
 
         // Mark as posted (Make.com will send callback to update with actual post details)
+        const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
         await db.updateSchedule(schedule.id, {
           status: 'posted',
-          posted_at: new Date().toISOString(),
+          posted_at: getCurrentTimestamp(),
         });
 
         results.push({

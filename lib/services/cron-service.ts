@@ -25,6 +25,14 @@ export interface CronSummary {
 export class CronService {
   
   /**
+   * Static method to process schedules (called by API route)
+   */
+  static async processSchedules(schedules: any[]): Promise<CronSummary> {
+    const cronService = new CronService();
+    return await cronService.processAllSchedules();
+  }
+  
+  /**
    * Get pending schedules that are due for posting
    */
   async getPendingSchedules() {
@@ -74,7 +82,7 @@ export class CronService {
    */
   formatAffiliateLinks(affiliateLinks: any[] | null | undefined): string {
     if (!affiliateLinks || !Array.isArray(affiliateLinks) || affiliateLinks.length === 0) {
-      return 'Đặt mua giá tốt lại: Không có thông tin';
+      return 'Đặt sản phẩm với giá tốt tại: Không có thông tin';
     }
 
     const formattedLinks = affiliateLinks.map((link, index) => {
@@ -82,10 +90,10 @@ export class CronService {
       const price = link.price || 'Giá liên hệ';
       const url = link.url || '#';
       
-      return `${index + 1}. ${platform} - ${price}: ${url}`;
+      return `- ${platform} - ${price}: ${url}`;
     }).join('\n');
 
-    return `Đặt mua giá tốt lại:\n${formattedLinks}`;
+    return `Đặt sản phẩm với giá tốt tại:\n${formattedLinks}`;
   }
 
   /**
@@ -132,12 +140,27 @@ export class CronService {
    * Send webhook to Make.com
    */
   async sendWebhookToMake(payload: any, scheduleId: string) {
+    const startTime = Date.now();
+    
     try {
       console.log(`📤 Sending webhook to Make.com for schedule ${scheduleId}`);
       
       const webhookUrl = process.env.MAKECOM_WEBHOOK_URL;
       if (!webhookUrl) {
         console.warn('⚠️ MAKECOM_WEBHOOK_URL not configured');
+        
+        // Log the error
+        try {
+          await db.updateWebhookLog(scheduleId, {
+            response_status: null,
+            response_payload: null,
+            error_message: 'Webhook URL not configured',
+            response_received_at: new Date().toISOString(),
+          });
+        } catch (updateError) {
+          console.error('Failed to update webhook log:', updateError);
+        }
+        
         return {
           success: false,
           error: 'Webhook URL not configured',
@@ -155,7 +178,21 @@ export class CronService {
       });
 
       const responseText = await response.text();
+      const processingTime = Date.now() - startTime;
+      
       console.log(`📥 Make.com response: ${response.status} - ${responseText}`);
+
+      // Log the response
+      try {
+        await db.updateWebhookLog(scheduleId, {
+          response_status: response.status,
+          response_payload: responseText,
+          response_received_at: new Date().toISOString(),
+          error_message: response.ok ? null : `HTTP ${response.status}: ${responseText}`,
+        });
+      } catch (updateError) {
+        console.error('Failed to update webhook log:', updateError);
+      }
 
       if (response.ok) {
         console.log(`✅ Webhook sent successfully for schedule ${scheduleId}`);
@@ -172,6 +209,19 @@ export class CronService {
       }
     } catch (error) {
       console.error(`❌ Error sending webhook for schedule ${scheduleId}:`, error);
+      
+      // Log the error
+      try {
+        await db.updateWebhookLog(scheduleId, {
+          response_status: null,
+          response_payload: null,
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+          response_received_at: new Date().toISOString(),
+        });
+      } catch (updateError) {
+        console.error('Failed to update webhook log:', updateError);
+      }
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -199,6 +249,7 @@ export class CronService {
         schedule_id: schedule.id,
         request_payload: payload,
         retry_attempt: schedule.retry_count,
+        request_sent_at: new Date().toISOString(),
       });
 
       // Send webhook to Make.com
@@ -206,9 +257,13 @@ export class CronService {
 
       if (webhookResult.success) {
         // Mark as posted
+        const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
+        const postedAtGMT7 = getCurrentTimestamp(); // This returns GMT+7 format
+        console.log('🕐 Setting posted_at to GMT+7:', postedAtGMT7);
+        
         await db.updateSchedule(schedule.id, {
           status: 'posted',
-          posted_at: new Date().toISOString(),
+          posted_at: postedAtGMT7,
           retry_count: schedule.retry_count + 1,
         });
 
@@ -219,9 +274,13 @@ export class CronService {
         };
       } else if (webhookResult.shouldMarkAsPosted) {
         // Mark as posted without webhook (to avoid infinite retries)
+        const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
+        const postedAtGMT7 = getCurrentTimestamp(); // This returns GMT+7 format
+        console.log('🕐 Setting posted_at to GMT+7 (fallback):', postedAtGMT7);
+        
         await db.updateSchedule(schedule.id, {
           status: 'posted',
-          posted_at: new Date().toISOString(),
+          posted_at: postedAtGMT7,
           error_message: webhookResult.error,
         });
 

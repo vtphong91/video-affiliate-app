@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { AuthButton } from '@/components/auth/ui/AuthButton';
 
 export function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false);

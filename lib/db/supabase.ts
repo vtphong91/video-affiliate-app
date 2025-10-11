@@ -1,42 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Review, UserSettings, Category } from '@/types';
-
-// Schedule types
-export interface Schedule {
-  id: string;
-  user_id: string; // Now TEXT type
-  review_id: string;
-  scheduled_for: string;
-  timezone: string;
-  target_type: 'page' | 'group'; // Back to target_type (correct)
-  target_id: string;
-  target_name?: string;
-  post_message: string;
-  landing_page_url: string;
-  status: 'pending' | 'processing' | 'posted' | 'failed' | 'cancelled';
-  posted_at?: string;
-  facebook_post_id?: string;
-  facebook_post_url?: string;
-  error_message?: string;
-  retry_count: number;
-  max_retries: number;
-  next_retry_at?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface WebhookLog {
-  id: string;
-  schedule_id: string;
-  request_payload?: any;
-  request_sent_at: string;
-  response_payload?: any;
-  response_status?: number;
-  response_received_at?: string;
-  error_message?: string;
-  retry_attempt: number;
-  created_at: string;
-}
+import type { Review, UserSettings, Category, Schedule, WebhookLog, ActivityLog } from '@/types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -48,22 +11,6 @@ export const supabaseAdmin = createClient(
   supabaseUrl,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-// Add webhook log functions to db object
-export const createWebhookLog = async (logData: Omit<WebhookLog, 'id' | 'created_at'>) => {
-  const { data, error } = await supabaseAdmin
-    .from('webhook_logs')
-    .insert([logData])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('❌ Error creating webhook log:', error);
-    throw new Error(`Failed to create webhook log: ${error.message}`);
-  }
-
-  return data;
-};
 
 // Database queries
 export const db = {
@@ -116,6 +63,20 @@ export const db = {
 
     if (error) throw error;
     return data as Review[];
+  },
+
+  async getReviewsCount(options?: { userId?: string; status?: string | null }) {
+    let query = supabase
+      .from('reviews')
+      .select('*', { count: 'exact', head: true });
+
+    if (options?.userId) query = query.eq('user_id', options.userId);
+    if (options?.status) query = query.eq('status', options.status);
+
+    const { count, error } = await query;
+
+    if (error) throw error;
+    return count || 0;
   },
 
   async updateReview(id: string, updates: Partial<Review>) {
@@ -252,17 +213,56 @@ export const db = {
 
   // Schedules
   async createSchedule(schedule: Omit<Schedule, 'id' | 'created_at' | 'updated_at'>) {
+    // Get review data to populate additional fields
+    const review = await this.getReview(schedule.review_id);
+    
+    // Create schedule with all data
+    const scheduleData = {
+      ...schedule,
+      video_url: review.video_url,
+      video_thumbnail: review.video_thumbnail,
+      affiliate_links: review.affiliate_links,
+      channel_name: review.channel_name,
+      video_title: review.video_title,
+      review_summary: review.summary,
+      review_pros: review.pros,
+      review_cons: review.cons,
+      review_key_points: review.key_points,
+      review_target_audience: review.target_audience,
+      review_cta: review.cta,
+      review_seo_keywords: review.seo_keywords,
+    };
+
+    // Use regular insert with timezone handling
+    console.log('🕐 Creating schedule with timezone handling:');
+    console.log('  Input scheduled_for:', scheduleData.scheduled_for);
+    console.log('  Input timezone:', scheduleData.timezone);
+    
+    // Create a copy of scheduleData with scheduled_for as text to preserve timezone
+    const scheduleDataWithText = {
+      ...scheduleData,
+      scheduled_for: scheduleData.scheduled_for // Keep as text to preserve timezone
+    };
+    
     const { data, error } = await supabase
       .from('schedules')
-      .insert(schedule)
+      .insert(scheduleDataWithText)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Supabase insert error:', error);
+      throw error;
+    }
+    
+    console.log('✅ Schedule created successfully:');
+    console.log('  Output scheduled_for:', data.scheduled_for);
+    console.log('  Output timezone:', data.timezone);
+    
     return data as Schedule;
   },
 
-  async getSchedules(userId?: string, status?: string) {
+  async getSchedules(userId?: string, status?: string, limit?: number, offset?: number) {
     let query = supabase
       .from('schedules')
       .select(`
@@ -284,9 +284,35 @@ export const db = {
       query = query.eq('status', status);
     }
 
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    if (offset) {
+      query = query.range(offset, offset + (limit || 50) - 1);
+    }
+
     const { data, error } = await query;
     if (error) throw error;
     return data as (Schedule & { reviews: Pick<Review, 'id' | 'video_title' | 'video_thumbnail' | 'slug'> })[];
+  },
+
+  async getSchedulesCount(userId?: string, status?: string) {
+    let query = supabase
+      .from('schedules')
+      .select('*', { count: 'exact', head: true });
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { count, error } = await query;
+    if (error) throw error;
+    return count || 0;
   },
 
   async getSchedule(id: string) {
@@ -340,12 +366,11 @@ export const db = {
   },
 
   async getPendingSchedules() {
-    // GMT+7 Direct Storage Solution - Fast comparison
-    const now = new Date();
-    const nowGMT7 = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours to UTC
-    const nowGMT7Direct = nowGMT7.toISOString().replace('Z', ''); // Remove Z, keep GMT+7 format
+    // Sử dụng utility function để lấy thời gian hiện tại
+    const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
+    const nowGMT7 = getCurrentTimestamp();
     
-    console.log('🕐 GMT+7 Direct Comparison:', nowGMT7Direct);
+    console.log('🕐 getPendingSchedules - Current time:', nowGMT7);
     
     const { data, error } = await supabase
       .from('schedules')
@@ -361,27 +386,29 @@ export const db = {
           summary,
           pros,
           cons,
+          key_points,
           target_audience,
+          cta,
           seo_keywords,
           affiliate_links
         )
       `)
       .eq('status', 'pending')
-      .lte('scheduled_for', nowGMT7Direct)
+      .lte('scheduled_for', nowGMT7)
       .order('scheduled_for', { ascending: true });
 
     if (error) throw error;
     return data as (Schedule & { 
-      reviews: Pick<Review, 'id' | 'video_title' | 'video_thumbnail' | 'slug' | 'video_url' | 'channel_name' | 'summary' | 'pros' | 'cons' | 'target_audience' | 'seo_keywords' | 'affiliate_links'> 
+      reviews: Pick<Review, 'id' | 'video_title' | 'video_thumbnail' | 'slug' | 'video_url' | 'channel_name' | 'summary' | 'pros' | 'cons' | 'key_points' | 'target_audience' | 'cta' | 'seo_keywords' | 'affiliate_links'> 
     })[];
   },
 
   async getFailedSchedulesForRetry() {
-    // GMT+7 Direct Storage Solution - Fast comparison
-    const now = new Date();
-    const nowGMT7 = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours to UTC
-    const nowGMT7Direct = nowGMT7.toISOString().replace('Z', ''); // Remove Z, keep GMT+7 format
+    // Sử dụng utility function để lấy thời gian hiện tại
+    const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
+    const nowGMT7 = getCurrentTimestamp();
     
+    console.log('🕐 getFailedSchedulesForRetry - Current time:', nowGMT7);
     const { data, error } = await supabase
       .from('schedules')
       .select(`
@@ -396,19 +423,21 @@ export const db = {
           summary,
           pros,
           cons,
+          key_points,
           target_audience,
+          cta,
           seo_keywords,
           affiliate_links
         )
       `)
       .eq('status', 'failed')
-      .lt('retry_count', 3) // Max retries = 3
-      .lte('next_retry_at', nowGMT7Direct)
+      .lt('retry_count', 3) // Use hardcoded max retries instead of RPC
+      .lte('next_retry_at', nowGMT7)
       .order('next_retry_at', { ascending: true });
 
     if (error) throw error;
     return data as (Schedule & { 
-      reviews: Pick<Review, 'id' | 'video_title' | 'video_thumbnail' | 'slug' | 'video_url' | 'channel_name' | 'summary' | 'pros' | 'cons' | 'target_audience' | 'seo_keywords' | 'affiliate_links'> 
+      reviews: Pick<Review, 'id' | 'video_title' | 'video_thumbnail' | 'slug' | 'video_url' | 'channel_name' | 'summary' | 'pros' | 'cons' | 'key_points' | 'target_audience' | 'cta' | 'seo_keywords' | 'affiliate_links'> 
     })[];
   },
 
@@ -424,15 +453,18 @@ export const db = {
     return data as WebhookLog;
   },
 
-  async getWebhookLogs(scheduleId: string) {
+  async updateWebhookLog(scheduleId: string, updates: Partial<WebhookLog>) {
     const { data, error } = await supabase
       .from('webhook_logs')
-      .select('*')
+      .update(updates)
       .eq('schedule_id', scheduleId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .select()
+      .single();
 
     if (error) throw error;
-    return data as WebhookLog[];
+    return data as WebhookLog;
   },
 
   // Helper function to get review IDs that already have schedules
@@ -444,5 +476,57 @@ export const db = {
 
     if (error) throw error;
     return data.map(item => item.review_id);
+  },
+
+  // Activity Logs
+  async createActivityLog(log: Omit<ActivityLog, 'id' | 'created_at' | 'updated_at'>) {
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .insert({
+        ...log,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as ActivityLog;
+  },
+
+  async getActivityLogs(limit: number = 50) {
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data as ActivityLog[];
+  },
+
+  async updateActivityLog(id: string, updates: Partial<ActivityLog>) {
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as ActivityLog;
+  },
+
+  async deleteActivityLog(id: string) {
+    const { error } = await supabase
+      .from('activity_logs')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
   },
 };

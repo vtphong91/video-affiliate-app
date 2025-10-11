@@ -6,7 +6,7 @@ export interface AppSettings {
   youtubeApiKey: string;
   defaultAffiliatePlatform: string;
   // Note: Make.com webhook config moved to .env for security
-  // Use MAKE_WEBHOOK_URL and MAKE_WEBHOOK_SECRET environment variables
+  // Use MAKECOM_WEBHOOK_URL and MAKECOM_WEBHOOK_SECRET environment variables
 }
 
 interface SettingsContextType {

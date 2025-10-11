@@ -8,20 +8,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { CalendarIcon, Clock, Target, MessageSquare, X } from 'lucide-react';
-import { cn, getLandingPageUrl } from '@/lib/utils';
-import { formatFacebookPost } from '@/lib/apis/facebook';
+import { cn } from '@/lib/utils';
 import type { Review } from '@/types';
+import { createTimestampFromDatePicker, debugTimezone } from '@/lib/utils/timezone-utils';
 
 interface CreateScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: any) => void;
-  reviewId?: string;
-  reviewData?: Review;
-  reviews?: Review[];
 }
 
-export function CreateScheduleDialog({ open, onOpenChange, onSubmit, reviewId, reviewData, reviews: propReviews }: CreateScheduleDialogProps) {
+export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateScheduleDialogProps) {
   const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,9 +46,12 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit, reviewId, r
       const result = await response.json();
       
       if (result.success) {
-        setReviews(result.data || []);
+        console.log('📊 Reviews API response:', result);
+        const reviewsData = result.data?.reviews || result.data || [];
+        console.log('✅ Reviews loaded:', reviewsData);
+        setReviews(reviewsData);
       } else {
-        console.error('Error fetching reviews:', result.error);
+        console.error('❌ Reviews API failed:', result.error);
         setReviews([]);
       }
     } catch (error) {
@@ -98,57 +98,105 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit, reviewId, r
 
     setLoading(true);
     try {
-      // GMT+7 Direct Storage Solution
-      // Convert local time to GMT+7 format (no UTC conversion)
+      // localTime is a Date object representing the local time selected by the user.
       const localTime = formData.scheduledFor;
-      const gmt7Time = new Date(localTime.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours
-      const scheduledForGMT7 = gmt7Time.toISOString().replace('Z', ''); // Remove Z, keep GMT+7
       
-      console.log('📅 GMT+7 Direct Storage:');
-      console.log('  Local time (selected):', localTime.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
-      console.log('  GMT+7 time (sent to API):', scheduledForGMT7);
+      console.log('🔍 Form data - localTime:', localTime);
+      console.log('🔍 Form data - localTime type:', typeof localTime);
+      console.log('🔍 Form data - localTime instanceof Date:', localTime instanceof Date);
+      
+      // Validate that localTime is a Date object
+      if (!localTime || !(localTime instanceof Date)) {
+        console.error('❌ Invalid localTime:', localTime);
+        throw new Error('Invalid date selected. Please select a valid date and time.');
+      }
+      
+      // Extract time string from Date object
+      const timeString = `${localTime.getHours().toString().padStart(2, '0')}:${localTime.getMinutes().toString().padStart(2, '0')}`;
+      
+      console.log('🔍 Form data - timeString:', timeString);
+      
+      // Tạo timestamp từ datetimepicker theo timezone được cấu hình
+      const scheduledForString = createTimestampFromDatePicker(localTime, timeString);
+      
+      console.log('🔍 scheduledForString:', scheduledForString);
+      
+      // Debug timezone handling - only if localTime is a valid Date
+      try {
+        if (localTime instanceof Date) {
+          debugTimezone(localTime, 'CreateScheduleDialog - Before API call');
+        }
+      } catch (debugError) {
+        console.error('❌ Debug timezone error:', debugError);
+        // Continue without debug if it fails
+      }
 
-      // Get review data for real content
-      const allReviews = propReviews || reviews;
-      const selectedReview = reviewData || allReviews.find(r => r.id === formData.reviewId);
-      
+      // Get selected review data
+      const selectedReview = reviews.find(r => r.id === formData.reviewId);
       if (!selectedReview) {
         throw new Error('Review not found');
       }
 
-      // Generate real data from review using formatFacebookPost
-      const realLandingUrl = getLandingPageUrl(selectedReview.slug);
-      const realPostMessage = formatFacebookPost({
-        title: selectedReview.video_title,
-        summary: selectedReview.summary,
-        pros: selectedReview.pros || [],
-        cons: selectedReview.cons || [],
-        targetAudience: selectedReview.target_audience || [],
-        keywords: selectedReview.seo_keywords || [],
-        videoUrl: selectedReview.video_url,
-        channelName: selectedReview.channel_name,
-        landingUrl: realLandingUrl,
-        comparisonTable: selectedReview.comparison_table || [],
-        cta: selectedReview.cta || '',
-      });
+      // Generate real post message from review
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const landingPageUrl = `${baseUrl}/review/${selectedReview.slug}`;
+      
+      // Create post message similar to formatFacebookPost
+      let postMessage = `🔥 ${selectedReview.custom_title || selectedReview.video_title}\n\n`;
+      postMessage += `📝 ${selectedReview.summary}\n\n`;
+      
+      if (selectedReview.pros && selectedReview.pros.length > 0) {
+        postMessage += '✅ ƯU ĐIỂM:\n';
+        selectedReview.pros.slice(0, 5).forEach((pro) => {
+          postMessage += `• ${pro}\n`;
+        });
+        postMessage += '\n';
+      }
+      
+      if (selectedReview.cons && selectedReview.cons.length > 0) {
+        postMessage += '⚠️ NHƯỢC ĐIỂM CẦN LƯU Ý:\n';
+        selectedReview.cons.slice(0, 3).forEach((con) => {
+          postMessage += `• ${con}\n`;
+        });
+        postMessage += '\n';
+      }
+      
+      if (selectedReview.target_audience && selectedReview.target_audience.length > 0) {
+        postMessage += '👥 PHÙ HỢP VỚI:\n';
+        selectedReview.target_audience.forEach((audience) => {
+          postMessage += `• ${audience}\n`;
+        });
+        postMessage += '\n';
+      }
+      
+      postMessage += `🎥 Xem video gốc:\n${selectedReview.video_url}\n\n`;
+      
+      const channelCredit = selectedReview.channel_name || 'kênh gốc';
+      postMessage += `⚖️ Bản quyền video thuộc về ${channelCredit}\n`;
+      postMessage += `Mọi quyền thuộc về kênh gốc. Đây chỉ là nội dung tham khảo.\n\n`;
+      
+      // Add hashtags
+      if (selectedReview.seo_keywords && selectedReview.seo_keywords.length > 0) {
+        const hashtags = selectedReview.seo_keywords
+          .slice(0, 10)
+          .map((k) => `#${k.replace(/\s+/g, '').replace(/[^\w\u00C0-\u1EF9]/g, '')}`);
+        postMessage += `\n\n${hashtags.join(' ')}`;
+      }
 
       const scheduleData = {
         reviewId: formData.reviewId,
-        scheduledFor: scheduledForGMT7, // Send GMT+7 time
+        scheduledFor: scheduledForString,
         targetType: 'page',
-        targetId: 'facebook-page-real', // Real target ID
-        targetName: 'Facebook Page Real', // Real target name
-        postMessage: realPostMessage, // Real post message from review
-        landingPageUrl: realLandingUrl, // Real landing URL from review
-        videoUrl: selectedReview.video_url, // Real video URL
-        videoThumbnail: selectedReview.video_thumbnail, // Real video thumbnail
-        affiliateLinks: selectedReview.affiliate_links, // Real affiliate links
-        channelName: selectedReview.channel_name, // Real channel name
+        targetId: 'make-com-handled',
+        targetName: 'Make.com Auto',
+        postMessage: postMessage,
+        landingPageUrl: landingPageUrl,
+        affiliate_links: selectedReview.affiliate_links || [],
       };
       
       console.log('📤 Sending schedule data:', scheduleData);
       
-             const response = await fetch('/api/schedules', { // Use correct API endpoint
+      const response = await fetch('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scheduleData),

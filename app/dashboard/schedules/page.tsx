@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Pagination } from '@/components/ui/pagination';
 import { 
   Plus, 
   Calendar, 
@@ -42,7 +43,6 @@ interface ScheduleStats {
 
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<ScheduleWithReview[]>([]);
-  const [reviews, setReviews] = useState<any[]>([]);
   const [stats, setStats] = useState<ScheduleStats>({
     total: 0,
     pending: 0,
@@ -54,35 +54,47 @@ export default function SchedulesPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const { toast } = useToast();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 9; // Show 9 schedules per page (3x3 grid)
 
   useEffect(() => {
     fetchSchedules();
-    fetchReviews();
-  }, []);
+  }, [currentPage, activeTab]); // Refetch when page or tab changes
 
-  const fetchReviews = async () => {
+  // Auto-refresh every 5 minutes to get latest status (only data, not full page)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchSchedules(true); // true = auto refresh, no loading spinner
+    }, 300000); // 5 minutes (5 * 60 * 1000)
+
+    return () => clearInterval(interval);
+  }, [currentPage, activeTab]);
+
+  const fetchSchedules = async (isAutoRefresh = false) => {
     try {
-      const response = await fetch('/api/reviews');
-      const result = await response.json();
-      
-      if (result.success) {
-        setReviews(result.reviews);
+      // Only show loading spinner on initial load or manual refresh
+      if (!isAutoRefresh) {
+        setLoading(true);
+      } else {
+        setIsAutoRefreshing(true);
       }
-    } catch (error) {
-      console.error('Error fetching reviews:', error);
-    }
-  };
-
-  const fetchSchedules = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/schedules'); // Use correct API endpoint
+      
+      const statusParam = activeTab === 'all' ? '' : `&status=${activeTab}`;
+      const response = await fetch(`/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}`);
       const result = await response.json();
       
       if (result.success) {
         setSchedules(result.data.schedules);
+        setTotalPages(result.data.totalPages || 1);
+        setTotalItems(result.data.total || 0);
         calculateStats(result.data.schedules);
+        setError(null);
       } else {
         setError(result.error || 'Failed to fetch schedules');
       }
@@ -90,7 +102,11 @@ export default function SchedulesPage() {
       setError('Network error occurred');
       console.error('Schedules fetch error:', err);
     } finally {
-      setLoading(false);
+      if (!isAutoRefresh) {
+        setLoading(false);
+      } else {
+        setIsAutoRefreshing(false);
+      }
     }
   };
 
@@ -165,8 +181,17 @@ export default function SchedulesPage() {
   };
 
   const getFilteredSchedules = () => {
-    if (activeTab === 'all') return schedules;
-    return schedules.filter(schedule => schedule.status === activeTab);
+    // Since we're fetching filtered data from API, just return schedules
+    return schedules;
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1); // Reset to first page when changing tabs
   };
 
   const getStatusIcon = (status: string) => {
@@ -254,15 +279,34 @@ export default function SchedulesPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Lịch Đăng Bài</h1>
-              <p className="text-gray-600 mt-2">Quản lý lịch đăng bài tự động</p>
+              <p className="text-gray-600 mt-2">
+                Quản lý lịch đăng bài tự động
+                {isAutoRefreshing && (
+                  <span className="ml-2 text-blue-600 text-sm flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Đang cập nhật...
+                  </span>
+                )}
+              </p>
             </div>
-            <Button 
-              onClick={() => setShowCreateDialog(true)}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Tạo Lịch Mới
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={() => fetchSchedules(false)}
+                variant="outline"
+                className="flex items-center gap-2"
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+              <Button 
+                onClick={() => setShowCreateDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Tạo Lịch Mới
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -270,7 +314,7 @@ export default function SchedulesPage() {
         <ScheduleStats stats={stats} />
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-8">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="all" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -329,6 +373,20 @@ export default function SchedulesPage() {
           </TabsContent>
         </Tabs>
 
+        {/* Pagination */}
+        {schedules.length > 0 && totalPages > 1 && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              itemsPerPage={itemsPerPage}
+              totalItems={totalItems}
+              showInfo={true}
+            />
+          </div>
+        )}
+
         {/* Create Schedule Dialog */}
         <CreateScheduleDialog
           open={showCreateDialog}
@@ -340,7 +398,6 @@ export default function SchedulesPage() {
             }
           }}
           onSubmit={handleCreateSchedule}
-          reviews={reviews}
         />
       </div>
     </div>

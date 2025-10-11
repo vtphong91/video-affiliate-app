@@ -52,20 +52,25 @@ export default function EditReviewPage() {
 
   const fetchCategories = async () => {
     try {
+      console.log('🔍 Fetching categories for edit review...');
       const response = await fetch('/api/categories');
       const data = await response.json();
+      console.log('📊 Categories API response:', data);
       
       if (data.success) {
-        const categoriesData = (data.topics || data.categories || []).map((topic: any) => ({
+        // API trả về 'topics' trong 'data.data.topics'
+        const categoriesData = (data.data?.topics || data.topics || data.categories || []).map((topic: any) => ({
           ...topic,
           icon: topic.icon || '📁' // Thêm icon mặc định nếu không có
         }));
+        console.log('✅ Categories loaded for edit:', categoriesData);
         setCategories(categoriesData);
       } else {
+        console.error('❌ Categories API failed:', data);
         setCategories([]);
       }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('❌ Error fetching categories:', error);
       setCategories([]);
     }
   };

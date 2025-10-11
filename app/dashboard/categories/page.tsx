@@ -30,14 +30,20 @@ export default function CategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Fetching categories...');
       const response = await fetch('/api/categories');
       const data = await response.json();
+      console.log('📊 Categories API response:', data);
 
       if (data.success) {
-        setCategories(data.categories);
+        const categoriesData = data.data?.topics || data.topics || [];
+        console.log('✅ Categories loaded:', categoriesData);
+        setCategories(categoriesData);
+      } else {
+        console.error('❌ Categories API failed:', data);
       }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('❌ Error fetching categories:', error);
     } finally {
       setLoading(false);
     }
@@ -299,7 +305,7 @@ export default function CategoriesPage() {
       )}
 
       {/* Categories List */}
-      {categories.length === 0 ? (
+      {!categories || categories.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -312,7 +318,7 @@ export default function CategoriesPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((category) => (
+          {categories?.map((category) => (
             <Card key={category.id}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-3">
