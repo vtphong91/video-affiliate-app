@@ -146,7 +146,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="w-full space-y-8">
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl">
         <div className="absolute inset-0 opacity-20">
