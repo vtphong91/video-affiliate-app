@@ -9,7 +9,6 @@ import {
   Shield, 
   Activity, 
   BarChart3, 
-  TrendingUp,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -29,7 +28,6 @@ interface DashboardStats {
   activeUsers: number;
   totalRoles: number;
   totalPermissions: number;
-  recentActivity: number;
   systemHealth: 'healthy' | 'warning' | 'error';
 }
 
@@ -45,14 +43,15 @@ interface RecentActivity {
 export default function AdminDashboard() {
   const { userProfile } = useAuth();
   const { canAccessAdmin, canManageUsers, canViewAnalytics } = useRoles();
+  
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     activeUsers: 0,
     totalRoles: 0,
     totalPermissions: 0,
-    recentActivity: 0,
     systemHealth: 'healthy'
   });
+  
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +63,6 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
 
-      // Fetch stats from APIs
       const [membersRes, rolesRes, permissionsRes] = await Promise.all([
         fetch('/api/admin/members'),
         fetch('/api/admin/roles'),
@@ -77,7 +75,6 @@ export default function AdminDashboard() {
         permissionsRes.json()
       ]);
 
-      // Calculate stats
       const totalUsers = membersData.data?.length || 0;
       const activeUsers = membersData.data?.filter((user: any) => user.is_active !== false).length || 0;
       const totalRoles = rolesData.data?.length || 0;
@@ -88,11 +85,9 @@ export default function AdminDashboard() {
         activeUsers,
         totalRoles,
         totalPermissions,
-        recentActivity: 0,
         systemHealth: 'healthy'
       });
 
-      // Mock recent activities
       setRecentActivities([
         {
           id: '1',
@@ -122,10 +117,14 @@ export default function AdminDashboard() {
 
   const getHealthIcon = (health: string) => {
     switch (health) {
-      case 'healthy': return <CheckCircle className="h-4 w-4" />;
-      case 'warning': return <AlertCircle className="h-4 w-4" />;
-      case 'error': return <AlertCircle className="h-4 w-4" />;
-      default: return <Activity className="h-4 w-4" />;
+      case 'healthy': 
+        return <CheckCircle className="h-4 w-4" />;
+      case 'warning': 
+        return <AlertCircle className="h-4 w-4" />;
+      case 'error': 
+        return <AlertCircle className="h-4 w-4" />;
+      default: 
+        return <Activity className="h-4 w-4" />;
     }
   };
 
@@ -148,9 +147,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Hero Welcome Section */}
+      {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.05\"%3E%3Ccircle cx=\"30\" cy=\"30\" r=\"2\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+        </div>
         
         <div className="relative z-10">
           <div className="flex items-start justify-between">
@@ -281,7 +282,6 @@ export default function AdminDashboard() {
                 stats.systemHealth === 'healthy' ? 'text-green-600' :
                 stats.systemHealth === 'warning' ? 'text-yellow-600' : 'text-red-600'
               }`}>
-                <TrendingUp className="h-3 w-3" />
                 <span className="font-medium">
                   {stats.systemHealth === 'healthy' ? 'Hoạt động bình thường' : 'Cần kiểm tra'}
                 </span>
