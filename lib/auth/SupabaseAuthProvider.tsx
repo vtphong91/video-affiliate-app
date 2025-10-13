@@ -8,6 +8,9 @@ interface UserProfile {
   id: string;
   full_name: string;
   role: string;
+  permissions?: string[];
+  is_active?: boolean;
+  last_login_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +22,12 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  // Enhanced permission and role checking
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAllPermissions: (permissions: string[]) => boolean;
+  hasRole: (role: string) => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -156,6 +165,44 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  // Enhanced permission checking
+  const hasPermission = (permission: string): boolean => {
+    if (!userProfile) return false;
+    
+    // Admin has all permissions
+    if (userProfile.role === 'admin') return true;
+    
+    // Check specific permissions
+    return userProfile.permissions?.includes(permission) || false;
+  };
+
+  const hasAnyPermission = (permissions: string[]): boolean => {
+    if (!userProfile) return false;
+    
+    // Admin has all permissions
+    if (userProfile.role === 'admin') return true;
+    
+    return permissions.some(permission => hasPermission(permission));
+  };
+
+  const hasAllPermissions = (permissions: string[]): boolean => {
+    if (!userProfile) return false;
+    
+    // Admin has all permissions
+    if (userProfile.role === 'admin') return true;
+    
+    return permissions.every(permission => hasPermission(permission));
+  };
+
+  // Enhanced role checking
+  const hasRole = (role: string): boolean => {
+    return userProfile?.role === role;
+  };
+
+  const hasAnyRole = (roles: string[]): boolean => {
+    return userProfile ? roles.includes(userProfile.role) : false;
+  };
+
   const value = {
     user,
     userProfile,
@@ -163,6 +210,12 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     isAuthenticated: !!user,
+    // Enhanced permission and role checking
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    hasRole,
+    hasAnyRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
