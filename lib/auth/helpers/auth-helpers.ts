@@ -7,50 +7,51 @@ import { NextRequest } from 'next/server';
 import { supabase } from '@/lib/db/supabase';
 
 /**
- * Get user ID from request headers or session
+ * Get user ID from request headers or session (optimized version)
  */
 export async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
   try {
-    // Method 1: Try to get from headers (set by middleware)
+    // Method 1: Try to get from headers first (fastest)
     const userIdFromHeader = request.headers.get('x-user-id');
     if (userIdFromHeader) {
-      console.log('🔍 User ID from header:', userIdFromHeader);
+      console.log('🔍 User ID from header (fast):', userIdFromHeader);
       return userIdFromHeader;
     }
 
-    // Method 2: Try to get from Authorization header
-    const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data, error } = await supabase.auth.getUser(token);
-      
-      if (!error && data.user) {
-        console.log('🔍 User ID from Bearer token:', data.user.id);
-        return data.user.id;
-      }
-    }
-
-    // Method 3: Try to get from cookies (for server-side requests)
+    // Method 2: Try to get from cookies (faster than Bearer token)
     const accessToken = request.cookies.get('sb-access-token')?.value;
     const refreshToken = request.cookies.get('sb-refresh-token')?.value;
     
     if (accessToken && refreshToken) {
-      const { data, error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      
-      if (!error && data.session?.user) {
-        console.log('🔍 User ID from cookies:', data.session.user.id);
-        return data.session.user.id;
+      try {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        
+        if (!error && data.session?.user) {
+          console.log('🔍 User ID from cookies:', data.session.user.id);
+          return data.session.user.id;
+        }
+      } catch (error) {
+        console.log('⚠️ Cookie auth failed, trying next method');
       }
     }
 
-    // Method 4: Try to get from auth_token cookie (fallback)
-    const authToken = request.cookies.get('auth_token')?.value;
-    if (authToken) {
-      console.log('🔍 User ID from auth_token cookie:', authToken);
-      return authToken;
+    // Method 3: Try Bearer token (slower but fallback)
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        const { data, error } = await supabase.auth.getUser(token);
+        
+        if (!error && data.user) {
+          console.log('🔍 User ID from Bearer token:', data.user.id);
+          return data.user.id;
+        }
+      } catch (error) {
+        console.log('⚠️ Bearer token auth failed');
+      }
     }
 
     console.log('❌ No user ID found in request');

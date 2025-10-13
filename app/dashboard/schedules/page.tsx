@@ -27,12 +27,18 @@ import { ScheduleStats } from '@/components/schedules/ScheduleStats';
 import type { Schedule } from '@/lib/db/supabase';
 
 interface ScheduleWithReview extends Schedule {
-  reviews: {
-    id: string;
-    video_title: string;
-    video_thumbnail: string;
-    slug: string;
-  };
+  // Review data is now stored directly in schedule table
+  video_title?: string;
+  video_thumbnail?: string;
+  video_url?: string;
+  channel_name?: string;
+  review_summary?: string;
+  review_pros?: any[];
+  review_cons?: any[];
+  review_key_points?: any[];
+  review_target_audience?: any[];
+  review_cta?: string;
+  review_seo_keywords?: any[];
 }
 
 interface ScheduleStats {
@@ -98,11 +104,21 @@ export default function SchedulesPage() {
         'Content-Type': 'application/json',
       };
       
-      // Add authentication headers if session exists
+      // Add authentication headers if session exists (optimized)
       if (session?.user) {
         headers['x-user-id'] = session.user.id;
         headers['x-user-email'] = session.user.email || '';
-        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+        // Get role from user_metadata or default to 'user'
+        const userRole = session.user.user_metadata?.role || 
+                        session.user.user_metadata?.full_name ? 'admin' : 'user';
+        headers['x-user-role'] = userRole;
+        console.log('🔍 Sending auth headers:', {
+          userId: session.user.id,
+          email: session.user.email,
+          role: userRole
+        });
+      } else {
+        console.log('⚠️ No session found, request may fail');
       }
       
       const response = await fetch(`/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}`, {
@@ -151,8 +167,22 @@ export default function SchedulesPage() {
 
   const handleDeleteSchedule = async (id: string) => {
     try {
+      // Get authentication headers from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication headers if session exists
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+      }
+      
       const response = await fetch(`/api/schedules/${id}`, {
         method: 'DELETE',
+        headers,
       });
 
       const result = await response.json();
@@ -177,8 +207,22 @@ export default function SchedulesPage() {
 
   const handleRetrySchedule = async (id: string) => {
     try {
+      // Get authentication headers from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication headers if session exists
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+      }
+      
       const response = await fetch(`/api/schedules/${id}/retry`, {
         method: 'POST',
+        headers,
       });
 
       const result = await response.json();

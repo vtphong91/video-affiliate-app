@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { usePermissions } from '@/lib/auth/hooks/usePermissions';
 import { 
   Dialog,
   DialogContent,
@@ -56,7 +57,10 @@ interface CreateRoleData {
 
 export default function RoleManagement() {
   const { userProfile } = useAuth();
-  const { canManageUsers, canAccessAdmin } = useRoles();
+  const { checkPermission } = usePermissions();
+  
+  const canManageUsers = () => checkPermission('write:users') || checkPermission('admin:all');
+  const canAccessAdmin = () => checkPermission('admin:all');
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);

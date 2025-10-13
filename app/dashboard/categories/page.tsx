@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import type { Category } from '@/types';
+import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 
 export default function CategoriesPage() {
+  const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,8 +25,15 @@ export default function CategoriesPage() {
   });
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    // Only fetch categories if user is authenticated
+    if (user) {
+      console.log('🔍 CategoriesPage: User authenticated, fetching categories...');
+      fetchCategories();
+    } else {
+      console.log('🔍 CategoriesPage: No user, skipping fetch');
+      setLoading(false);
+    }
+  }, [user]);
 
   const fetchCategories = async () => {
     try {

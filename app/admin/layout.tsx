@@ -49,7 +49,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const menuItems: MenuItem[] = [
     {
       title: 'Dashboard',
-      href: '/admin',
+      href: '/dashboard',
       icon: Home,
     },
     {
@@ -106,6 +106,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const isActive = (href: string) => {
+    if (href === '/dashboard') {
+      return false; // Never highlight dashboard when in admin
+    }
     if (href === '/admin') {
       return pathname === '/admin';
     }
@@ -113,7 +116,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="admin-layout min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div 
+      className="admin-layout bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100"
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        width: '100%',
+        height: '100vh',
+        minHeight: '100vh'
+      }}
+    >
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -123,11 +135,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
 
       {/* Sidebar */}
-      <div className={`
-        admin-sidebar fixed inset-y-0 left-0 z-50 w-72 bg-white/95 backdrop-blur-xl shadow-2xl border-r border-slate-200/50 transform transition-all duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:inset-0
-      `}>
+      <div 
+        className={`
+          admin-sidebar bg-white/95 backdrop-blur-xl shadow-2xl border-r border-slate-200/50
+          ${sidebarOpen ? 'open' : ''}
+        `}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '288px',
+          height: '100vh',
+          zIndex: 50,
+          overflowY: 'auto'
+        }}
+      >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-20 px-6 border-b border-slate-200/50 bg-gradient-to-r from-blue-600 to-indigo-600">
           <div className="flex items-center space-x-3">
@@ -243,7 +265,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </div>
 
       {/* Main content */}
-      <div className="admin-content lg:pl-72">
+      <div 
+        className="admin-content"
+        style={{
+          marginLeft: '288px',
+          width: 'calc(100% - 288px)',
+          minHeight: '100vh',
+          flex: 1,
+          minWidth: 0,
+          overflowX: 'hidden'
+        }}
+      >
         {/* Top bar */}
         <div className="admin-top-bar sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
           <div className="flex items-center justify-between h-20 px-8">

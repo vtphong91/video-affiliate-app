@@ -83,14 +83,6 @@ export function FacebookPoster({
     setIsPosting(true);
 
     try {
-      // Prepare affiliate links for comment
-      const affiliateComment = affiliateLinks.length > 0
-        ? `🛒 LINK MUA HÀNG:\n\n` +
-          affiliateLinks
-            .map((link, index) => `${index + 1}. ${link.platform}: ${link.url}${link.price ? ` - ${link.price}` : ''}${link.discount ? ` (${link.discount})` : ''}`)
-            .join('\n')
-        : null;
-
       // Webhook URL and Secret are now handled server-side via environment variables
       const response = await fetch('/api/post-facebook', {
         method: 'POST',
@@ -103,7 +95,6 @@ export function FacebookPoster({
           landingPageUrl: landingUrl,
           videoThumbnail,
           imageUrl: videoThumbnail, // sử dụng videoThumbnail làm imageUrl
-          affiliateComment,
         }),
       });
 

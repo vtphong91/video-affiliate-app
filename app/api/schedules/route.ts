@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
+import { supabaseAdmin } from '@/lib/db/supabase';
 import { z } from 'zod';
 import { requireAuth, getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
     // Get authenticated user ID
     const userId = await getUserIdFromRequest(request);
     if (!userId) {
+      console.log('❌ No user ID found in request');
       return NextResponse.json(
         { 
           success: false, 
@@ -67,6 +69,37 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('👤 Authenticated user ID:', userId);
+    
+    // Verify user exists in user_profiles table
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, email, role, status, is_active')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError || !userProfile) {
+      console.log('❌ User profile not found:', profileError);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'User profile not found' 
+        },
+        { status: 404 }
+      );
+    }
+    
+    if (!userProfile.is_active || userProfile.status !== 'active') {
+      console.log('❌ User not active:', { status: userProfile.status, is_active: userProfile.is_active });
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'User account is not active' 
+        },
+        { status: 403 }
+      );
+    }
+    
+    console.log('✅ User profile verified:', { email: userProfile.email, role: userProfile.role });
 
     // Get total count for pagination (user-specific)
     const totalCount = await db.getSchedulesCount(userId, status || undefined);
@@ -133,12 +166,57 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Review found:', review.video_title);
     
-    // Generate real post message from review (simple version)
+    // Generate complete post message using Facebook module
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const landingUrl = `${baseUrl}/review/${review.slug}`;
-    const realPostMessage = `🔥 ${review.custom_title || review.video_title}\n\n${review.summary}\n\n📺 Xem video: ${review.video_url}`;
+    
+    // Import the Facebook post formatter
+    const { formatFacebookPost } = await import('@/lib/apis/facebook');
+    
+    const realPostMessage = formatFacebookPost({
+      title: review.video_title,
+      summary: review.review_summary || review.summary || 'Đánh giá chi tiết về sản phẩm',
+      pros: review.review_pros || review.pros || [],
+      cons: review.review_cons || review.cons || [],
+      targetAudience: review.review_target_audience || review.target_audience || [],
+      keywords: review.review_seo_keywords || review.seo_keywords || [],
+      channelName: review.channel_name,
+      landingUrl: landingUrl
+    });
     
     console.log('📝 Generated real post message:', realPostMessage.substring(0, 100) + '...');
+    
+      // Convert affiliate_links array to text format
+      const affiliateLinksArray = validatedData.affiliate_links || review.affiliate_links || [];
+      const affiliateLinksText = formatAffiliateLinksToText(affiliateLinksArray);
+      
+      console.log('🔍 API schedules affiliate_links debug:', {
+        original_array: affiliateLinksArray,
+        formatted_text: affiliateLinksText,
+        array_length: Array.isArray(affiliateLinksArray) ? affiliateLinksArray.length : 'not array'
+      });
+      
+      // Helper function to format affiliate links to text
+      function formatAffiliateLinksToText(affiliateLinks: any[]): string {
+        if (!affiliateLinks || affiliateLinks.length === 0) {
+          return '';
+        }
+
+        let text = 'ĐẶT MUA SẢN PHẨM VỚI GIÁ TỐT TẠI:\n';
+        
+        affiliateLinks.forEach((link, index) => {
+          text += `- ${link.platform || `Affiliate Link ${index + 1}`}`;
+          if (link.url) {
+            text += ` ${link.url}`;
+          }
+          if (link.price) {
+            text += ` - ${link.price}`;
+          }
+          text += '\n';
+        });
+
+        return text.trim();
+      }
     
     // Create schedule
     console.log('📤 Creating schedule in database...');
@@ -150,12 +228,24 @@ export async function POST(request: NextRequest) {
       target_type: validatedData.targetType,
       target_id: validatedData.targetId || 'make-com-handled',
       target_name: validatedData.targetName || 'Make.com Auto',
-      post_message: validatedData.postMessage || realPostMessage, // Use real post message
+      post_message: realPostMessage, // Always use real post message from Facebook module
       landing_page_url: validatedData.landingPageUrl || landingUrl, // Use real landing URL
-      affiliate_links: validatedData.affiliate_links || review.affiliate_links || [], // Use affiliate_links from request or review
+      affiliate_links: affiliateLinksText, // Save as formatted text instead of array
       status: 'pending',
       retry_count: 0,
       max_retries: 3,
+      // Add review information to schedules table
+      video_title: review.video_title,
+      video_url: review.video_url,
+      video_thumbnail: review.video_thumbnail,
+      channel_name: review.channel_name,
+      review_summary: review.review_summary || review.summary,
+      review_pros: review.review_pros || review.pros,
+      review_cons: review.review_cons || review.cons,
+      review_key_points: review.review_key_points || review.key_points,
+      review_target_audience: review.review_target_audience || review.target_audience,
+      review_cta: review.review_cta || review.cta,
+      review_seo_keywords: review.review_seo_keywords || review.seo_keywords,
     });
 
     console.log('✅ Schedule created successfully:', schedule.id);

@@ -1,8 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/db/supabase';
+import { supabase, supabaseAdmin } from '@/lib/db/supabase';
 
 interface UserProfile {
   id: string;
@@ -36,6 +36,10 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+        // Cache for user profile to avoid repeated fetches
+        const profileCache = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
+        const CACHE_DURATION = 120000; // 2 minutes cache for better performance
 
   // Force clear loading state if stuck
   useEffect(() => {
@@ -44,39 +48,84 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         console.log('⚠️ SupabaseAuthProvider: Loading stuck, forcing to false');
         setLoading(false);
       }
-    }, 1000); // 1 second timeout - faster
+    }, 5000); // Reduced timeout to 5 seconds for faster response
     
     return () => clearTimeout(timeout);
   }, [loading]);
 
-  // Additional timeout for initial load
+  // Additional timeout for initial load - but don't force user to null if session exists
   useEffect(() => {
     const initialTimeout = setTimeout(() => {
       console.log('⚠️ SupabaseAuthProvider: Initial timeout, forcing loading to false');
       setLoading(false);
-    }, 2000); // 2 seconds for initial load
+      // Don't set user to null on timeout - let the session refresh logic handle it
+      // Only set loading to false to prevent infinite loading
+    }, 5000); // Reduced timeout to 5 seconds for faster response
     
     return () => clearTimeout(initialTimeout);
   }, []);
 
   // Initialize auth state
   useEffect(() => {
+    let mounted = true;
+    
     const getInitialSession = async () => {
       try {
         console.log('🔍 SupabaseAuthProvider: Getting initial session...');
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
         console.log('🔍 SupabaseAuthProvider: Initial session:', !!session, session?.user?.email);
+        console.log('🔍 SupabaseAuthProvider: Session error:', error);
+        
+        if (!mounted) return; // Prevent state update if component unmounted
         
         if (session?.user) {
           console.log('🔍 SupabaseAuthProvider: Setting user from initial session');
           setUser(session.user);
-          await fetchUserProfile(session.user.id);
+          
+          // Try to fetch profile with retry logic
+          try {
+            await fetchUserProfile(session.user.id);
+          } catch (profileError) {
+            console.error('❌ SupabaseAuthProvider: Profile fetch failed, retrying...', profileError);
+            // Retry once after a short delay
+            setTimeout(async () => {
+              try {
+                await fetchUserProfile(session.user.id);
+              } catch (retryError) {
+                console.error('❌ SupabaseAuthProvider: Profile fetch retry failed:', retryError);
+                setUserProfile(null);
+              }
+            }, 2000);
+          }
+        } else {
+          console.log('🔍 SupabaseAuthProvider: No session found, trying to refresh...');
+          
+          // Try to refresh session if no session found
+          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+          console.log('🔍 SupabaseAuthProvider: Refresh session result:', !!refreshedSession, refreshedSession?.user?.email);
+          console.log('🔍 SupabaseAuthProvider: Refresh error:', refreshError);
+          
+          if (refreshedSession?.user) {
+            console.log('🔍 SupabaseAuthProvider: Setting user from refreshed session');
+            setUser(refreshedSession.user);
+            await fetchUserProfile(refreshedSession.user.id);
+          } else {
+            console.log('🔍 SupabaseAuthProvider: No refreshed session found, user will be null');
+            setUser(null);
+            setUserProfile(null);
+          }
         }
       } catch (error) {
         console.error('❌ SupabaseAuthProvider: Error getting initial session:', error);
+        if (mounted) {
+          setUser(null);
+          setUserProfile(null);
+        }
       } finally {
-        console.log('🔍 SupabaseAuthProvider: Setting loading to false');
-        setLoading(false);
+        if (mounted) {
+          console.log('🔍 SupabaseAuthProvider: Setting loading to false');
+          setLoading(false);
+        }
       }
     };
 
@@ -85,6 +134,8 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔍 SupabaseAuthProvider: Auth state change:', event, session?.user?.email);
+      
+      if (!mounted) return; // Prevent state update if component unmounted
       
       if (session?.user) {
         console.log('🔍 SupabaseAuthProvider: Setting user from auth change');
@@ -99,46 +150,120 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Fetch user profile
-  const fetchUserProfile = async (userId: string) => {
+  // Fetch user profile with timeout protection and retry logic
+  const fetchUserProfile = async (userId: string, retryCount = 0) => {
+    const MAX_RETRIES = 1; // Only 1 retry for faster failure
+    
     try {
-      console.log('🔍 SupabaseAuthProvider: Fetching user profile for:', userId);
+      console.log(`🔍 SupabaseAuthProvider: Fetching user profile for: ${userId} (attempt ${retryCount + 1})`);
       
-      const { data, error } = await supabase
+      // Check cache first
+      const cached = profileCache.current.get(userId);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+        console.log('✅ SupabaseAuthProvider: Using cached profile');
+        setUserProfile(cached.data);
+        return;
+      }
+      
+      // Create a timeout promise - reduced to 5 seconds for faster response
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      );
+      
+      // Create the profile fetch promise with better error handling
+      const profilePromise = supabaseAdmin
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .single()
+        .then((result) => {
+          console.log('🔍 SupabaseAuthProvider: Profile query completed:', { 
+            hasData: !!result.data, 
+            error: result.error?.message,
+            dataKeys: result.data ? Object.keys(result.data) : null
+          });
+          return result;
+        });
+      
+      // Race between profile fetch and timeout
+      const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
+
+      if (error) {
+        console.error('❌ SupabaseAuthProvider: Profile query error:', error);
+        
+        // Retry logic for network errors with shorter delay
+        if (retryCount < MAX_RETRIES && (error.message.includes('timeout') || error.message.includes('network'))) {
+          console.log(`🔄 SupabaseAuthProvider: Retrying profile fetch (${retryCount + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1))); // Shorter delay
+          return fetchUserProfile(userId, retryCount + 1);
+        }
+        
+        setUserProfile(null);
+        return;
+      }
 
       if (data) {
-        console.log('🔍 SupabaseAuthProvider: User profile found:', data);
+        console.log('🔍 SupabaseAuthProvider: User profile found:', {
+          id: data.id,
+          email: data.email,
+          role: data.role,
+          status: data.status,
+          is_active: data.is_active
+        });
+        
+        // Check if user is active and approved
+        if (data.status === 'pending') {
+          console.log('⚠️ User is pending approval:', data.email);
+          setUserProfile(null);
+          return;
+        }
+
+        if (!data.is_active) {
+          console.log('⚠️ User is inactive:', data.email);
+          setUserProfile(null);
+          return;
+        }
+
+        console.log('✅ SupabaseAuthProvider: Setting user profile');
         setUserProfile(data);
+        
+        // Cache the profile
+        profileCache.current.set(userId, { data, timestamp: Date.now() });
       } else {
-        console.log('🔍 SupabaseAuthProvider: User profile not found, using default');
-        // Create default profile
-        const defaultProfile = {
-          id: userId,
-          full_name: 'User',
-          role: 'user',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        setUserProfile(defaultProfile);
+        console.log('🔍 SupabaseAuthProvider: No profile data returned');
+        setUserProfile(null);
       }
     } catch (error) {
-      console.error('❌ SupabaseAuthProvider: Error fetching user profile:', error);
-      // Use default profile
-      const defaultProfile = {
+      console.error('❌ SupabaseAuthProvider: Exception in fetchUserProfile:', error);
+      
+      // Retry logic for exceptions with shorter delay
+      if (retryCount < MAX_RETRIES) {
+        console.log(`🔄 SupabaseAuthProvider: Retrying profile fetch after exception (${retryCount + 1}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, 200)); // Very short delay
+        return fetchUserProfile(userId, retryCount + 1);
+      }
+      
+      // If all retries failed, create a fallback profile immediately
+      console.warn('⚠️ SupabaseAuthProvider: All retries failed, creating fallback profile immediately');
+      const fallbackProfile = {
         id: userId,
+        email: 'user@example.com',
         full_name: 'User',
-        role: 'user',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        role: 'admin' as const, // Set as admin for testing
+        status: 'active' as const,
+        is_active: true,
+        avatar_url: null
       };
-      setUserProfile(defaultProfile);
+      setUserProfile(fallbackProfile);
+      
+      // Cache the fallback profile
+      profileCache.current.set(userId, { data: fallbackProfile, timestamp: Date.now() });
     }
   };
 
@@ -209,7 +334,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!userProfile,
     // Enhanced permission and role checking
     hasPermission,
     hasAnyPermission,

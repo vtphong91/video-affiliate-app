@@ -169,6 +169,16 @@ export async function DELETE(
 
     // Check if schedule exists and user owns it
     const existingSchedule = await db.getSchedule(params.id);
+    if (!existingSchedule) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Schedule not found'
+        },
+        { status: 404 }
+      );
+    }
+
     if (existingSchedule.user_id !== userId) {
       return NextResponse.json(
         {

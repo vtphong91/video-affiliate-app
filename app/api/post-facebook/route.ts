@@ -17,7 +17,6 @@ interface PostWebhookRequest {
   landingPageUrl: string; // url_landing_page
   videoThumbnail: string; // video_thumbnail
   imageUrl?: string; // optional image
-  affiliateComment?: string | null; // optional affiliate comment
 }
 
 interface MakeWebhookResponse {
@@ -38,7 +37,6 @@ export async function POST(request: NextRequest) {
       landingPageUrl,
       videoThumbnail,
       imageUrl,
-      affiliateComment,
     } = body;
 
     // Get webhook configuration from environment variables
@@ -86,6 +84,31 @@ export async function POST(request: NextRequest) {
       console.warn('Could not fetch review data:', error);
     }
 
+    // Convert affiliate_links array to text format
+    const affiliateLinksText = formatAffiliateLinksToText(affiliateLinks);
+    
+    // Helper function to format affiliate links to text
+    function formatAffiliateLinksToText(affiliateLinks: any[]): string {
+      if (!affiliateLinks || affiliateLinks.length === 0) {
+        return '';
+      }
+
+      let text = 'ĐẶT MUA SẢN PHẨM VỚI GIÁ TỐT TẠI:\n';
+      
+      affiliateLinks.forEach((link, index) => {
+        text += `- ${link.platform || `Affiliate Link ${index + 1}`}`;
+        if (link.url) {
+          text += ` ${link.url}`;
+        }
+        if (link.price) {
+          text += ` - ${link.price}`;
+        }
+        text += '\n';
+      });
+
+      return text.trim();
+    }
+
     // Prepare webhook payload với tên biến đồng bộ với cron service
     const webhookPayload: any = {
       // Các trường chính theo chuẩn cron service
@@ -95,19 +118,19 @@ export async function POST(request: NextRequest) {
       targetId: 'make-com-handled', // Mặc định là make-com-handled
       targetName: 'Make.com Manual', // Mặc định là manual
       message: message,
-      link: landingPageUrl,
+      landing_page_url: landingPageUrl, // Chuẩn hóa với cron auto
       imageUrl: imageUrl || videoThumbnail,
       videoUrl: videoUrl,
       videoTitle: reviewData?.video_title || reviewData?.custom_title || '',
       channelName: reviewData?.channel_name || '',
-      affiliateLinks: affiliateLinks,
+      affiliateLinksText: affiliateLinksText, // Formatted text for webhook
       reviewSummary: reviewData?.summary || '',
       reviewPros: reviewData?.pros || [],
       reviewCons: reviewData?.cons || [],
       reviewKeyPoints: reviewData?.key_points || [],
       reviewTargetAudience: reviewData?.target_audience || [],
       reviewCta: reviewData?.cta || '',
-      reviewSeoKeywords: reviewData?.seo_keywords || [],
+      review_seo_keywords: reviewData?.seo_keywords || [], // Chuẩn hóa với cron auto
       scheduledFor: new Date().toISOString(), // Thời gian hiện tại
       triggeredAt: new Date().toISOString(),
       retryAttempt: 0, // Manual post không có retry
@@ -116,11 +139,6 @@ export async function POST(request: NextRequest) {
     // Add optional fields
     if (imageUrl) {
       webhookPayload.imageUrl = imageUrl;
-    }
-
-    // Add affiliate comment if provided
-    if (affiliateComment) {
-      webhookPayload.affiliateComment = affiliateComment;
     }
 
     // Add secret for verification if provided

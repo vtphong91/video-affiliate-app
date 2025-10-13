@@ -63,18 +63,26 @@ export class CronService {
   }
 
   /**
-   * Get affiliate links from schedule (prioritize formatted string, fallback to array)
+   * Get affiliate links from schedule as array of objects
    */
-  getAffiliateLinks(schedule: any): string {
-    // If schedule.affiliate_links is already a formatted string, use it
-    if (schedule.affiliate_links && typeof schedule.affiliate_links === 'string') {
-      console.log(`📋 Using formatted affiliate links from schedule: ${schedule.affiliate_links.substring(0, 100)}...`);
+  getAffiliateLinks(schedule: any): Array<{platform: string, price: string, url: string}> {
+    // If schedule.affiliate_links is already an array, use it
+    if (schedule.affiliate_links && Array.isArray(schedule.affiliate_links)) {
+      console.log(`📋 Using affiliate links array from schedule: ${schedule.affiliate_links.length} links`);
       return schedule.affiliate_links;
     }
     
-    // Otherwise, format from reviews.affiliate_links array
+    // Otherwise, get from reviews.affiliate_links array
     const affiliateLinks = schedule.reviews?.affiliate_links;
-    return this.formatAffiliateLinks(affiliateLinks);
+    if (!affiliateLinks || !Array.isArray(affiliateLinks) || affiliateLinks.length === 0) {
+      return [];
+    }
+    
+    return affiliateLinks.map((link: any) => ({
+      platform: link.platform || 'Nền tảng',
+      price: link.price || 'Giá liên hệ',
+      url: link.url || '#'
+    }));
   }
 
   /**
@@ -103,6 +111,9 @@ export class CronService {
     try {
       console.log(`🔧 Building webhook payload for schedule ${schedule.id}`);
       
+      // affiliate_links is now stored as text in database
+      const affiliateLinksText = schedule.affiliate_links || '';
+      
       const payload = {
         scheduleId: schedule.id,
         reviewId: schedule.review_id,
@@ -110,19 +121,19 @@ export class CronService {
         targetId: schedule.target_id,
         targetName: schedule.target_name,
         message: schedule.post_message,
-        link: schedule.landing_page_url,
-        imageUrl: schedule.video_thumbnail || schedule.reviews?.video_thumbnail,
-        videoUrl: schedule.video_url || schedule.reviews?.video_url,
-        videoTitle: schedule.video_title || schedule.reviews?.video_title,
-        channelName: schedule.channel_name || schedule.reviews?.channel_name,
-        affiliateLinks: this.getAffiliateLinks(schedule),
-        reviewSummary: schedule.review_summary || schedule.reviews?.summary,
-        reviewPros: schedule.review_pros || schedule.reviews?.pros,
-        reviewCons: schedule.review_cons || schedule.reviews?.cons,
-        reviewKeyPoints: schedule.review_key_points || schedule.reviews?.key_points,
-        reviewTargetAudience: schedule.review_target_audience || schedule.reviews?.target_audience,
-        reviewCta: schedule.review_cta || schedule.reviews?.cta,
-        reviewSeoKeywords: schedule.review_seo_keywords || schedule.reviews?.seo_keywords,
+        landing_page_url: schedule.landing_page_url,
+        imageUrl: schedule.video_thumbnail,
+        videoUrl: schedule.video_url,
+        videoTitle: schedule.video_title,
+        channelName: schedule.channel_name,
+        affiliateLinksText: affiliateLinksText, // Direct text from database
+        reviewSummary: schedule.review_summary,
+        reviewPros: schedule.review_pros,
+        reviewCons: schedule.review_cons,
+        reviewKeyPoints: schedule.review_key_points,
+        reviewTargetAudience: schedule.review_target_audience,
+        reviewCta: schedule.review_cta,
+        review_seo_keywords: schedule.review_seo_keywords,
         scheduledFor: schedule.scheduled_for,
         triggeredAt: new Date().toISOString(),
         retryAttempt: schedule.retry_count,
@@ -135,6 +146,7 @@ export class CronService {
       throw new Error('Failed to build webhook payload');
     }
   }
+
 
   /**
    * Send webhook to Make.com
