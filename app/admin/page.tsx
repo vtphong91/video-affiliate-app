@@ -18,7 +18,6 @@ import {
   Star,
   Target,
   ArrowUpRight,
-  ArrowDownRight,
   Sparkles,
   Rocket
 } from 'lucide-react';
@@ -89,11 +88,11 @@ export default function AdminDashboard() {
         activeUsers,
         totalRoles,
         totalPermissions,
-        recentActivity: 0, // Will be implemented later
+        recentActivity: 0,
         systemHealth: 'healthy'
       });
 
-      // Mock recent activities (will be replaced with real data)
+      // Mock recent activities
       setRecentActivities([
         {
           id: '1',
@@ -121,30 +120,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const getHealthColor = (health: string) => {
-    switch (health) {
-      case 'healthy': return 'text-green-600 bg-green-100';
-      case 'warning': return 'text-yellow-600 bg-yellow-100';
-      case 'error': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
   const getHealthIcon = (health: string) => {
     switch (health) {
       case 'healthy': return <CheckCircle className="h-4 w-4" />;
       case 'warning': return <AlertCircle className="h-4 w-4" />;
       case 'error': return <AlertCircle className="h-4 w-4" />;
       default: return <Activity className="h-4 w-4" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success': return 'text-green-600 bg-green-100';
-      case 'warning': return 'text-yellow-600 bg-yellow-100';
-      case 'error': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
     }
   };
 
@@ -169,8 +150,7 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       {/* Hero Welcome Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.05\"%3E%3Ccircle cx=\"30\" cy=\"30\" r=\"2\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
         
         <div className="relative z-10">
           <div className="flex items-start justify-between">
@@ -326,7 +306,7 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-4">
-            {recentActivities.map((activity, index) => (
+            {recentActivities.map((activity) => (
               <div key={activity.id} className="group flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border border-slate-200/50">
                 <div className="flex items-center space-x-4">
                   <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${
