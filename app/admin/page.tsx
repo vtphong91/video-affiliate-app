@@ -164,7 +164,6 @@ export default function AdminDashboard() {
       </div>
     );
   }
-
   return (
     <div className="space-y-8">
       {/* Hero Welcome Section */}
