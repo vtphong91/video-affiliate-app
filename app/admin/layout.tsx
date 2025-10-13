@@ -14,7 +14,11 @@ import {
   Key,
   Activity,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Crown,
+  Zap,
+  TrendingUp,
+  Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -109,27 +113,36 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-72 bg-white/95 backdrop-blur-xl shadow-2xl border-r border-slate-200/50 transform transition-all duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:inset-0
       `}>
-        <div className="flex items-center justify-between h-16 px-6 border-b">
-          <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between h-20 px-6 border-b border-slate-200/50 bg-gradient-to-r from-blue-600 to-indigo-600">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <Crown className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Admin Panel</h1>
+              <p className="text-xs text-blue-100">Video Affiliate App</p>
+            </div>
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden"
+            className="lg:hidden text-white hover:bg-white/20"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -137,31 +150,42 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* User Info */}
-        <div className="p-6 border-b">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-              {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+        <div className="p-6 border-b border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-semibold text-slate-900 truncate">
                 {userProfile?.full_name || 'User'}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-slate-600 truncate">
                 {user?.email}
               </p>
               <Badge 
                 variant={userProfile?.role === 'admin' ? 'default' : 'secondary'}
-                className="mt-1 text-xs"
+                className={`mt-2 text-xs font-medium ${
+                  userProfile?.role === 'admin' 
+                    ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white' 
+                    : userProfile?.role === 'editor'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                    : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+                }`}
               >
-                {userProfile?.role === 'admin' ? 'Quản trị viên' : 
-                 userProfile?.role === 'editor' ? 'Biên tập viên' : 'Người xem'}
+                {userProfile?.role === 'admin' ? '👑 Quản trị viên' : 
+                 userProfile?.role === 'editor' ? '✏️ Biên tập viên' : '👁️ Người xem'}
               </Badge>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 px-4 py-6 space-y-1">
           {menuItems.map((item) => {
             if (!hasPermission(item.permission)) return null;
 
@@ -173,19 +197,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <Link
                   href={item.href}
                   className={`
-                    flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors
+                    group flex items-center justify-between px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ease-in-out
                     ${active 
-                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25' 
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:shadow-md'
                     }
                   `}
                 >
                   <div className="flex items-center space-x-3">
-                    <Icon className="h-5 w-5" />
-                    <span>{item.title}</span>
+                    <div className={`p-1.5 rounded-lg transition-colors ${
+                      active ? 'bg-white/20' : 'bg-slate-100 group-hover:bg-slate-200'
+                    }`}>
+                      <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-slate-600'}`} />
+                    </div>
+                    <span className="font-medium">{item.title}</span>
                   </div>
                   {item.badge && (
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge 
+                      variant="secondary" 
+                      className={`text-xs ${
+                        active 
+                          ? 'bg-white/20 text-white border-white/30' 
+                          : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
                       {item.badge}
                     </Badge>
                   )}
@@ -196,62 +231,81 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t">
-          <div className="text-xs text-gray-500 text-center">
-            Video Affiliate App v1.0
+        <div className="p-4 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
+          <div className="text-center">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <Globe className="h-4 w-4 text-slate-500" />
+              <span className="text-xs font-medium text-slate-600">Video Affiliate App</span>
+            </div>
+            <div className="text-xs text-slate-500">v1.0 • Admin Panel</div>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-72">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white border-b border-gray-200">
-          <div className="flex items-center justify-between h-16 px-6">
-            <div className="flex items-center space-x-4">
+        <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+          <div className="flex items-center justify-between h-20 px-8">
+            <div className="flex items-center space-x-6">
               <Button
                 variant="ghost"
                 size="sm"
-                className="lg:hidden"
+                className="lg:hidden hover:bg-slate-100"
                 onClick={() => setSidebarOpen(true)}
               >
                 <Menu className="h-5 w-5" />
               </Button>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {pathname === '/admin' ? 'Dashboard' :
-                   pathname.includes('/members') ? 'Quản lý thành viên' :
-                   pathname.includes('/roles') ? 'Phân quyền' :
-                   pathname.includes('/permissions') ? 'Quyền hạn' :
-                   pathname.includes('/audit-logs') ? 'Nhật ký' :
-                   pathname.includes('/analytics') ? 'Thống kê' :
-                   pathname.includes('/settings') ? 'Cài đặt' : 'Admin'}
+                <h2 className="text-2xl font-bold text-slate-900">
+                  {pathname === '/admin' ? '📊 Dashboard' :
+                   pathname.includes('/members') ? '👥 Quản lý thành viên' :
+                   pathname.includes('/roles') ? '🛡️ Phân quyền' :
+                   pathname.includes('/permissions') ? '🔑 Quyền hạn' :
+                   pathname.includes('/audit-logs') ? '📋 Nhật ký' :
+                   pathname.includes('/analytics') ? '📈 Thống kê' :
+                   pathname.includes('/settings') ? '⚙️ Cài đặt' : '👑 Admin'}
                 </h2>
-                <p className="text-sm text-gray-500">
-                  {pathname === '/admin' ? 'Tổng quan hệ thống' :
+                <p className="text-sm text-slate-600 mt-1">
+                  {pathname === '/admin' ? 'Tổng quan hệ thống và thống kê' :
                    pathname.includes('/members') ? 'Quản lý thành viên và phân quyền' :
                    pathname.includes('/roles') ? 'Quản lý vai trò người dùng' :
                    pathname.includes('/permissions') ? 'Quản lý quyền hạn chi tiết' :
-                   pathname.includes('/audit-logs') ? 'Xem nhật ký hoạt động' :
-                   pathname.includes('/analytics') ? 'Báo cáo và thống kê' :
-                   pathname.includes('/settings') ? 'Cài đặt hệ thống' : 'Quản trị hệ thống'}
+                   pathname.includes('/audit-logs') ? 'Xem nhật ký hoạt động hệ thống' :
+                   pathname.includes('/analytics') ? 'Báo cáo và phân tích dữ liệu' :
+                   pathname.includes('/settings') ? 'Cài đặt hệ thống và cấu hình' : 'Quản trị hệ thống'}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <Badge variant="outline" className="text-xs">
-                {userProfile?.is_active !== false ? 'Hoạt động' : 'Tạm khóa'}
-              </Badge>
-              <div className="text-sm text-gray-500">
-                {new Date().toLocaleDateString('vi-VN')}
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-medium ${
+                    userProfile?.is_active !== false 
+                      ? 'bg-green-50 text-green-700 border-green-200' 
+                      : 'bg-red-50 text-red-700 border-red-200'
+                  }`}
+                >
+                  {userProfile?.is_active !== false ? '🟢 Hoạt động' : '🔴 Tạm khóa'}
+                </Badge>
+              </div>
+              <div className="text-sm text-slate-600 font-medium">
+                {new Date().toLocaleDateString('vi-VN', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
               </div>
             </div>
           </div>
         </div>
 
         {/* Page content */}
-        <main className="p-6">
+        <main className="p-8">
           {children}
         </main>
       </div>
