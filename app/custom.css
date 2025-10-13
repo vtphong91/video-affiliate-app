@@ -95,6 +95,93 @@
   width: 100%;
 }
 
+/* Responsive Admin Panel */
+@media (max-width: 1023px) {
+  .admin-sidebar {
+    width: 100vw;
+    max-width: 320px;
+  }
+  
+  .admin-content {
+    padding-left: 0 !important;
+  }
+  
+  .admin-mobile-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-content {
+    padding: 1rem;
+  }
+  
+  .admin-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .admin-quick-actions {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .admin-hero-section {
+    padding: 1.5rem;
+  }
+  
+  .admin-hero-title {
+    font-size: 1.5rem;
+  }
+  
+  .admin-hero-subtitle {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-sidebar {
+    width: 100vw;
+    max-width: 280px;
+  }
+  
+  .admin-content {
+    padding: 0.75rem;
+  }
+  
+  .admin-top-bar {
+    padding: 0 1rem;
+    height: 60px;
+  }
+  
+  .admin-top-bar h2 {
+    font-size: 1.25rem;
+  }
+  
+  .admin-hero-section {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+  
+  .admin-hero-title {
+    font-size: 1.25rem;
+  }
+  
+  .admin-stats-card {
+    padding: 1rem;
+  }
+  
+  .admin-activity-item {
+    padding: 0.75rem;
+  }
+}
+
 /* Fix for any stray elements */
 * {
   box-sizing: border-box;
@@ -104,6 +191,18 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+}
+
+/* Ensure proper scrolling on mobile */
+@media (max-width: 1023px) {
+  .admin-layout {
+    position: relative;
+  }
+  
+  .admin-content {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 

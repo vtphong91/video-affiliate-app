@@ -148,7 +148,7 @@ export default function AdminDashboard() {
   return (
     <div className="w-full space-y-8">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl">
+      <div className="admin-hero-section relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
         </div>
@@ -161,10 +161,10 @@ export default function AdminDashboard() {
                   <Crown className="h-8 w-8 text-yellow-300" />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                  <h1 className="admin-hero-title text-4xl font-bold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
                     Chào mừng trở lại!
                   </h1>
-                  <p className="text-xl text-blue-100 font-medium">
+                  <p className="admin-hero-subtitle text-xl text-blue-100 font-medium">
                     {userProfile?.full_name || 'Admin'}
                   </p>
                 </div>
@@ -205,8 +205,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-indigo-100 hover:from-blue-100 hover:to-indigo-200">
+      <div className="admin-stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="admin-stats-card group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-indigo-100 hover:from-blue-100 hover:to-indigo-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold text-slate-700">Tổng thành viên</CardTitle>
             <div className="p-2 bg-blue-500 rounded-xl group-hover:bg-blue-600 transition-colors">
@@ -225,7 +225,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-purple-50 to-pink-100 hover:from-purple-100 hover:to-pink-200">
+        <Card className="admin-stats-card group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-purple-50 to-pink-100 hover:from-purple-100 hover:to-pink-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold text-slate-700">Vai trò</CardTitle>
             <div className="p-2 bg-purple-500 rounded-xl group-hover:bg-purple-600 transition-colors">
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-green-50 to-emerald-100 hover:from-green-100 hover:to-emerald-200">
+        <Card className="admin-stats-card group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-green-50 to-emerald-100 hover:from-green-100 hover:to-emerald-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold text-slate-700">Quyền hạn</CardTitle>
             <div className="p-2 bg-green-500 rounded-xl group-hover:bg-green-600 transition-colors">
@@ -261,7 +261,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-orange-50 to-red-100 hover:from-orange-100 hover:to-red-200">
+        <Card className="admin-stats-card group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-orange-50 to-red-100 hover:from-orange-100 hover:to-red-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold text-slate-700">Trạng thái hệ thống</CardTitle>
             <div className={`p-2 rounded-xl group-hover:scale-110 transition-transform ${
@@ -366,7 +366,7 @@ export default function AdminDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="admin-quick-actions grid grid-cols-1 md:grid-cols-3 gap-6">
             {canManageUsers() && (
               <Button 
                 variant="outline" 

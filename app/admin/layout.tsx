@@ -245,7 +245,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main content */}
       <div className="admin-content lg:pl-72">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
+        <div className="admin-top-bar sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
           <div className="flex items-center justify-between h-20 px-8">
             <div className="flex items-center space-x-6">
               <Button
@@ -305,7 +305,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className="p-8">
+        <main className="p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </div>
