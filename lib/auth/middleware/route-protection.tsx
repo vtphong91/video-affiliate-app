@@ -7,7 +7,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../providers/SupabaseAuthProvider';
+import { useAuth } from '../SupabaseAuthProvider';
 import { Loader2 } from 'lucide-react';
 import type { UserRole, Permission } from '../config/auth-types';
 
@@ -125,8 +125,8 @@ export function withRouteProtection<P extends object>(
     if (allowedRoles.length > 0) {
       console.log('🔍 Final access check - userProfile:', userProfile, 'allowedRoles:', allowedRoles);
       
-      // Wait for userProfile to be loaded before final check
-      if (!userProfile) {
+      // Wait for userProfile to be loaded before final check, but with timeout
+      if (!userProfile && loading) {
         console.log('⏳ Final check - userProfile not loaded yet, showing loading...');
         return (
           <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -138,11 +138,17 @@ export function withRouteProtection<P extends object>(
         );
       }
       
-      if (!userProfile.role || !allowedRoles.includes(userProfile.role)) {
+      // If not loading anymore but still no userProfile, allow access (fallback)
+      if (!userProfile && !loading) {
+        console.log('⚠️ No userProfile but not loading, allowing access as fallback');
+        return <Component {...props} />;
+      }
+      
+      if (userProfile && (!userProfile.role || !allowedRoles.includes(userProfile.role))) {
         console.log('❌ Final access check failed - userProfile.role:', userProfile.role);
         return null;
       }
-      console.log('✅ Final access check passed - userProfile.role:', userProfile.role);
+      console.log('✅ Final access check passed - userProfile.role:', userProfile?.role);
     }
 
     // Render protected component

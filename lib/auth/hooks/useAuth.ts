@@ -3,5 +3,5 @@
  * Re-exports the useAuth hook from AuthProvider for convenience
  */
 
-export { useAuth } from '../providers/SupabaseAuthProvider';
+export { useAuth } from '../SupabaseAuthProvider';
 export type { AuthContextType } from '../config/auth-types';

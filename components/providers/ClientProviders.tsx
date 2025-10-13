@@ -1,24 +1,17 @@
 'use client';
 
-import { AuthProviderWrapper } from '@/lib/auth/providers/AuthProviderWrapper';
-import { SettingsProvider } from '@/lib/contexts/settings-context';
-import { Toaster } from '@/components/ui/toaster';
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { ReactNode } from 'react';
+import { SupabaseAuthProvider } from '@/lib/auth/SupabaseAuthProvider';
 
 interface ClientProvidersProps {
-  children: React.ReactNode;
-  useSupabase?: boolean;
+  children: ReactNode;
 }
 
-export function ClientProviders({ children, useSupabase = false }: ClientProvidersProps) {
+export function ClientProviders({ children }: ClientProvidersProps) {
   return (
-    <ErrorBoundary>
-      <SettingsProvider>
-        <AuthProviderWrapper useSupabase={useSupabase}>
-          {children}
-          <Toaster />
-        </AuthProviderWrapper>
-      </SettingsProvider>
-    </ErrorBoundary>
+    <SupabaseAuthProvider>
+      {children}
+    </SupabaseAuthProvider>
   );
 }
+

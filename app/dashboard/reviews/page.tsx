@@ -6,9 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
+import { supabase } from '@/lib/db/supabase';
 import { Eye, MousePointer, ExternalLink, Edit, Trash2, PlusCircle, Loader2 } from 'lucide-react';
 import { withUserRoute } from '@/lib/auth/middleware/route-protection';
-import { useAuth } from '@/lib/auth/providers/SupabaseAuthProvider';
+import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
 import type { Review } from '@/types';
 
@@ -32,7 +33,24 @@ function ReviewsPage() {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/reviews?page=${currentPage}&limit=${itemsPerPage}`);
+      
+      // Get authentication headers from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication headers if session exists
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-email'] = session.user.email || '';
+        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+      }
+      
+      const response = await fetch(`/api/reviews?page=${currentPage}&limit=${itemsPerPage}`, {
+        headers
+      });
       const data = await response.json();
       
       if (data.success) {

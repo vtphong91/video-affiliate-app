@@ -7,7 +7,6 @@
 
 import React from 'react';
 import { User } from 'lucide-react';
-import { authHelpers } from '@/lib/auth/config/supabase-auth';
 
 interface UserAvatarProps {
   src?: string | null;
@@ -36,7 +35,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   };
 
   // Get initials from alt if not provided
-  const displayInitials = initials || authHelpers.getUserInitials({ email: alt } as any);
+  const displayInitials = initials || (alt ? alt.charAt(0).toUpperCase() : 'U');
 
   // Avatar content
   const avatarContent = (

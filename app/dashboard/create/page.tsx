@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Save } from 'lucide-react';
 import { withUserRoute } from '@/lib/auth/middleware/route-protection';
-import { useAuth } from '@/lib/auth/providers/SupabaseAuthProvider';
+import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
 import type { VideoInfo, AIAnalysis, AffiliateLink, Category } from '@/types';
 

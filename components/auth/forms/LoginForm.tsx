@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/lib/auth/providers/SupabaseAuthProvider';
+import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import type { LoginCredentials } from '@/lib/auth/config/auth-types';
 
 interface LoginFormProps {
@@ -90,7 +90,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     try {
       const result = await login(formData.email, formData.password);
       
+      console.log('🔍 Login result:', result);
+      
       if (!result.success) {
+        console.log('❌ Login failed:', result.error);
         toast({
           title: 'Đăng nhập thất bại',
           description: result.error || 'Thông tin đăng nhập không chính xác',
@@ -98,6 +101,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         });
         return;
       }
+      
+      console.log('✅ Login successful, proceeding with redirect');
 
       toast({
         title: 'Đăng nhập thành công',
@@ -110,9 +115,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         if (onSuccess) {
           onSuccess();
         } else {
-          router.push('/dashboard');
+          // Use window.location.href instead of router.push for more reliable redirect
+          const redirectTo = '/dashboard';
+          console.log('Attempting redirect to:', redirectTo);
+          // Decode any URL-encoded characters
+          const decodedRedirect = decodeURIComponent(redirectTo);
+          window.location.href = decodedRedirect;
         }
-      }, 100);
+      }, 1000); // Increased timeout to ensure auth state is fully updated
     } catch (error) {
       console.error('Login error:', error);
       toast({

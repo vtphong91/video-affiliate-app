@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
 import { z } from 'zod';
+import { requireAuth, getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,17 +50,30 @@ const updateScheduleSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId');
     const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    // Get total count for pagination
-    const totalCount = await db.getSchedulesCount(userId || undefined, status || undefined);
+    // Get authenticated user ID
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Authentication required' 
+        },
+        { status: 401 }
+      );
+    }
+
+    console.log('👤 Authenticated user ID:', userId);
+
+    // Get total count for pagination (user-specific)
+    const totalCount = await db.getSchedulesCount(userId, status || undefined);
     const totalPages = Math.ceil(totalCount / limit);
 
-    // Get paginated schedules
-    const schedules = await db.getSchedules(userId || undefined, status || undefined, limit, (page - 1) * limit);
+    // Get paginated schedules (user-specific)
+    const schedules = await db.getSchedules(userId, status || undefined, limit, (page - 1) * limit);
 
     return NextResponse.json({
       success: true,
@@ -102,9 +116,9 @@ export async function POST(request: NextRequest) {
     const validatedData = createScheduleSchema.parse(body);
     console.log('✅ Validation passed:', validatedData);
     
-    // Get user ID from request (you might need to implement auth)
-    const userId = 'default-user-id'; // TODO: Get from auth context
-    console.log('👤 User ID:', userId);
+    // Get authenticated user ID
+    const userId = await requireAuth(request);
+    console.log('👤 Authenticated user ID:', userId);
     
     // Get review data to populate real values
     console.log('📋 Fetching review data...');

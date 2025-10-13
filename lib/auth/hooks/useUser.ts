@@ -4,7 +4,6 @@
  */
 
 import { useAuth } from './useAuth';
-import { authHelpers } from '../config/supabase-auth';
 import type { UserProfile, ProfileUpdateData } from '../config/auth-types';
 
 export const useUser = () => {

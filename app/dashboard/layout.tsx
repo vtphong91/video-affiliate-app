@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Video, List, Settings, Tag, Home, Calendar, PlusCircle, LayoutDashboard } from 'lucide-react';
 import { AuthButton } from '@/components/auth/ui/AuthButton';
-import { useAuth } from '@/lib/auth/providers/SupabaseAuthProvider';
+import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { withDashboardRoute } from '@/lib/auth/middleware/route-protection';
 import { ClientProviders } from '@/components/providers/ClientProviders';
 

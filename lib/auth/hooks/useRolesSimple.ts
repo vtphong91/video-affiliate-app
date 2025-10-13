@@ -3,7 +3,7 @@
  * Provides role-based functionality for SimpleAuthProvider
  */
 
-import { useAuth } from '../providers/SupabaseAuthProvider';
+import { useAuth } from '../SupabaseAuthProvider';
 
 export const useRoles = () => {
   const { user, hasRole, hasPermission } = useAuth();

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAuth } from '../config/supabase-auth';
+import { supabase } from '../config/supabase-auth';
 import type { AuthMiddlewareOptions, UserRole, Permission } from '../config/auth-types';
 
 /**
@@ -94,7 +94,7 @@ async function getSessionFromRequest(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      const { data, error } = await supabaseAuth.auth.getUser(token);
+      const { data, error } = await supabase.auth.getUser(token);
       
       if (error || !data.user) {
         return null;
@@ -108,7 +108,7 @@ async function getSessionFromRequest(request: NextRequest) {
     const refreshToken = request.cookies.get('sb-refresh-token')?.value;
     
     if (accessToken && refreshToken) {
-      const { data, error } = await supabaseAuth.auth.setSession({
+      const { data, error } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
 import { handleError, createErrorResponse, createSuccessResponse, logError } from '@/lib/utils/error-handler';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 // Mark as dynamic route
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,17 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
     const page = parseInt(searchParams.get('page') || '1');
+
+    // Get authenticated user ID
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json(
+        createErrorResponse('AUTHENTICATION_ERROR', 'Authentication required'),
+        { status: 401 }
+      );
+    }
+
+    console.log('👤 Authenticated user ID for reviews:', userId);
 
     // Calculate offset from page if page is provided
     const actualOffset = page ? (page - 1) * limit : offset;
@@ -32,8 +44,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch reviews from database
-    const reviews = await db.getReviews({ status, limit, offset: actualOffset });
+    // Fetch reviews from database (user-specific)
+    const reviews = await db.getReviews({ userId, status, limit, offset: actualOffset });
 
     let filteredReviews = reviews;
 
@@ -43,8 +55,8 @@ export async function GET(request: NextRequest) {
       filteredReviews = reviews.filter(review => !scheduledReviewIds.includes(review.id));
     }
 
-    // Get total count for pagination
-    const totalCount = await db.getReviewsCount({ status });
+    // Get total count for pagination (user-specific)
+    const totalCount = await db.getReviewsCount({ userId, status });
     const totalPages = Math.ceil(totalCount / limit);
 
     return NextResponse.json(

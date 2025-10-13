@@ -35,9 +35,10 @@ interface ScheduleCardProps {
   schedule: ScheduleWithReview;
   onDelete: (id: string) => void;
   onRetry: (id: string) => void;
+  onEdit: (schedule: ScheduleWithReview) => void;
 }
 
-export function ScheduleCard({ schedule, onDelete, onRetry }: ScheduleCardProps) {
+export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
@@ -167,7 +168,12 @@ export function ScheduleCard({ schedule, onDelete, onRetry }: ScheduleCardProps)
           </div>
           <div className="flex items-center gap-1">
             {schedule.status === 'pending' && (
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => onEdit(schedule)}
+                title="Sửa thời gian đăng bài"
+              >
                 <Edit className="h-4 w-4" />
               </Button>
             )}

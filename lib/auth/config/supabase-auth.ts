@@ -2,10 +2,32 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Check if Supabase is configured
+let supabase: any;
+
+if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('your_supabase') || supabaseKey.includes('your_supabase')) {
+  console.warn('⚠️ Supabase not configured in supabase-auth.ts, using mock mode');
+  
+  // Create a mock client
+  supabase = {
+    auth: {
+      signUp: () => Promise.resolve({ data: { user: null, session: null }, error: null }),
+      signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: null }),
+      signOut: () => Promise.resolve({ error: null }),
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      updateUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      resetPasswordForEmail: () => Promise.resolve({ data: {}, error: null })
+    }
+  };
+} else {
+  console.log('✅ Supabase configured in supabase-auth.ts, creating real client');
+  supabase = createClient(supabaseUrl, supabaseKey);
+}
+
+export { supabase };
 
 export const authHelpers = {
   async signUp(email: string, password: string, userData?: any) {

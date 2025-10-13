@@ -8,7 +8,7 @@
 import React, { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoginForm } from '@/components/auth/forms/LoginForm';
-import { useAuth } from '@/lib/auth/providers/SupabaseAuthProvider';
+import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { ClientProviders } from '@/components/providers/ClientProviders';
 import { clearSupabaseCache } from '@/lib/utils/clear-cache';
@@ -30,15 +30,30 @@ function LoginPageForm() {
 
   // Check if user is already authenticated
   useEffect(() => {
+    console.log('🔍 LoginPage useEffect - loading:', loading, 'user:', user?.email);
     if (!loading && user) {
-      router.push('/dashboard');
+      console.log('🔍 User already authenticated, redirecting to dashboard');
+      // Check if there's a redirect parameter
+      const redirectTo = searchParams.get('redirect') || '/dashboard';
+      // Don't decode if it's already decoded
+      const finalRedirect = redirectTo.startsWith('%') ? decodeURIComponent(redirectTo) : redirectTo;
+      console.log('🔍 Redirecting to:', finalRedirect);
+      // Use window.location.href to avoid Next.js router issues
+      // Add small delay to ensure auth state is fully updated
+      setTimeout(() => {
+        window.location.href = finalRedirect;
+      }, 100);
     }
-  }, [user, loading, router]);
+  }, [user, loading, searchParams]);
 
   // Handle success
   const handleSuccess = () => {
     const redirectTo = searchParams.get('redirect') || '/dashboard';
-    router.push(redirectTo);
+    // Decode URL-encoded characters
+    const decodedRedirect = decodeURIComponent(redirectTo);
+    console.log('Login success handler - redirecting to:', decodedRedirect);
+    // Use window.location.href for more reliable redirect
+    window.location.href = decodedRedirect;
   };
 
   // Handle switch to register

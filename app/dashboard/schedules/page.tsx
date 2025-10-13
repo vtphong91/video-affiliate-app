@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Pagination } from '@/components/ui/pagination';
+import { supabase } from '@/lib/db/supabase';
 import { 
-  Plus, 
+  Plus,  
   Calendar, 
   Clock, 
   CheckCircle, 
@@ -21,6 +22,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { ScheduleCard } from '@/components/schedules/ScheduleCard';
 import { CreateScheduleDialog } from '@/components/schedules/CreateScheduleDialog';
+import { EditScheduleDialog } from '@/components/schedules/EditScheduleDialog';
 import { ScheduleStats } from '@/components/schedules/ScheduleStats';
 import type { Schedule } from '@/lib/db/supabase';
 
@@ -54,6 +56,8 @@ export default function SchedulesPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<ScheduleWithReview | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const { toast } = useToast();
 
@@ -86,7 +90,24 @@ export default function SchedulesPage() {
       }
       
       const statusParam = activeTab === 'all' ? '' : `&status=${activeTab}`;
-      const response = await fetch(`/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}`);
+      
+      // Get authentication headers from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication headers if session exists
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-email'] = session.user.email || '';
+        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+      }
+      
+      const response = await fetch(`/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}`, {
+        headers
+      });
       const result = await response.json();
       
       if (result.success) {
@@ -177,6 +198,45 @@ export default function SchedulesPage() {
         description: error instanceof Error ? error.message : 'Không thể thử lại lịch đăng bài',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleEditSchedule = (schedule: ScheduleWithReview) => {
+    setEditingSchedule(schedule);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateSchedule = async (scheduleId: string, newScheduledFor: string) => {
+    try {
+      const response = await fetch(`/api/schedules/${scheduleId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          scheduled_for: newScheduledFor,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: 'Thành công',
+          description: 'Đã cập nhật thời gian đăng bài',
+        });
+        fetchSchedules(); // Refresh the list
+      } else {
+        throw new Error(result.error || 'Failed to update schedule');
+      }
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      toast({
+        title: 'Lỗi',
+        description: error instanceof Error ? error.message : 'Không thể cập nhật lịch đăng bài',
+        variant: 'destructive',
+      });
+      throw error; // Re-throw to let EditScheduleDialog handle it
     }
   };
 
@@ -366,6 +426,7 @@ export default function SchedulesPage() {
                     schedule={schedule}
                     onDelete={handleDeleteSchedule}
                     onRetry={handleRetrySchedule}
+                    onEdit={handleEditSchedule}
                   />
                 ))
               )}
@@ -398,6 +459,17 @@ export default function SchedulesPage() {
             }
           }}
           onSubmit={handleCreateSchedule}
+        />
+
+        {/* Edit Schedule Dialog */}
+        <EditScheduleDialog
+          isOpen={showEditDialog}
+          onClose={() => {
+            setShowEditDialog(false);
+            setEditingSchedule(null);
+          }}
+          schedule={editingSchedule}
+          onUpdate={handleUpdateSchedule}
         />
       </div>
     </div>

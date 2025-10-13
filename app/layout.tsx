@@ -17,8 +17,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <ClientProviders useSupabase={true}>
+      <body className="min-h-screen bg-background font-sans antialiased" suppressHydrationWarning>
+        <ClientProviders>
           {children}
         </ClientProviders>
       </body>

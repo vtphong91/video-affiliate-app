@@ -3,7 +3,7 @@
  * Provides user-specific functionality for SimpleAuthProvider
  */
 
-import { useAuth } from '../providers/SupabaseAuthProvider';
+import { useAuth } from '../SupabaseAuthProvider';
 
 export const useUser = () => {
   const { user, updateProfile } = useAuth();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth as useSimpleAuth } from '@/lib/auth/providers/SupabaseAuthProvider';
+import { useAuth as useSimpleAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useToast } from './useToast';
 
 export function useAuth() {
