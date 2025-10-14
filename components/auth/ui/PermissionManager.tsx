@@ -65,12 +65,12 @@ export const PermissionManager: React.FC<PermissionManagerProps> = ({ className 
   // Load user permissions
   const loadUserPermissions = async (userId: string) => {
     try {
-      const { permissions, error } = await RoleService.getUserPermissions(userId);
+      const permissions = await RoleService.getUserPermissions(userId);
       
-      if (error) {
+      if (!permissions) {
         toast({
           title: 'Lỗi tải quyền người dùng',
-          description: error.message,
+          description: 'Không thể tải quyền người dùng',
           variant: 'destructive',
         });
         return;

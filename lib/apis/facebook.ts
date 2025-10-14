@@ -163,6 +163,7 @@ export function formatFacebookPost(params: {
   targetAudience: string[];
   keywords: string[];
   channelName?: string;
+  videoUrl?: string;
   landingUrl: string;
 }): string {
   const {
@@ -173,6 +174,7 @@ export function formatFacebookPost(params: {
     targetAudience,
     keywords,
     channelName,
+    videoUrl,
     landingUrl
   } = params;
 
