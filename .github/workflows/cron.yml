@@ -19,20 +19,59 @@ jobs:
         with:
           node-version: '18'
           
+      - name: Check Secrets
+        run: |
+          echo "🔍 Checking required secrets..."
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ CRON_SECRET is not configured"
+            exit 1
+          fi
+          if [ -z "${{ secrets.VERCEL_APP_URL }}" ]; then
+            echo "❌ VERCEL_APP_URL is not configured"
+            exit 1
+          fi
+          echo "✅ All secrets are configured"
+          echo "App URL: ${{ secrets.VERCEL_APP_URL }}"
+          
       - name: Trigger Cron Job
         run: |
           echo "🔄 Triggering cron job..."
-          curl -X POST \
+          response=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            "${{ secrets.VERCEL_APP_URL }}/api/manual-cron"
+            "${{ secrets.VERCEL_APP_URL }}/api/manual-cron")
+          
+          # Extract HTTP code and body
+          http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
+          body=$(echo "$response" | sed '/HTTP_CODE:/d')
+          
+          echo "HTTP Code: $http_code"
+          echo "Response Body: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Cron job triggered successfully"
+          else
+            echo "❌ Cron job failed with HTTP $http_code"
+            exit 1
+          fi
             
       - name: Check Debug Status
         run: |
           echo "🔍 Checking debug status..."
-          curl -X GET \
+          response=$(curl -s -X GET \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.VERCEL_APP_URL }}/api/cron/debug-schedules" | jq .
+            "${{ secrets.VERCEL_APP_URL }}/api/cron/debug-schedules")
+          
+          echo "Raw response: $response"
+          
+          # Check if response is valid JSON
+          if echo "$response" | jq . >/dev/null 2>&1; then
+            echo "✅ Valid JSON response:"
+            echo "$response" | jq .
+          else
+            echo "❌ Invalid JSON response:"
+            echo "$response"
+          fi
             
       - name: Notify on Failure
         if: failure()
