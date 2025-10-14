@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db/supabase';
+import { db, supabaseAdmin } from '@/lib/db/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const currentGMT7 = new Date(now.getTime() + gmt7Offset);
 
     // Get all pending schedules
-    const { data: allPendingSchedules, error: pendingError } = await db.supabaseAdmin
+    const { data: allPendingSchedules, error: pendingError } = await supabaseAdmin
       .from('schedules')
       .select('*')
       .eq('status', 'pending')
