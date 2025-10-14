@@ -6,9 +6,9 @@ import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 const TARGET_TIMEZONE = 'Asia/Ho_Chi_Minh'; // GMT+7
 
 /**
- * Tạo timestamp UTC từ DateTimePicker để lưu database
+ * Tạo timestamp GMT+7 từ DateTimePicker để lưu database
  * Input: Date object từ DateTimePicker (user's local time - GMT+7)
- * Output: UTC ISO string để lưu database
+ * Output: GMT+7 timestamp string cho PostgreSQL
  */
 export function createTimestampFromDatePicker(date: Date, time: string): string {
   console.log('🔍 createTimestampFromDatePicker - Input Date:', date, 'Time:', time);
@@ -27,19 +27,25 @@ export function createTimestampFromDatePicker(date: Date, time: string): string 
     throw new Error('Time must be in HH:MM format');
   }
 
-  // Create a date in GMT+7 timezone
-  const gmt7Date = toZonedTime(date, TARGET_TIMEZONE);
-  gmt7Date.setHours(hours, minutes, 0, 0);
+  // Create timestamp in GMT+7 (user's timezone)
+  const localDate = new Date(date);
+  localDate.setHours(hours, minutes, 0, 0);
 
-  console.log('🔍 GMT+7 Date from picker:', gmt7Date);
+  console.log('🔍 Local Date:', localDate);
 
-  // Convert GMT+7 to UTC for database storage
-  const utcDate = fromZonedTime(gmt7Date, TARGET_TIMEZONE);
-  const utcISOString = utcDate.toISOString();
+  // Format as PostgreSQL timestamp: YYYY-MM-DD HH:MM:SS
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, '0');
+  const day = String(localDate.getDate()).padStart(2, '0');
+  const hour = String(localDate.getHours()).padStart(2, '0');
+  const minute = String(localDate.getMinutes()).padStart(2, '0');
+  const second = String(localDate.getSeconds()).padStart(2, '0');
 
-  console.log('🔍 UTC ISO string for database:', utcISOString);
+  const timestampString = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 
-  return utcISOString; // Store as UTC ISO string
+  console.log('🔍 Timestamp string for database:', timestampString);
+
+  return timestampString; // Store as GMT+7 timestamp
 }
 
 /**
