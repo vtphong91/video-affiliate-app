@@ -327,11 +327,11 @@ export const db = {
     try {
       // Import getCurrentTimestamp for GMT+7 timezone
       const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
-      
+
       const currentGMT7 = getCurrentTimestamp();
       console.log('🔍 getPendingSchedules - Current GMT+7:', currentGMT7);
-      
-      const { data, error } = await supabase
+
+      const { data, error } = await supabaseAdmin
         .from('schedules')
         .select('*')
         .eq('status', 'pending')
@@ -353,7 +353,7 @@ export const db = {
 
   async getFailedSchedulesForRetry() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('schedules')
         .select('*')
         .eq('status', 'failed')

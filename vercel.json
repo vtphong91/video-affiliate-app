@@ -1,11 +1,14 @@
 {
   "crons": [
     {
-      "path": "/api/cron/process-schedules",
-      "schedule": "0 9 * * *"
+      "path": "/api/cron/check-schedules",
+      "schedule": "*/5 * * * *"
     }
   ],
   "functions": {
+    "app/api/cron/check-schedules/route.ts": {
+      "maxDuration": 60
+    },
     "app/api/cron/process-schedules/route.ts": {
       "maxDuration": 60
     },

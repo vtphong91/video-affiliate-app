@@ -7,27 +7,38 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const timestamp = new Date().toISOString();
-  
+
   try {
-    // Verify cron secret for security (allow dev-secret in development)
+    // Check if request is from Vercel Cron (has x-vercel-cron-id header)
+    const vercelCronId = request.headers.get('x-vercel-cron-id');
     const cronSecret = request.headers.get('x-cron-secret');
     const expectedSecret = process.env.CRON_SECRET || 'dev-secret';
-    
-    if (cronSecret !== expectedSecret) {
-      console.log('❌ Unauthorized cron request:', { 
-        provided: cronSecret, 
-        expected: expectedSecret,
-        timestamp 
+
+    // Allow requests from Vercel Cron OR with valid cron secret
+    const isVercelCron = !!vercelCronId;
+    const hasValidSecret = cronSecret === expectedSecret;
+
+    if (!isVercelCron && !hasValidSecret) {
+      console.log('❌ Unauthorized cron request:', {
+        vercelCronId: !!vercelCronId,
+        hasSecret: !!cronSecret,
+        timestamp
       });
       return NextResponse.json(
-        { 
+        {
           error: 'Unauthorized',
           timestamp,
-          message: 'Invalid cron secret'
+          message: 'Invalid cron secret or not from Vercel Cron'
         },
         { status: 401 }
       );
     }
+
+    console.log('✅ Authorized cron request:', {
+      source: isVercelCron ? 'Vercel Cron' : 'Manual with secret',
+      vercelCronId,
+      timestamp
+    });
 
     console.log('🕐 Cron job started - checking for scheduled posts...', { timestamp });
 
