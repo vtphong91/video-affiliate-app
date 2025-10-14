@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/check-schedules",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "functions": {
     "app/api/cron/check-schedules/route.ts": {
       "maxDuration": 60

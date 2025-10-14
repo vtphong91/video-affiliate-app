@@ -1,119 +1,133 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CronService } from '@/lib/services/cron-service';
+import { db } from '@/lib/db/supabase';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Debug API - Get detailed information about schedules
- * 
- * This endpoint provides debugging information about:
- * - Pending schedules
- * - Failed schedules
- * - Schedule details
- * - Time calculations
- */
+// Debug endpoint to check cron status and schedules
 export async function GET(request: NextRequest) {
   try {
-    // Verify cron secret for security
+    // Check authentication
+    const vercelCronId = request.headers.get('x-vercel-cron-id');
     const cronSecret = request.headers.get('x-cron-secret');
     const expectedSecret = process.env.CRON_SECRET || 'dev-secret';
-    
-    console.log('🔐 Secret check:', { 
-      provided: cronSecret, 
-      expected: expectedSecret,
-      match: cronSecret === expectedSecret 
-    });
-    
-    if (cronSecret !== expectedSecret) {
+
+    const isVercelCron = !!vercelCronId;
+    const hasValidSecret = cronSecret === expectedSecret;
+
+    if (!isVercelCron && !hasValidSecret) {
       return NextResponse.json(
-        { 
+        {
           error: 'Unauthorized',
-          message: 'Invalid cron secret',
-          debug: {
-            provided: cronSecret,
-            expected: expectedSecret
-          }
+          message: 'Invalid cron secret or not from Vercel Cron'
         },
         { status: 401 }
       );
     }
 
-    console.log('🔍 Debug: Getting schedule information...');
+    console.log('🔍 Debug endpoint called - checking cron status...');
 
-    // Initialize cron service
-    const cronService = new CronService();
-    
-    // Get schedules
-    const [pendingSchedules, failedSchedules] = await Promise.all([
-      cronService.getPendingSchedules(),
-      cronService.getFailedSchedulesForRetry(),
-    ]);
-
-    // Calculate current time in GMT+7
+    // Get current time info
     const now = new Date();
-    const nowGMT7 = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-    const nowGMT7String = nowGMT7.toISOString().replace('Z', '+07:00');
+    const gmt7Offset = 7 * 60 * 60 * 1000;
+    const currentGMT7 = new Date(now.getTime() + gmt7Offset);
 
-    // Analyze schedules
-    const analysis = {
-      currentTime: {
-        utc: now.toISOString(),
-        gmt7: nowGMT7String,
-        gmt7Formatted: nowGMT7.toLocaleString('vi-VN', { 
-          timeZone: 'Asia/Ho_Chi_Minh',
-          hour12: false 
-        }),
-      },
-      pendingSchedules: {
-        count: pendingSchedules.length,
-        schedules: pendingSchedules.map(schedule => ({
-          id: schedule.id,
-          scheduledFor: schedule.scheduled_for,
-          status: schedule.status,
-          retryCount: schedule.retry_count,
-          isOverdue: new Date(schedule.scheduled_for) < nowGMT7,
-          timeUntilDue: new Date(schedule.scheduled_for).getTime() - nowGMT7.getTime(),
-          reviewTitle: schedule.reviews?.video_title || 'No title',
-        })),
-      },
-      failedSchedules: {
-        count: failedSchedules.length,
-        schedules: failedSchedules.map(schedule => ({
-          id: schedule.id,
-          scheduledFor: schedule.scheduled_for,
-          status: schedule.status,
-          retryCount: schedule.retry_count,
-          maxRetries: schedule.max_retries,
-          nextRetryAt: schedule.next_retry_at,
-          errorMessage: schedule.error_message,
-          isOverdue: new Date(schedule.scheduled_for) < nowGMT7,
-          reviewTitle: schedule.reviews?.video_title || 'No title',
-        })),
-      },
-      webhookConfig: {
-        webhookUrl: process.env.MAKECOM_WEBHOOK_URL ? 'Configured' : 'Not configured',
-        cronSecret: process.env.CRON_SECRET ? 'Configured' : 'Not configured',
-      },
-    };
+    // Get all pending schedules
+    const { data: allPendingSchedules, error: pendingError } = await db.supabaseAdmin
+      .from('schedules')
+      .select('*')
+      .eq('status', 'pending')
+      .order('scheduled_for', { ascending: true });
 
-    console.log('✅ Debug information collected:', analysis);
+    if (pendingError) {
+      console.error('❌ Error fetching pending schedules:', pendingError);
+    }
 
-    return NextResponse.json({
+    // Get schedules that should be processed
+    const dueSchedules = await db.getPendingSchedules();
+
+    // Get failed schedules for retry
+    const failedSchedules = await db.getFailedSchedulesForRetry();
+
+    // Check webhook configuration
+    const webhookUrl = process.env.MAKECOM_WEBHOOK_URL;
+    const cronSecretConfig = process.env.CRON_SECRET;
+
+    const debugInfo = {
       success: true,
       message: 'Debug information retrieved',
-      data: analysis,
-      timestamp: new Date().toISOString(),
+      data: {
+        currentTime: {
+          utc: now.toISOString(),
+          gmt7: currentGMT7.toISOString(),
+          gmt7Formatted: currentGMT7.toLocaleString('en-US', { 
+            timeZone: 'Asia/Ho_Chi_Minh',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          })
+        },
+        pendingSchedules: {
+          count: allPendingSchedules?.length || 0,
+          schedules: (allPendingSchedules || []).map(schedule => ({
+            id: schedule.id.substring(0, 8) + '...',
+            scheduled_for: schedule.scheduled_for,
+            video_title: schedule.video_title,
+            status: schedule.status,
+            timezone: schedule.timezone
+          }))
+        },
+        dueSchedules: {
+          count: dueSchedules.length,
+          schedules: dueSchedules.map(schedule => ({
+            id: schedule.id.substring(0, 8) + '...',
+            scheduled_for: schedule.scheduled_for,
+            video_title: schedule.video_title,
+            status: schedule.status,
+            timezone: schedule.timezone
+          }))
+        },
+        failedSchedules: {
+          count: failedSchedules.length,
+          schedules: failedSchedules.map(schedule => ({
+            id: schedule.id.substring(0, 8) + '...',
+            scheduled_for: schedule.scheduled_for,
+            video_title: schedule.video_title,
+            status: schedule.status,
+            retry_count: schedule.retry_count,
+            error_message: schedule.error_message
+          }))
+        },
+        webhookConfig: {
+          webhookUrl: webhookUrl ? 'Configured' : 'Not configured',
+          cronSecret: cronSecretConfig ? 'Configured' : 'Using default'
+        },
+        environment: {
+          nodeEnv: process.env.NODE_ENV,
+          vercelCronId: !!vercelCronId,
+          hasValidSecret: hasValidSecret
+        }
+      }
+    };
+
+    console.log('✅ Debug info generated:', {
+      pendingCount: allPendingSchedules?.length || 0,
+      dueCount: dueSchedules.length,
+      failedCount: failedSchedules.length,
+      webhookConfigured: !!webhookUrl
     });
 
+    return NextResponse.json(debugInfo);
+
   } catch (error) {
-    console.error('❌ Debug API failed:', error);
-    
+    console.error('❌ Debug endpoint error:', error);
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: 'Debug API failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Debug failed',
+        message: 'Failed to retrieve debug information'
       },
       { status: 500 }
     );

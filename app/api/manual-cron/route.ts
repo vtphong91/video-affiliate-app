@@ -1,46 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db/supabase';
 import { CronService } from '@/lib/services/cron-service';
 
+export const dynamic = 'force-dynamic';
+
+// Manual cron trigger endpoint for external cron services
 export async function POST(request: NextRequest) {
   try {
-    // Check for secret token to prevent unauthorized access
+    // Check authentication
     const authHeader = request.headers.get('authorization');
-    const secret = process.env.CRON_SECRET;
+    const cronSecret = request.headers.get('x-cron-secret');
+    const expectedSecret = process.env.CRON_SECRET || 'dev-secret';
+
+    // Support both Authorization header and x-cron-secret header
+    const authToken = authHeader?.replace('Bearer ', '') || cronSecret;
     
-    if (!secret) {
-      return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 });
+    if (authToken !== expectedSecret) {
+      console.error('❌ Invalid cron secret for manual trigger');
+      return NextResponse.json(
+        { 
+          error: 'Unauthorized',
+          message: 'Invalid cron secret'
+        }, 
+        { status: 401 }
+      );
     }
+
+    console.log('🔄 Manual cron trigger called - processing schedules...');
     
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get pending schedules
+    const pendingSchedules = await db.getPendingSchedules();
+    console.log(`📋 Found ${pendingSchedules.length} pending schedules`);
+
+    if (pendingSchedules.length === 0) {
+      return NextResponse.json({ 
+        success: true,
+        message: 'No pending schedules to process',
+        processed: 0,
+        timestamp: new Date().toISOString()
+      });
     }
+
+    // Process schedules using CronService
+    const summary = await CronService.processSchedules(pendingSchedules);
     
-    console.log('🔄 Manual cron trigger started');
-    
-    // Process schedules using static method
-    const result = await CronService.processSchedules([]);
-    
-    console.log('✅ Manual cron trigger completed:', result);
-    
+    console.log('✅ Manual cron processing completed:', summary);
+
     return NextResponse.json({
       success: true,
-      message: 'Manual cron trigger completed',
-      result
+      message: 'Schedules processed successfully',
+      processed: summary.processed,
+      posted: summary.posted,
+      failed: summary.failed,
+      postedWithoutWebhook: summary.postedWithoutWebhook,
+      duration: summary.duration,
+      timestamp: summary.timestamp,
+      results: summary.results
     });
-    
+
   } catch (error) {
-    console.error('❌ Manual cron trigger error:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error('❌ Error in manual cron trigger:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: error instanceof Error ? error.message : 'Manual cron failed',
+        message: 'Failed to process schedules'
+      },
+      { status: 500 }
+    );
   }
 }
 
-export async function GET() {
-  return NextResponse.json({
-    message: 'Manual cron trigger endpoint',
-    usage: 'POST with Authorization: Bearer <CRON_SECRET>',
-    example: 'curl -X POST -H "Authorization: Bearer your_secret" https://your-app.vercel.app/api/manual-cron'
-  });
+// GET method for testing
+export async function GET(request: NextRequest) {
+  try {
+    // Check authentication
+    const cronSecret = request.headers.get('x-cron-secret');
+    const expectedSecret = process.env.CRON_SECRET || 'dev-secret';
+    
+    if (cronSecret !== expectedSecret) {
+      return NextResponse.json(
+        { 
+          error: 'Unauthorized',
+          message: 'Invalid cron secret'
+        }, 
+        { status: 401 }
+      );
+    }
+
+    // Return status info
+    const pendingSchedules = await db.getPendingSchedules();
+    const failedSchedules = await db.getFailedSchedulesForRetry();
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Manual cron endpoint is working',
+      pendingCount: pendingSchedules.length,
+      failedCount: failedSchedules.length,
+      webhookConfigured: !!process.env.MAKECOM_WEBHOOK_URL,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error in manual cron GET:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: error instanceof Error ? error.message : 'Manual cron check failed'
+      },
+      { status: 500 }
+    );
+  }
 }

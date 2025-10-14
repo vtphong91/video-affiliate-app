@@ -325,8 +325,6 @@ export const db = {
 
   async getPendingSchedules() {
     try {
-      // Get all pending schedules and filter in JavaScript
-      // This is more reliable than timezone conversion in PostgreSQL
       console.log('🔍 getPendingSchedules - Getting all pending schedules...');
 
       const { data, error } = await supabaseAdmin
@@ -340,9 +338,9 @@ export const db = {
         return [];
       }
 
-      // Get current time in GMT+7
+      // Get current time in GMT+7 (Asia/Ho_Chi_Minh)
       const now = new Date();
-      const gmt7Offset = 7 * 60 * 60 * 1000;
+      const gmt7Offset = 7 * 60 * 60 * 1000; // GMT+7 offset in milliseconds
       const currentGMT7 = new Date(now.getTime() + gmt7Offset);
 
       console.log('🔍 getPendingSchedules - Server UTC:', now.toISOString());
@@ -353,23 +351,20 @@ export const db = {
       const dueSchedules = (data || []).filter((schedule: any) => {
         const scheduledFor = schedule.scheduled_for;
 
-        // Parse the scheduled_for time
-        // It could be either:
-        // 1. ISO string (from PostgreSQL timestamp): "2025-10-14T09:13:00.000Z"
-        // 2. PostgreSQL format string: "2025-10-14 16:13:00"
+        // Parse the scheduled_for time - handle both formats
         let scheduledDate: Date;
 
         if (scheduledFor.includes('T') || scheduledFor.includes('Z')) {
           // ISO format - parse directly
           scheduledDate = new Date(scheduledFor);
         } else {
-          // PostgreSQL format - parse as GMT+7
-          // Convert "2025-10-14 16:13:00" to Date object assuming GMT+7
+          // PostgreSQL format: "2025-10-14 16:25:00" - treat as GMT+7
           const [datePart, timePart] = scheduledFor.split(' ');
           const [year, month, day] = datePart.split('-').map(Number);
           const [hours, minutes, seconds] = timePart.split(':').map(Number);
 
-          // Create date in GMT+7 (subtract 7 hours to get UTC)
+          // Create date assuming GMT+7 timezone
+          // Convert GMT+7 to UTC by subtracting 7 hours
           scheduledDate = new Date(Date.UTC(year, month - 1, day, hours - 7, minutes, seconds));
         }
 
@@ -379,6 +374,7 @@ export const db = {
 
         console.log(`  - Schedule ${schedule.id.substring(0, 8)}:`);
         console.log(`    scheduled_for (raw): ${scheduledFor}`);
+        console.log(`    scheduled_for (parsed UTC): ${scheduledDate.toISOString()}`);
         console.log(`    scheduled_for (GMT+7): ${scheduledGMT7.toISOString()}`);
         console.log(`    current (GMT+7): ${currentGMT7.toISOString()}`);
         console.log(`    isDue: ${isDue}`);
