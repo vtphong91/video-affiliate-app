@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db/supabase';
+import { db, supabaseAdmin } from '@/lib/db/supabase';
 import { handleError, createErrorResponse, createSuccessResponse, logError } from '@/lib/utils/error-handler';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
@@ -59,8 +59,18 @@ export async function GET(request: NextRequest) {
 
     // If excludeScheduled is true, filter out reviews that already have schedules
     if (excludeScheduled) {
-      const scheduledReviewIds = await db.getScheduledReviewIds();
-      filteredReviews = reviews.filter(review => !scheduledReviewIds.includes(review.id));
+      const { data: scheduledReviews, error } = await supabaseAdmin
+        .from('schedules')
+        .select('review_id')
+        .not('review_id', 'is', null);
+      
+      if (error) {
+        console.error('❌ Error fetching scheduled review IDs:', error);
+        // Continue without filtering if there's an error
+      } else {
+        const scheduledReviewIds = scheduledReviews?.map(item => item.review_id) || [];
+        filteredReviews = reviews.filter(review => !scheduledReviewIds.includes(review.id));
+      }
     }
 
     // Get total count for pagination (user-specific)
