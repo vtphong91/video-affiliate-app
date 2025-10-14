@@ -4,7 +4,9 @@
       "Bash(npm run dev)",
       "Bash(npm run build)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nfix: Resolve TypeScript build errors for Vercel deployment\n\n- Fix fallbackProfile in SupabaseAuthProvider to include created_at and updated_at\n- Fix useUserSimple.ts to remove non-existent user.name property\n- Remove unused api-auth middleware file\n- Add AuthMiddlewareOptions interface to auth-middleware\n- Update all role references from ''user''/''guest'' to ''admin''/''editor''/''viewer''\n- Fix readonly array type issues in rbac-middleware and permissions\n- Update role-service.ts to use correct UserRole types\n- Fix AuthWrapper to use SupabaseAuthProvider\n- Add VideoPlatform type export\n- Fix timezone-utils formatTimestampForDisplay function\n- Fix useAuth logout function return type\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nfix: Resolve TypeScript build errors for Vercel deployment\n\n- Fix fallbackProfile in SupabaseAuthProvider to include created_at and updated_at\n- Fix useUserSimple.ts to remove non-existent user.name property\n- Remove unused api-auth middleware file\n- Add AuthMiddlewareOptions interface to auth-middleware\n- Update all role references from ''user''/''guest'' to ''admin''/''editor''/''viewer''\n- Fix readonly array type issues in rbac-middleware and permissions\n- Update role-service.ts to use correct UserRole types\n- Fix AuthWrapper to use SupabaseAuthProvider\n- Add VideoPlatform type export\n- Fix timezone-utils formatTimestampForDisplay function\n- Fix useAuth logout function return type\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
