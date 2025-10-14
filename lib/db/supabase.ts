@@ -325,18 +325,31 @@ export const db = {
 
   async getPendingSchedules() {
     try {
-      // Get current time in ISO format (UTC) for comparison
+      // Get current time in GMT+7 (Asia/Ho_Chi_Minh)
       const now = new Date();
-      const currentTime = now.toISOString();
 
-      console.log('🔍 getPendingSchedules - Current UTC:', currentTime);
-      console.log('🔍 getPendingSchedules - Current Local:', now.toString());
+      // Convert to GMT+7: Add 7 hours to UTC
+      const gmt7Offset = 7 * 60 * 60 * 1000; // 7 hours in milliseconds
+      const gmt7Time = new Date(now.getTime() + gmt7Offset);
+
+      // Format as 'YYYY-MM-DD HH:MM:SS' (PostgreSQL timestamp format)
+      const year = gmt7Time.getUTCFullYear();
+      const month = String(gmt7Time.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(gmt7Time.getUTCDate()).padStart(2, '0');
+      const hours = String(gmt7Time.getUTCHours()).padStart(2, '0');
+      const minutes = String(gmt7Time.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(gmt7Time.getUTCSeconds()).padStart(2, '0');
+
+      const currentTimeGMT7 = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+      console.log('🔍 getPendingSchedules - Server UTC:', now.toISOString());
+      console.log('🔍 getPendingSchedules - Current GMT+7:', currentTimeGMT7);
 
       const { data, error } = await supabaseAdmin
         .from('schedules')
         .select('*')
         .eq('status', 'pending')
-        .lte('scheduled_for', currentTime)
+        .lte('scheduled_for', currentTimeGMT7)
         .order('scheduled_for', { ascending: true });
 
       if (error) {
