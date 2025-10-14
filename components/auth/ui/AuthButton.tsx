@@ -14,14 +14,14 @@ import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 interface AuthButtonProps {
   showText?: boolean;
   variant?: 'default' | 'outline' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
   className?: string;
 }
 
 export const AuthButton: React.FC<AuthButtonProps> = ({
   showText = true,
   variant = 'default',
-  size = 'md',
+  size = 'default',
   className = '',
 }) => {
   const router = useRouter();

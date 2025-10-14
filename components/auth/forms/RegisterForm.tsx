@@ -131,12 +131,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      const { error } = await register(formData);
+      const { error } = await register(formData.email, formData.password, formData.fullName);
       
       if (error) {
         toast({
           title: 'Đăng ký thất bại',
-          description: error.message,
+          description: error,
           variant: 'destructive',
         });
         return;

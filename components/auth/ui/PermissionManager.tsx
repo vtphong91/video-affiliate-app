@@ -38,12 +38,12 @@ export const PermissionManager: React.FC<PermissionManagerProps> = ({ className 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const { users: usersData, error } = await UserService.getAllUsers();
+      const usersData = await UserService.getAllUsers();
       
-      if (error) {
+      if (!usersData) {
         toast({
           title: 'Lỗi tải danh sách người dùng',
-          description: error.message,
+          description: 'Không thể tải danh sách người dùng',
           variant: 'destructive',
         });
         return;

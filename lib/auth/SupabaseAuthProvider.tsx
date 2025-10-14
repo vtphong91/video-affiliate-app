@@ -20,6 +20,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   // Enhanced permission and role checking
@@ -285,6 +286,29 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Register function
+  const register = async (email: string, password: string, fullName: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  };
+
   // Logout function
   const logout = async () => {
     await supabase.auth.signOut();
@@ -333,6 +357,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     userProfile,
     loading,
     login,
+    register,
     logout,
     isAuthenticated: !!user && !!userProfile,
     // Enhanced permission and role checking
