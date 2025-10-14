@@ -8,12 +8,13 @@ c# AUTO CRON WEBHOOK MODULE - DEVELOPMENT RULES
 - **HỎI LẠI khi muốn dev** vào module này
 
 ### **TIMEZONE RULE - QUAN TRỌNG:**
-- **Database `scheduled_for`:** Lưu GMT+7 format `YYYY-MM-DDTHH:mm:ss.sss+07:00`
-- **DateTimePicker:** User chọn GMT+7, lưu trực tiếp không convert
-- **createTimestampFromDatePicker:** Tạo GMT+7 string thủ công, KHÔNG dùng `toISOString()`
-- **UI Display:** Parse GMT+7 trực tiếp từ database, không cần conversion
-- **calculateTimeRemaining:** So sánh GMT+7 với GMT+7 hiện tại
-- **KHÔNG để Supabase** tự động convert timezone
+- **Database `scheduled_for`:** Lưu **UTC** format `YYYY-MM-DDTHH:mm:ss.sssZ` (KHÔNG có timezone offset)
+- **DateTimePicker:** User chọn GMT+7, convert sang UTC trước khi lưu
+- **createTimestampFromDatePicker:** Convert GMT+7 → UTC, dùng `fromZonedTime()`
+- **UI Display:** Convert UTC → GMT+7 khi hiển thị, dùng `toZonedTime()`
+- **calculateTimeRemaining:** So sánh trong GMT+7 (sau khi convert từ UTC)
+- **getPendingSchedules:** So sánh UTC với UTC (đơn giản, chính xác)
+- **Best Practice:** Store UTC, Display GMT+7
 
 ### **Files thuộc Auto Cron Webhook Module:**
 ```
