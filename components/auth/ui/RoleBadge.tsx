@@ -34,9 +34,9 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({
     switch (role) {
       case 'admin':
         return <Shield className="w-3 h-3" />;
-      case 'user':
+      case 'editor':
         return <User className="w-3 h-3" />;
-      case 'guest':
+      case 'viewer':
         return <Eye className="w-3 h-3" />;
       default:
         return <User className="w-3 h-3" />;
