@@ -100,9 +100,10 @@ export const ROLE_PERMISSIONS = {
 
 export function hasPermission(userRole: string, permission: Permission): boolean {
   const rolePermissions = ROLE_PERMISSIONS[userRole as keyof typeof ROLE_PERMISSIONS];
-  return rolePermissions?.includes(permission) || false;
+  return rolePermissions?.includes(permission as any) || false;
 }
 
 export function getPermissionsForRole(role: string): Permission[] {
-  return ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
+  const permissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS];
+  return permissions ? [...permissions] as Permission[] : [];
 }

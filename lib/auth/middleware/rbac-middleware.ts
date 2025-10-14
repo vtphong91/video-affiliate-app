@@ -106,11 +106,11 @@ export async function middleware(request: NextRequest) {
     // Helper function to check role hierarchy
     const hasRole = (requiredRoles: string[]): boolean => {
       if (!userProfile) return false;
-      
+
       const userRole = userProfile.role;
-      const allowedRoles = ROLE_HIERARCHY[userRole as keyof typeof ROLE_HIERARCHY] || [];
-      
-      return requiredRoles.some(role => allowedRoles.includes(role));
+      const allowedRoles = (ROLE_HIERARCHY[userRole as keyof typeof ROLE_HIERARCHY] || []) as readonly string[];
+
+      return requiredRoles.some(role => allowedRoles.includes(role as any));
     };
 
     // Check route access
@@ -132,7 +132,7 @@ export async function middleware(request: NextRequest) {
       }
 
       // Check permissions
-      if (!hasPermission(routePermissions)) {
+      if (!hasPermission([...routePermissions])) {
         console.log(`🔒 Insufficient permissions for ${pathname}, user role: ${userProfile.role}`);
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }

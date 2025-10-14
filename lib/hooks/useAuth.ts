@@ -26,18 +26,12 @@ export function useAuth() {
 
   const logoutWithToast = async () => {
     try {
-      const result = await auth.logout();
-      
-      if (result.success) {
-        success('Đăng xuất thành công!');
-        return result;
-      } else {
-        error('Đăng xuất thất bại');
-        return result;
-      }
+      await auth.logout();
+      success('Đăng xuất thành công!');
+      return { success: true };
     } catch (err: any) {
       error(err.message || 'Đăng xuất thất bại');
-      throw err;
+      return { success: false, error: err.message };
     }
   };
 

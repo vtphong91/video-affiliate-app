@@ -49,8 +49,8 @@ export const useUser = () => {
   // Get user initials
   const getInitials = (): string => {
     if (!user) return 'U';
-    
-    const name = user.name || user.email || '';
+
+    const name = user.email || '';
     const words = name.split(' ');
     
     if (words.length >= 2) {
@@ -77,11 +77,8 @@ export const useUser = () => {
 
   // Update user profile
   const updateUserProfile = async (data: any) => {
-    if (!updateProfile) {
-      throw new Error('updateProfile not available');
-    }
-    
-    return await updateProfile(data);
+    // SimpleAuthProvider doesn't have updateProfile functionality yet
+    throw new Error('updateProfile not available');
   };
 
   // Check if user can update profile

@@ -19,12 +19,12 @@ export function requireAdmin(request: NextRequest) {
 }
 
 /**
- * Middleware for user role (admin or user)
+ * Middleware for user role (admin, editor, or viewer)
  */
 export function requireUser(request: NextRequest) {
   return withAuth(request, {
     requireAuth: true,
-    allowedRoles: ['admin', 'user'],
+    allowedRoles: ['admin', 'editor', 'viewer'],
     redirectTo: '/auth/login',
   });
 }

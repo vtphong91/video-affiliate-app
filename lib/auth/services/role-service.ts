@@ -13,10 +13,10 @@ export class RoleService {
     switch (role) {
       case 'admin':
         return 'Admin';
-      case 'user':
-        return 'User';
-      case 'guest':
-        return 'Guest';
+      case 'editor':
+        return 'Editor';
+      case 'viewer':
+        return 'Viewer';
       default:
         return 'Unknown';
     }
@@ -29,10 +29,10 @@ export class RoleService {
     switch (role) {
       case 'admin':
         return 'bg-red-100 text-red-800 border-red-200';
-      case 'user':
+      case 'editor':
         return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'guest':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'viewer':
+        return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -45,10 +45,10 @@ export class RoleService {
     switch (role) {
       case 'admin':
         return 'Administrator with full access';
-      case 'user':
-        return 'Regular user with standard access';
-      case 'guest':
-        return 'Guest with limited access';
+      case 'editor':
+        return 'Editor with content management access';
+      case 'viewer':
+        return 'Viewer with read-only access';
       default:
         return 'Unknown role';
     }
@@ -62,16 +62,16 @@ export class RoleService {
   }
 
   /**
-   * Check if role has user privileges
+   * Check if role has editor privileges
    */
-  static isUser(role: UserRole): boolean {
-    return role === 'user' || role === 'admin';
+  static isEditor(role: UserRole): boolean {
+    return role === 'editor' || role === 'admin';
   }
 
   /**
    * Get all available roles
    */
   static getAllRoles(): UserRole[] {
-    return ['admin', 'user', 'guest'];
+    return ['admin', 'editor', 'viewer'];
   }
 }

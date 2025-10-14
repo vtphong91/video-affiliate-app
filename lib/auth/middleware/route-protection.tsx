@@ -67,7 +67,7 @@ export function withRouteProtection<P extends object>(
           return;
         }
         
-        if (!userProfile.role || !allowedRoles.includes(userProfile.role)) {
+        if (!userProfile.role || !allowedRoles.includes(userProfile.role as UserRole)) {
           console.log('❌ Role check failed - userProfile.role:', userProfile.role);
           if (fallback === 'redirect') {
             router.push('/admin-access-denied');
@@ -144,7 +144,7 @@ export function withRouteProtection<P extends object>(
         return <Component {...props} />;
       }
       
-      if (userProfile && (!userProfile.role || !allowedRoles.includes(userProfile.role))) {
+      if (userProfile && (!userProfile.role || !allowedRoles.includes(userProfile.role as UserRole))) {
         console.log('❌ Final access check failed - userProfile.role:', userProfile.role);
         return null;
       }
@@ -173,7 +173,7 @@ export function withAdminRoute<P extends object>(Component: React.ComponentType<
 export function withUserRoute<P extends object>(Component: React.ComponentType<P>) {
   return withRouteProtection(Component, {
     requireAuth: true,
-    allowedRoles: ['admin', 'user'],
+    allowedRoles: ['admin', 'editor', 'viewer'],
     fallbackRedirect: '/auth/login',
   });
 }
@@ -235,7 +235,7 @@ export function withAnyPermissionRoute<P extends object>(
 export function withDashboardRoute<P extends object>(Component: React.ComponentType<P>) {
   return withRouteProtection(Component, {
     requireAuth: true,
-    allowedRoles: ['admin', 'user'],
+    allowedRoles: ['admin', 'editor', 'viewer'],
     fallbackRedirect: '/auth/login',
   });
 }

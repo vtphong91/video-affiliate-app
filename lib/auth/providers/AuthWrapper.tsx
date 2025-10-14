@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { SimpleAuthProvider } from './SimpleAuthProvider';
+import { SupabaseAuthProvider } from '../SupabaseAuthProvider';
 import { Toaster } from '@/components/ui/toaster';
 
 interface AuthWrapperProps {
@@ -15,10 +15,10 @@ interface AuthWrapperProps {
 
 export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   return (
-    <SimpleAuthProvider>
+    <SupabaseAuthProvider>
       {children}
       <Toaster />
-    </SimpleAuthProvider>
+    </SupabaseAuthProvider>
   );
 };
 

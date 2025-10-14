@@ -110,7 +110,7 @@ export function formatTimestampForDisplay(isoString: string | Date | null | unde
 
   // Convert UTC date to target timezone for display
   const zonedDate = toZonedTime(date, TARGET_TIMEZONE);
-  return format(zonedDate, formatStr, { timeZone: TARGET_TIMEZONE });
+  return format(zonedDate, formatStr);
 }
 
 /**

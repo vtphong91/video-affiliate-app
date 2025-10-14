@@ -1,5 +1,5 @@
-// Export API types
-export * from './api';
+// Video Platform
+export type VideoPlatform = 'youtube' | 'tiktok';
 
 // Video Info
 export interface VideoInfo {

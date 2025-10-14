@@ -252,6 +252,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       
       // If all retries failed, create a fallback profile immediately
       console.warn('⚠️ SupabaseAuthProvider: All retries failed, creating fallback profile immediately');
+      const now = new Date().toISOString();
       const fallbackProfile = {
         id: userId,
         email: 'user@example.com',
@@ -259,7 +260,9 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         role: 'admin' as const, // Set as admin for testing
         status: 'active' as const,
         is_active: true,
-        avatar_url: null
+        avatar_url: null,
+        created_at: now,
+        updated_at: now
       };
       setUserProfile(fallbackProfile);
       

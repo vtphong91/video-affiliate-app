@@ -5,7 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../config/supabase-auth';
-import type { AuthMiddlewareOptions, UserRole, Permission } from '../config/auth-types';
+import type { UserRole, Permission } from '../config/auth-types';
+
+interface AuthMiddlewareOptions {
+  redirectTo?: string;
+  requireAuth?: boolean;
+  allowedRoles?: UserRole[];
+  allowedPermissions?: Permission[];
+}
 
 /**
  * Middleware function to protect routes
@@ -165,7 +172,7 @@ export function withAdminAuth(request: NextRequest) {
 export function withUserAuth(request: NextRequest) {
   return withAuth(request, {
     requireAuth: true,
-    allowedRoles: ['admin', 'user'],
+    allowedRoles: ['admin', 'editor', 'viewer'],
     redirectTo: '/auth/login',
   });
 }
