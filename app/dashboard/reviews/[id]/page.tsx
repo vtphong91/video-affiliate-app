@@ -20,7 +20,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { ReviewPreview } from '@/components/ReviewPreview';
-import { FacebookPoster } from '@/components/FacebookPoster';
 import type { Review, VideoInfo, AIAnalysis } from '@/types';
 
 export default function ReviewDetailPage() {
@@ -245,16 +244,9 @@ export default function ReviewDetailPage() {
               <CardTitle>Đăng lên Facebook</CardTitle>
             </CardHeader>
             <CardContent>
-              <FacebookPoster
-                reviewId={review.id}
-                slug={review.slug}
-                videoTitle={review.custom_title || review.video_title}
-                videoUrl={review.video_url}
-                videoThumbnail={review.video_thumbnail}
-                channelName={review.channel_name}
-                analysis={analysis}
-                affiliateLinks={review.affiliate_links}
-              />
+              <div className="p-8 text-center text-gray-500">
+                <p>Facebook Poster component đã được tạm thời vô hiệu hóa để fix lỗi deploy.</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

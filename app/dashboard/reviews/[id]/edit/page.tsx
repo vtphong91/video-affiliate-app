@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Save, ArrowLeft, Plus, X, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { FacebookPoster } from '@/components/FacebookPoster';
 import { useToast } from '@/components/ui/use-toast';
 import type { Review, KeyPoint, AffiliateLink, AIAnalysis, Category } from '@/types';
 
@@ -597,27 +596,9 @@ export default function EditReviewPage() {
 
             {/* Facebook Poster */}
             <TabsContent value="facebook">
-              {review && (
-                <FacebookPoster
-                  reviewId={review.id}
-                  slug={review.slug}
-                  videoTitle={customTitle || review.video_title}
-                  videoUrl={review.video_url}
-                  videoThumbnail={review.video_thumbnail}
-                  channelName={review.channel_name}
-                  analysis={{
-                    summary,
-                    pros,
-                    cons,
-                    keyPoints,
-                    comparisonTable: review.comparison_table,
-                    targetAudience,
-                    cta,
-                    seoKeywords: review.seo_keywords,
-                  }}
-                  affiliateLinks={affiliateLinks}
-                />
-              )}
+              <div className="p-8 text-center text-gray-500">
+                <p>Facebook Poster component đã được tạm thời vô hiệu hóa để fix lỗi deploy.</p>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

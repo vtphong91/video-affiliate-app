@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { VideoAnalyzer } from '@/components/VideoAnalyzer';
 import { AIContentEditor } from '@/components/AIContentEditor';
 import { ReviewPreview } from '@/components/ReviewPreview';
-import { FacebookPoster } from '@/components/FacebookPoster';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -321,16 +320,9 @@ function CreateReviewPage() {
               />
             </TabsContent>
             <TabsContent value="facebook">
-              <FacebookPoster
-                reviewId={savedReview.id}
-                slug={savedReview.slug}
-                videoTitle={customTitle || videoInfo.title}
-                videoUrl={`https://www.${videoInfo.platform === 'youtube' ? 'youtube.com/watch?v=' : 'tiktok.com/@video/'}${videoInfo.videoId}`}
-                videoThumbnail={videoInfo.thumbnail}
-                channelName={videoInfo.channelName}
-                analysis={analysis}
-                affiliateLinks={affiliateLinks}
-              />
+              <div className="p-8 text-center text-gray-500">
+                <p>Facebook Poster component đã được tạm thời vô hiệu hóa để fix lỗi deploy.</p>
+              </div>
             </TabsContent>
           </Tabs>
 
