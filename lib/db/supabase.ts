@@ -343,27 +343,45 @@ export const db = {
       // Get current time in GMT+7
       const now = new Date();
       const gmt7Offset = 7 * 60 * 60 * 1000;
-      const gmt7Time = new Date(now.getTime() + gmt7Offset);
-
-      // Format as 'YYYY-MM-DD HH:MM:SS' for comparison
-      const year = gmt7Time.getUTCFullYear();
-      const month = String(gmt7Time.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(gmt7Time.getUTCDate()).padStart(2, '0');
-      const hours = String(gmt7Time.getUTCHours()).padStart(2, '0');
-      const minutes = String(gmt7Time.getUTCMinutes()).padStart(2, '0');
-      const seconds = String(gmt7Time.getUTCSeconds()).padStart(2, '0');
-      const currentTimeGMT7 = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      const currentGMT7 = new Date(now.getTime() + gmt7Offset);
 
       console.log('🔍 getPendingSchedules - Server UTC:', now.toISOString());
-      console.log('🔍 getPendingSchedules - Current GMT+7:', currentTimeGMT7);
+      console.log('🔍 getPendingSchedules - Current GMT+7:', currentGMT7.toISOString());
       console.log(`📋 getPendingSchedules: Total pending: ${data?.length || 0}`);
 
       // Filter schedules that are due (scheduled_for <= current time)
       const dueSchedules = (data || []).filter((schedule: any) => {
         const scheduledFor = schedule.scheduled_for;
-        const isDue = scheduledFor <= currentTimeGMT7;
 
-        console.log(`  - Schedule ${schedule.id.substring(0, 8)}: scheduled_for=${scheduledFor}, isDue=${isDue}`);
+        // Parse the scheduled_for time
+        // It could be either:
+        // 1. ISO string (from PostgreSQL timestamp): "2025-10-14T09:13:00.000Z"
+        // 2. PostgreSQL format string: "2025-10-14 16:13:00"
+        let scheduledDate: Date;
+
+        if (scheduledFor.includes('T') || scheduledFor.includes('Z')) {
+          // ISO format - parse directly
+          scheduledDate = new Date(scheduledFor);
+        } else {
+          // PostgreSQL format - parse as GMT+7
+          // Convert "2025-10-14 16:13:00" to Date object assuming GMT+7
+          const [datePart, timePart] = scheduledFor.split(' ');
+          const [year, month, day] = datePart.split('-').map(Number);
+          const [hours, minutes, seconds] = timePart.split(':').map(Number);
+
+          // Create date in GMT+7 (subtract 7 hours to get UTC)
+          scheduledDate = new Date(Date.UTC(year, month - 1, day, hours - 7, minutes, seconds));
+        }
+
+        // Convert scheduled time to GMT+7 for comparison
+        const scheduledGMT7 = new Date(scheduledDate.getTime() + gmt7Offset);
+        const isDue = scheduledGMT7.getTime() <= currentGMT7.getTime();
+
+        console.log(`  - Schedule ${schedule.id.substring(0, 8)}:`);
+        console.log(`    scheduled_for (raw): ${scheduledFor}`);
+        console.log(`    scheduled_for (GMT+7): ${scheduledGMT7.toISOString()}`);
+        console.log(`    current (GMT+7): ${currentGMT7.toISOString()}`);
+        console.log(`    isDue: ${isDue}`);
 
         return isDue;
       });
