@@ -5,16 +5,10 @@ import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
-// Validation schema for updates
+// Validation schema for updates - ONLY allow time changes
 const updateScheduleSchema = z.object({
-  scheduled_for: z.string().optional(), // Remove .datetime() validation to be more flexible
+  scheduled_for: z.string().min(1, 'Thời gian đăng bài không được để trống'),
   scheduledFor: z.string().optional(), // Keep for backward compatibility
-  targetType: z.enum(['page', 'group']).optional(),
-  targetId: z.string().min(1).optional(),
-  targetName: z.string().optional(),
-  postMessage: z.string().min(1).optional(),
-  landingPageUrl: z.string().url().optional(),
-  status: z.enum(['pending', 'processing', 'posted', 'failed', 'cancelled']).optional(),
 });
 
 // GET /api/schedules/[id] - Get single schedule
@@ -104,16 +98,36 @@ export async function PUT(
     // Validate input
     const validatedData = updateScheduleSchema.parse(body);
 
-    // Convert camelCase to snake_case for database
+    // Convert camelCase to snake_case for database - ONLY time fields
     const updateData: any = {};
     if (validatedData.scheduled_for) updateData.scheduled_for = validatedData.scheduled_for;
     if (validatedData.scheduledFor) updateData.scheduled_for = validatedData.scheduledFor; // Backward compatibility
-    if (validatedData.targetType) updateData.target_type = validatedData.targetType;
-    if (validatedData.targetId) updateData.target_id = validatedData.targetId;
-    if (validatedData.targetName) updateData.target_name = validatedData.targetName;
-    if (validatedData.postMessage) updateData.post_message = validatedData.postMessage;
-    if (validatedData.landingPageUrl) updateData.landing_page_url = validatedData.landingPageUrl;
-    if (validatedData.status) updateData.status = validatedData.status;
+    
+    // Add time validation
+    const scheduledTime = new Date(updateData.scheduled_for);
+    const now = new Date();
+    const maxFutureTime = new Date();
+    maxFutureTime.setFullYear(maxFutureTime.getFullYear() + 1); // Max 1 year in future
+    
+    if (scheduledTime <= now) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Thời gian đăng bài phải trong tương lai'
+        },
+        { status: 400 }
+      );
+    }
+    
+    if (scheduledTime > maxFutureTime) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Thời gian đăng bài không được quá 1 năm trong tương lai'
+        },
+        { status: 400 }
+      );
+    }
 
     const schedule = await db.updateSchedule(params.id, updateData);
 

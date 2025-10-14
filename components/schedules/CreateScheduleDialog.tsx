@@ -37,6 +37,36 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
     })(),
   });
 
+  // Helper functions for date/time handling
+  const getDateInputValue = (date: Date): string => {
+    if (!date || isNaN(date.getTime())) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 1);
+      return fallback.toISOString().split('T')[0];
+    }
+    return date.toISOString().split('T')[0];
+  };
+
+  const getTimeInputValue = (date: Date): string => {
+    if (!date || isNaN(date.getTime())) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 1);
+      fallback.setHours(9, 0, 0, 0);
+      return fallback.toTimeString().slice(0, 5);
+    }
+    return date.toTimeString().slice(0, 5);
+  };
+
+  const updateScheduledFor = (newDate: Date) => {
+    if (!newDate || isNaN(newDate.getTime())) {
+      console.error('❌ Invalid date provided to updateScheduledFor:', newDate);
+      return;
+    }
+    
+    console.log('🔄 Updating scheduledFor from:', formData.scheduledFor, 'to:', newDate);
+    setFormData(prev => ({ ...prev, scheduledFor: newDate }));
+  };
+
   useEffect(() => {
     console.log('🔍 CreateScheduleDialog: useEffect triggered, open:', open);
     if (open) {
@@ -68,12 +98,19 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
         const allReviews = reviewsResult.data || [];
         const usedReviewIds = usedIdsResult.success ? usedIdsResult.usedReviewIds : [];
         
+        console.log('🔍 CreateScheduleDialog: Used IDs data:', usedIdsResult);
+        console.log('🔍 CreateScheduleDialog: Used review IDs:', usedReviewIds);
+        
         // Filter out reviews that are already used in schedules
-        const availableReviews = allReviews.filter((review: any) => 
-          !usedReviewIds.includes(review.id)
-        );
+        const availableReviews = allReviews.filter((review: any) => {
+          const isUsed = usedReviewIds.includes(review.id);
+          console.log(`🔍 Review ${review.id} (${review.video_title}): ${isUsed ? 'USED' : 'AVAILABLE'}`);
+          return !isUsed;
+        });
         
         console.log(`✅ Total reviews: ${allReviews.length}, Used: ${usedReviewIds.length}, Available: ${availableReviews.length}`);
+        console.log('🔍 Available reviews:', availableReviews.map(r => ({ id: r.id, title: r.video_title })));
+        
         setReviews(availableReviews);
       } else {
         console.error('❌ Reviews API failed:', reviewsResult.error);
@@ -261,14 +298,16 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
   };
 
   const resetForm = () => {
+    const defaultDate = (() => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0); // 9:00 AM tomorrow
+      return tomorrow;
+    })();
+    
     setFormData({
       reviewId: '',
-      scheduledFor: (() => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9, 0, 0, 0); // 9:00 AM tomorrow
-        return tomorrow;
-      })(),
+      scheduledFor: defaultDate,
     });
   };
 
@@ -328,52 +367,45 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
               <div className="flex items-center gap-2">
                 <Input
                   type="date"
-                  value={(() => {
-                    try {
-                      return formData.scheduledFor.toISOString().split('T')[0];
-                    } catch {
-                      const fallback = new Date();
-                      fallback.setDate(fallback.getDate() + 1);
-                      return fallback.toISOString().split('T')[0];
-                    }
-                  })()}
+                  value={getDateInputValue(formData.scheduledFor)}
                   onChange={(e) => {
-                    try {
-                      const newDate = new Date(e.target.value);
-                      if (!isNaN(newDate.getTime())) {
-                        newDate.setHours(formData.scheduledFor.getHours());
-                        newDate.setMinutes(formData.scheduledFor.getMinutes());
-                        setFormData(prev => ({ ...prev, scheduledFor: newDate }));
-                      }
-                    } catch (error) {
-                      console.error('Date change error:', error);
+                    if (!e.target.value) return;
+                    
+                    const newDate = new Date(e.target.value);
+                    if (!isNaN(newDate.getTime())) {
+                      // Preserve existing time when changing date
+                      newDate.setHours(formData.scheduledFor.getHours());
+                      newDate.setMinutes(formData.scheduledFor.getMinutes());
+                      newDate.setSeconds(formData.scheduledFor.getSeconds());
+                      updateScheduledFor(newDate);
                     }
                   }}
                   className="flex-1"
                 />
                 <Input
                   type="time"
-                  value={(() => {
-                    try {
-                      return formData.scheduledFor.toTimeString().slice(0, 5);
-                    } catch {
-                      return '09:00';
-                    }
-                  })()}
+                  value={getTimeInputValue(formData.scheduledFor)}
                   onChange={(e) => {
-                    try {
-                      const [hours, minutes] = e.target.value.split(':');
+                    if (!e.target.value) return;
+                    
+                    const [hours, minutes] = e.target.value.split(':').map(Number);
+                    
+                    // Validate parsed values
+                    if (hours !== undefined && minutes !== undefined && 
+                        !isNaN(hours) && !isNaN(minutes) &&
+                        hours >= 0 && hours <= 23 && 
+                        minutes >= 0 && minutes <= 59) {
+                      
                       const newDate = new Date(formData.scheduledFor);
-                      newDate.setHours(parseInt(hours), parseInt(minutes));
-                      if (!isNaN(newDate.getTime())) {
-                        setFormData(prev => ({ ...prev, scheduledFor: newDate }));
-                      }
-                    } catch (error) {
-                      console.error('Time change error:', error);
+                      newDate.setHours(hours, minutes, 0, 0);
+                      updateScheduledFor(newDate);
                     }
                   }}
                   className="w-32"
                 />
+              </div>
+              <div className="text-sm text-gray-600">
+                <strong>Thời gian đã chọn:</strong> {formData.scheduledFor.toLocaleString('vi-VN')}
               </div>
             </div>
 

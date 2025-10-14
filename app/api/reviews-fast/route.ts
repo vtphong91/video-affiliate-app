@@ -15,7 +15,7 @@ export async function GET() {
     // Get only essential fields for dropdown
     const { data: reviews, error } = await supabaseAdmin
       .from('reviews')
-      .select('id, video_title, slug, created_at')
+      .select('id, video_title, slug, created_at, affiliate_links')
       .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(20); // Limit to 20 for better performance
@@ -50,3 +50,5 @@ export async function GET() {
     }, { status: 500 });
   }
 }
+
+

@@ -262,7 +262,7 @@ export const db = {
   // Schedules
   async getSchedules(userId?: string, status?: string, limit = 10, offset = 0) {
     try {
-      let query = supabase
+      let query = supabaseAdmin
         .from('schedules')
         .select(`
           *,
@@ -296,7 +296,7 @@ export const db = {
 
   async getSchedulesCount(userId?: string, status?: string) {
     try {
-      let query = supabase
+      let query = supabaseAdmin
         .from('schedules')
         .select('*', { count: 'exact', head: true });
 
@@ -394,7 +394,7 @@ export const db = {
 
   async updateSchedule(id: string, updates: Partial<Schedule>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('schedules')
         .update(updates)
         .eq('id', id)

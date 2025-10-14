@@ -38,37 +38,16 @@ export async function POST(request: NextRequest) {
       landingUrl: landingPageUrl
     });
 
-    // Convert affiliate_links array to text format
-    const affiliateLinksArray = affiliate_links || [];
-    const affiliateLinksText = formatAffiliateLinksToText(affiliateLinksArray);
+    // Get affiliate_links from request or review (prioritize request)
+    const affiliateLinksArray = affiliate_links || review.affiliate_links || [];
     
     console.log('🔍 Fast API affiliate_links debug:', {
-      original_array: affiliateLinksArray,
-      formatted_text: affiliateLinksText,
-      array_length: Array.isArray(affiliateLinksArray) ? affiliateLinksArray.length : 'not array'
+      request_affiliate_links: affiliate_links,
+      review_affiliate_links: review.affiliate_links,
+      final_array: affiliateLinksArray,
+      array_length: Array.isArray(affiliateLinksArray) ? affiliateLinksArray.length : 'not array',
+      array_type: typeof affiliateLinksArray
     });
-    
-    // Helper function to format affiliate links to text
-    function formatAffiliateLinksToText(affiliateLinks: any[]): string {
-      if (!affiliateLinks || affiliateLinks.length === 0) {
-        return '';
-      }
-
-      let text = 'ĐẶT MUA SẢN PHẨM VỚI GIÁ TỐT TẠI:\n';
-      
-      affiliateLinks.forEach((link, index) => {
-        text += `- ${link.platform || `Affiliate Link ${index + 1}`}`;
-        if (link.url) {
-          text += ` ${link.url}`;
-        }
-        if (link.price) {
-          text += ` - ${link.price}`;
-        }
-        text += '\n';
-      });
-
-      return text.trim();
-    }
 
     // Create schedule directly
     const schedule = await db.createSchedule({
@@ -81,7 +60,7 @@ export async function POST(request: NextRequest) {
       target_name: targetName,
       post_message: postMessage,
       landing_page_url: landingPageUrl,
-      affiliate_links: affiliateLinksText, // Save as formatted text instead of array
+      affiliate_links: affiliateLinksArray, // Save as jsonb array
       status: 'pending',
       retry_count: 0,
       max_retries: 3,

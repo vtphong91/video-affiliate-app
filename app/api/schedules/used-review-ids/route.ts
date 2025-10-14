@@ -13,8 +13,9 @@ export async function GET(request: NextRequest) {
 
     const { data: usedReviewIds, error } = await supabaseAdmin
       .from('schedules')
-      .select('review_id')
-      .not('review_id', 'is', null);
+      .select('review_id, video_title, status, created_at')
+      .not('review_id', 'is', null)
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Error fetching used review IDs:', error);
@@ -24,13 +25,22 @@ export async function GET(request: NextRequest) {
     const reviewIds = usedReviewIds?.map(item => item.review_id) || [];
     
     console.log(`✅ Found ${reviewIds.length} used review IDs:`, reviewIds);
+    console.log('🔍 Used review details:', usedReviewIds?.map(item => ({
+      reviewId: item.review_id,
+      videoTitle: item.video_title,
+      status: item.status,
+      createdAt: item.created_at
+    })));
 
     return NextResponse.json({ 
       success: true, 
-      usedReviewIds: reviewIds 
+      usedReviewIds: reviewIds,
+      usedReviewDetails: usedReviewIds || []
     });
   } catch (error) {
     console.error('❌ Unhandled error fetching used review IDs:', error);
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }
+
+

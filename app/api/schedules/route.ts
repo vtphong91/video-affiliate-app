@@ -186,37 +186,16 @@ export async function POST(request: NextRequest) {
     
     console.log('📝 Generated real post message:', realPostMessage.substring(0, 100) + '...');
     
-      // Convert affiliate_links array to text format
-      const affiliateLinksArray = validatedData.affiliate_links || review.affiliate_links || [];
-      const affiliateLinksText = formatAffiliateLinksToText(affiliateLinksArray);
-      
-      console.log('🔍 API schedules affiliate_links debug:', {
-        original_array: affiliateLinksArray,
-        formatted_text: affiliateLinksText,
-        array_length: Array.isArray(affiliateLinksArray) ? affiliateLinksArray.length : 'not array'
-      });
-      
-      // Helper function to format affiliate links to text
-      function formatAffiliateLinksToText(affiliateLinks: any[]): string {
-        if (!affiliateLinks || affiliateLinks.length === 0) {
-          return '';
-        }
-
-        let text = 'ĐẶT MUA SẢN PHẨM VỚI GIÁ TỐT TẠI:\n';
-        
-        affiliateLinks.forEach((link, index) => {
-          text += `- ${link.platform || `Affiliate Link ${index + 1}`}`;
-          if (link.url) {
-            text += ` ${link.url}`;
-          }
-          if (link.price) {
-            text += ` - ${link.price}`;
-          }
-          text += '\n';
-        });
-
-        return text.trim();
-      }
+    // Get affiliate_links from validated data or review (prioritize validated data)
+    const affiliateLinksArray = validatedData.affiliate_links || review.affiliate_links || [];
+    
+    console.log('🔍 API schedules affiliate_links debug:', {
+      validatedData_affiliate_links: validatedData.affiliate_links,
+      review_affiliate_links: review.affiliate_links,
+      final_array: affiliateLinksArray,
+      array_length: Array.isArray(affiliateLinksArray) ? affiliateLinksArray.length : 'not array',
+      array_type: typeof affiliateLinksArray
+    });
     
     // Create schedule
     console.log('📤 Creating schedule in database...');
@@ -230,7 +209,7 @@ export async function POST(request: NextRequest) {
       target_name: validatedData.targetName || 'Make.com Auto',
       post_message: realPostMessage, // Always use real post message from Facebook module
       landing_page_url: validatedData.landingPageUrl || landingUrl, // Use real landing URL
-      affiliate_links: affiliateLinksText, // Save as formatted text instead of array
+      affiliate_links: affiliateLinksArray, // Save as jsonb array instead of text
       status: 'pending',
       retry_count: 0,
       max_retries: 3,

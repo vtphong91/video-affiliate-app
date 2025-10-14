@@ -111,12 +111,13 @@ export class CronService {
     try {
       console.log(`🔧 Building webhook payload for schedule ${schedule.id}`);
       
-      // affiliate_links is now stored as text in database
-      const affiliateLinksText = schedule.affiliate_links || '';
+      // Format affiliate_links from jsonb array to readable text
+      const affiliateLinksText = this.formatAffiliateLinksForWebhook(schedule.affiliate_links);
       
       const payload = {
         scheduleId: schedule.id,
         reviewId: schedule.review_id,
+        postType: 'scheduled', // Distinguish from manual posts
         targetType: schedule.target_type,
         targetId: schedule.target_id,
         targetName: schedule.target_name,
@@ -126,7 +127,7 @@ export class CronService {
         videoUrl: schedule.video_url,
         videoTitle: schedule.video_title,
         channelName: schedule.channel_name,
-        affiliateLinksText: affiliateLinksText, // Direct text from database
+        affiliateLinksText: affiliateLinksText, // Formatted text for webhook
         reviewSummary: schedule.review_summary,
         reviewPros: schedule.review_pros,
         reviewCons: schedule.review_cons,
@@ -137,6 +138,7 @@ export class CronService {
         scheduledFor: schedule.scheduled_for,
         triggeredAt: new Date().toISOString(),
         retryAttempt: schedule.retry_count,
+        metadata: {}, // Optional metadata for future extensibility
       };
 
       console.log(`✅ Webhook payload built for schedule ${schedule.id}`);
@@ -145,6 +147,32 @@ export class CronService {
       console.error('❌ Error building webhook payload:', error);
       throw new Error('Failed to build webhook payload');
     }
+  }
+
+  /**
+   * Format affiliate links from jsonb array to readable text for webhook
+   */
+  formatAffiliateLinksForWebhook(affiliateLinks: any[] | null | undefined): string {
+    if (!affiliateLinks || !Array.isArray(affiliateLinks) || affiliateLinks.length === 0) {
+      return '';
+    }
+
+    let text = 'Đặt mua sản phẩm giá tốt tại:\n';
+    
+    affiliateLinks.forEach((link, index) => {
+      if (link && typeof link === 'object') {
+        text += `- ${link.platform || `Affiliate Link ${index + 1}`}`;
+        if (link.url) {
+          text += `: ${link.url}`;
+        }
+        if (link.price) {
+          text += ` (${link.price})`;
+        }
+        text += '\n';
+      }
+    });
+
+    return text.trim();
   }
 
 
