@@ -155,20 +155,25 @@ export function debugTimezone(label: string, date: Date) {
 }
 
 export function getCurrentTimestamp(): string {
+  // Get current time in UTC
   const now = new Date();
-  
-  // Tạo GMT+7 timestamp để so sánh với database
-  const year = now.getFullYear();
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  const hour = now.getHours().toString().padStart(2, '0');
-  const minute = now.getMinutes().toString().padStart(2, '0');
-  const second = now.getSeconds().toString().padStart(2, '0');
-  
+
+  // Convert to GMT+7 by adding 7 hours to UTC time
+  const gmt7Date = toZonedTime(now, TARGET_TIMEZONE);
+
+  // Format as GMT+7 ISO string
+  const year = gmt7Date.getFullYear();
+  const month = (gmt7Date.getMonth() + 1).toString().padStart(2, '0');
+  const day = gmt7Date.getDate().toString().padStart(2, '0');
+  const hour = gmt7Date.getHours().toString().padStart(2, '0');
+  const minute = gmt7Date.getMinutes().toString().padStart(2, '0');
+  const second = gmt7Date.getSeconds().toString().padStart(2, '0');
+
   const gmt7Timestamp = `${year}-${month}-${day}T${hour}:${minute}:${second}.000+07:00`;
-  
+
+  console.log('🔍 getCurrentTimestamp - UTC:', now.toISOString());
   console.log('🔍 getCurrentTimestamp - GMT+7:', gmt7Timestamp);
-  
+
   return gmt7Timestamp;
 }
 

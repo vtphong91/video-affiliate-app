@@ -16,13 +16,25 @@ jobs:
       - name: Trigger Cron Job
         run: |
           echo "🔄 Triggering schedule processing..."
-          curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          response=$(curl -X GET \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            https://${{ secrets.VERCEL_APP_URL }}/api/manual-cron
-          
-          echo "✅ Cron job triggered successfully"
-        
+            -w "\n%{http_code}" \
+            https://${{ secrets.VERCEL_APP_URL }}/api/cron/check-schedules)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "📥 Response code: $http_code"
+          echo "📋 Response body: $body"
+
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Cron job triggered successfully"
+          else
+            echo "❌ Cron job failed with status: $http_code"
+            exit 1
+          fi
+
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
