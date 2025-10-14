@@ -13,7 +13,7 @@ export const useRoles = () => {
   // Get current user role
   const getCurrentRole = (): UserRole | null => {
     if (!user) return null;
-    return user.profile?.role || user.role || null;
+    return (user.role as UserRole) || null;
   };
 
   // Check if user has specific role
@@ -89,10 +89,10 @@ export const useRoles = () => {
     switch (roleToDisplay) {
       case 'admin':
         return 'Quản trị viên';
-      case 'user':
-        return 'Người dùng';
-      case 'guest':
-        return 'Khách';
+      case 'editor':
+        return 'Biên tập viên';
+      case 'viewer':
+        return 'Người xem';
       default:
         return 'Không xác định';
     }
@@ -105,10 +105,10 @@ export const useRoles = () => {
     switch (roleToDisplay) {
       case 'admin':
         return 'bg-red-100 text-red-800';
-      case 'user':
+      case 'editor':
         return 'bg-blue-100 text-blue-800';
-      case 'guest':
-        return 'bg-gray-100 text-gray-800';
+      case 'viewer':
+        return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -124,7 +124,7 @@ export const useRoles = () => {
   const getAccessibleRoutes = (): string[] => {
     const routes = ['/'];
     
-    if (checkRole('user') || checkRole('admin')) {
+    if (checkRole('viewer') || checkRole('admin')) {
       routes.push('/dashboard', '/reviews', '/schedules');
     }
     

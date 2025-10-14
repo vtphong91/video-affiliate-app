@@ -4,7 +4,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { createError, logError, ERROR_CODES } from '@/lib/utils/error-handler';
+import { createError, logError } from '@/lib/utils/error-handler';
 
 interface Props {
   children: ReactNode;
@@ -49,8 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
       {
         componentStack: errorInfo.componentStack,
         errorBoundary: true,
-      },
-      error.stack
+      }
     );
     
     logError(appError, 'ErrorBoundary');
@@ -158,8 +157,7 @@ export function useErrorHandler() {
     const appError = createError(
       'INTERNAL_ERROR',
       error instanceof Error ? error.message : 'Unknown error',
-      error,
-      error instanceof Error ? error.stack : undefined
+      error
     );
     
     logError(appError, context);

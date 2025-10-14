@@ -6,12 +6,12 @@
 import { useAuth } from '../SupabaseAuthProvider';
 
 export const useUser = () => {
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
 
   // Get user display name
   const getDisplayName = (): string => {
     if (!user) return '';
-    return user.name || user.email || 'Unknown User';
+    return user.email || 'Unknown User';
   };
 
   // Get user avatar URL
@@ -27,7 +27,7 @@ export const useUser = () => {
     return {
       id: user.id,
       user_id: user.id,
-      full_name: user.name,
+      full_name: user.email || 'User',
       phone: '',
       avatar_url: null,
       bio: '',
@@ -43,7 +43,7 @@ export const useUser = () => {
   // Check if user profile is complete
   const isProfileComplete = (): boolean => {
     if (!user) return false;
-    return !!(user.name && user.email);
+    return !!user.email;
   };
 
   // Get user initials

@@ -123,7 +123,7 @@ export const useRoles = () => {
   const getAccessibleRoutes = (): string[] => {
     const routes = ['/'];
     
-    if (checkRole('user') || checkRole('editor') || checkRole('admin')) {
+    if (checkRole('viewer') || checkRole('editor') || checkRole('admin')) {
       routes.push('/dashboard', '/reviews', '/schedules');
     }
     

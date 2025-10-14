@@ -46,7 +46,7 @@ export interface Role {
   updated_at: string;
 }
 
-export interface Permission {
+export interface PermissionEntity {
   id: string;
   name: string;
   display_name: string;

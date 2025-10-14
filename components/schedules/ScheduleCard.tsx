@@ -20,7 +20,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { calculateTimeRemaining, formatTimestampForDisplay } from '@/lib/utils/timezone-utils';
 import { cn } from '@/lib/utils';
-import type { Schedule } from '@/lib/db/supabase';
+import type { Schedule } from '@/types';
 
 interface ScheduleWithReview extends Schedule {
   reviews: {

@@ -7,7 +7,7 @@ import { useAuth } from './useAuth';
 import type { UserProfile, ProfileUpdateData } from '../config/auth-types';
 
 export const useUser = () => {
-  const { user, userProfile, updateProfile, loading, error } = useAuth();
+  const { user, userProfile, loading } = useAuth();
 
   // Get user display name
   const getDisplayName = (): string => {
@@ -23,7 +23,7 @@ export const useUser = () => {
   };
 
   // Get user profile
-  const getProfile = (): UserProfile | null => {
+  const getProfile = () => {
     return userProfile || null;
   };
 
@@ -34,14 +34,14 @@ export const useUser = () => {
     const profile = getProfile();
     return !!(
       profile?.full_name &&
-      profile?.email &&
       profile?.role
     );
   };
 
   // Update user profile
   const updateUserProfile = async (data: ProfileUpdateData) => {
-    return await updateProfile(data);
+    // TODO: Implement updateProfile method
+    return { success: false, error: 'Not implemented' };
   };
 
   // Get user initials for avatar
@@ -111,7 +111,7 @@ export const useUser = () => {
     
     // Loading and error states
     loading,
-    error,
+    error: null, // TODO: Add error handling
   };
 };
 
