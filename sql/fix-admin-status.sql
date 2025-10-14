@@ -34,3 +34,5 @@ SET
     approved_by = id  -- Self-approved for existing admin
 WHERE role = 'admin' 
 AND (status = 'pending' OR status IS NULL);
+
+

@@ -45,3 +45,5 @@ const testMemberCreation = async () => {
 
 // Run the test
 testMemberCreation();
+
+

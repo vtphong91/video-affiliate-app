@@ -39,3 +39,5 @@ JOIN information_schema.constraint_column_usage AS ccu
     AND ccu.table_schema = tc.table_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
     AND tc.table_name = 'reviews';
+
+

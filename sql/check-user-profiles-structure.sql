@@ -21,3 +21,5 @@ AND column_name = 'status';
 
 -- 3. Check all columns in user_profiles
 SELECT * FROM user_profiles LIMIT 1;
+
+

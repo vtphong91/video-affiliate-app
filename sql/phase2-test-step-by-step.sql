@@ -213,3 +213,5 @@ WHERE status IS NULL AND role IN ('admin', 'editor', 'viewer');
 
 -- STEP 12: Verify setup
 SELECT 'Setup completed successfully!' as status;
+
+

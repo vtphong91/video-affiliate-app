@@ -18,3 +18,5 @@ SELECT
     COUNT(*) as count
 FROM reviews 
 GROUP BY status;
+
+

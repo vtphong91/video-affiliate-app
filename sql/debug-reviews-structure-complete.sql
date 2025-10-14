@@ -45,3 +45,5 @@ SELECT
     COUNT(video_url) as has_video_url,
     COUNT(channel_name) as has_channel_name
 FROM reviews;
+
+

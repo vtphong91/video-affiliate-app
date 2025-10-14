@@ -224,3 +224,5 @@ COMMENT ON COLUMN user_profiles.status IS 'User status: pending, approved, rejec
 COMMENT ON COLUMN user_profiles.approved_by IS 'Admin who approved the user';
 COMMENT ON COLUMN user_profiles.rejected_by IS 'Admin who rejected the user';
 COMMENT ON COLUMN user_profiles.rejection_reason IS 'Reason for rejection';
+
+

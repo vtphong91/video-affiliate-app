@@ -56,3 +56,5 @@ SELECT
     COUNT(*) as count
 FROM user_approval_queue 
 WHERE status = 'pending';
+
+

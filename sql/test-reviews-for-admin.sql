@@ -21,3 +21,5 @@ SELECT
 FROM reviews r
 JOIN user_profiles up ON r.user_id = up.id
 WHERE up.email = 'lammmodotcom@gmail.com'; -- Replace with your admin email
+
+

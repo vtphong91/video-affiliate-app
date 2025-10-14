@@ -11,3 +11,5 @@ CHECK (role IN ('admin', 'editor', 'viewer'));
 
 -- Verify the constraint was created
 SELECT 'Constraint created successfully!' as status;
+
+

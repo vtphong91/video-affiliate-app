@@ -10,3 +10,5 @@ ORDER BY ordinal_position;
 
 -- Check sample data from reviews table
 SELECT * FROM reviews LIMIT 3;
+
+

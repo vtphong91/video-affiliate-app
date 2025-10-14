@@ -238,3 +238,5 @@ await resend.emails.send({
 
 **Next Step:**
 Cài đặt Resend hoặc SendGrid để gửi email thật! 🚀
+
+

@@ -252,3 +252,5 @@ ALTER TABLE user_profiles ADD COLUMN registration_source VARCHAR(50);
 - ✅ **Better Compliance**: Tuân thủ best practices
 
 **Ready for Production!** 🚀
+
+

@@ -13,3 +13,5 @@ SELECT
 FROM reviews 
 WHERE video_title LIKE '%QUẠT TUẦN HOÀN%'
 LIMIT 1;
+
+

@@ -39,3 +39,5 @@ SELECT
     is_active
 FROM user_profiles 
 WHERE email = 'lammmodotcom@gmail.com';
+
+

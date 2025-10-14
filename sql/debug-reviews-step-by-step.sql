@@ -37,3 +37,5 @@ SELECT
     COUNT(*) as review_count
 FROM reviews 
 GROUP BY user_id;
+
+

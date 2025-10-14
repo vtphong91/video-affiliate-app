@@ -59,3 +59,5 @@ const testMemberCreationWithEmail = async () => {
 
 // Run the test
 testMemberCreationWithEmail();
+
+

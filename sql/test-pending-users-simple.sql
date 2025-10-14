@@ -27,3 +27,5 @@ SELECT
 FROM user_profiles 
 GROUP BY status
 ORDER BY count DESC;
+
+

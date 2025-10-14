@@ -31,3 +31,5 @@ SELECT
     NOW() as current_time,
     NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh' as gmt7_time,
     NOW() AT TIME ZONE 'UTC' as utc_time;
+
+

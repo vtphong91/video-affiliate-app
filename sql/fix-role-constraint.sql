@@ -55,3 +55,5 @@ DELETE FROM user_profiles WHERE email = 'test-constraint@example.com';
 
 -- 7. Show success message
 SELECT 'Constraint fixed successfully!' as status;
+
+

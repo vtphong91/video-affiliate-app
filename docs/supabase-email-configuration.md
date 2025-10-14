@@ -169,3 +169,5 @@ await resend.emails.send({
 ---
 
 **Lưu ý**: Hiện tại code đang log email content ra console. Để gửi email thật, bạn cần cấu hình email service hoặc sử dụng Supabase Edge Functions.
+
+

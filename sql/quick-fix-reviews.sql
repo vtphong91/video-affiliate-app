@@ -31,3 +31,5 @@ SELECT
 FROM reviews r
 LEFT JOIN user_profiles up ON r.user_id = up.id
 LIMIT 5;
+
+
