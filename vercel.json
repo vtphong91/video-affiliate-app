@@ -1,13 +1,22 @@
 {
   "crons": [
     {
-      "path": "/api/cron/check-schedules",
-      "schedule": "* * * * *"
+      "path": "/api/cron/process-schedules",
+      "schedule": "*/5 * * * *"
     }
   ],
   "functions": {
-    "app/api/cron/check-schedules/route.ts": {
+    "app/api/cron/process-schedules/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/analyze-video/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/post-facebook/route.ts": {
       "maxDuration": 30
     }
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }
