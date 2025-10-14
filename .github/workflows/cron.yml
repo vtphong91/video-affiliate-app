@@ -1,0 +1,28 @@
+name: Process Schedules Cron
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  process-schedules:
+    runs-on: ubuntu-latest
+    name: Process Schedules
+    
+    steps:
+      - name: Trigger Cron Job
+        run: |
+          echo "🔄 Triggering schedule processing..."
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://${{ secrets.VERCEL_APP_URL }}/api/manual-cron
+          
+          echo "✅ Cron job triggered successfully"
+        
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}

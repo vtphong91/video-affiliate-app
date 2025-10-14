@@ -63,6 +63,28 @@ NODE_ENV=production
 4. Deploy and test
 
 ### Cron Jobs
-- Process schedules every 5 minutes
+- **Vercel Cron**: Daily at 9 AM (Hobby plan limitation)
+- **GitHub Actions**: Every 5 minutes (Free alternative)
+- **Manual Trigger**: `/api/manual-cron` endpoint
 - Automated Facebook posting
 - Status updates and notifications
+
+### Cron Job Solutions
+Due to Vercel Hobby plan limitations (1 cron per day), we provide multiple solutions:
+
+1. **GitHub Actions** (Recommended - Free)
+   - Runs every 5 minutes
+   - Triggers `/api/manual-cron` endpoint
+   - Requires `CRON_SECRET` and `VERCEL_APP_URL` in GitHub Secrets
+
+2. **External Cron Service** (Free alternatives)
+   - cron-job.org
+   - EasyCron
+   - Cron-job.net
+
+3. **Manual Trigger**
+   ```bash
+   curl -X POST \
+     -H "Authorization: Bearer YOUR_CRON_SECRET" \
+     https://your-app.vercel.app/api/manual-cron
+   ```
