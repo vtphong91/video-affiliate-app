@@ -17,9 +17,8 @@ export async function POST(request: NextRequest) {
     
     console.log('🔄 Manual cron trigger started');
     
-    // Process schedules
-    const cronService = new CronService();
-    const result = await cronService.processSchedules();
+    // Process schedules using static method
+    const result = await CronService.processSchedules([]);
     
     console.log('✅ Manual cron trigger completed:', result);
     

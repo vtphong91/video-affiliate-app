@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const categories = await db.getCategories();
 
     // Transform categories to trending topics format
-    const topics = categories.map(category => ({
+    const topics = categories.map((category: any) => ({
       id: category.id, // Use actual UUID instead of slug
       slug: category.slug, // Keep slug for reference
       name: category.name,

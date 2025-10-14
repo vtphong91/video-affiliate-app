@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       processed: summary.processed,
       success: summary.success,
       failed: summary.failed,
-      details: summary.details
+      summary: summary
     });
 
   } catch (error) {

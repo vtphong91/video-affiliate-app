@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db/supabase';
-import type { Permission } from '@/lib/auth/config/auth-types';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,13 +33,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Group permissions by resource for easier UI handling
-    const groupedPermissions = (data || []).reduce((acc, permission) => {
+    const groupedPermissions = (data || []).reduce((acc: Record<string, any[]>, permission: any) => {
       if (!acc[permission.resource]) {
         acc[permission.resource] = [];
       }
       acc[permission.resource].push(permission);
       return acc;
-    }, {} as Record<string, Permission[]>);
+    }, {} as Record<string, any[]>);
 
     return NextResponse.json({
       success: true,
