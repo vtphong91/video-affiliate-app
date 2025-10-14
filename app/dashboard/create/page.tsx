@@ -85,7 +85,7 @@ function CreateReviewPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          videoUrl: videoInfo.videoUrl || `https://youtube.com/watch?v=${videoInfo.videoId}`, // Store original URL if available
+          videoUrl: `https://youtube.com/watch?v=${videoInfo.videoId}`, // Use videoId to construct URL
           videoInfo,
           analysis,
           customTitle,

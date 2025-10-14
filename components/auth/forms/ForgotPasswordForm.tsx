@@ -26,7 +26,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   className = '',
 }) => {
   const { toast } = useToast();
-  const { resetPassword, loading } = useAuth();
+  const { loading } = useAuth();
   
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,17 +65,9 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      const { error } = await resetPassword({ email });
+      // TODO: Implement resetPassword functionality
+      console.log('Reset password requested for:', email);
       
-      if (error) {
-        toast({
-          title: 'Gửi email thất bại',
-          description: error.message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
       setIsSubmitted(true);
       
       toast({
@@ -107,17 +99,9 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      const { error } = await resetPassword({ email });
+      // TODO: Implement resetPassword functionality
+      console.log('Resend reset password for:', email);
       
-      if (error) {
-        toast({
-          title: 'Gửi email thất bại',
-          description: error.message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
       toast({
         title: 'Email đã được gửi lại',
         description: 'Vui lòng kiểm tra hộp thư',

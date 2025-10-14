@@ -171,7 +171,7 @@ function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClientProviders useSupabase={true}>
+    <ClientProviders>
       <DashboardLayoutContent>{children}</DashboardLayoutContent>
     </ClientProviders>
   );

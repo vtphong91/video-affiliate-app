@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
-import type { RegisterData } from '@/lib/auth/config/auth-types';
+// import type { RegisterData } from '@/lib/auth/config/auth-types';
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -30,7 +30,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const { toast } = useToast();
   const { register, loading } = useAuth();
   
-  const [formData, setFormData] = useState<RegisterData>({
+  const [formData, setFormData] = useState<any>({
     email: '',
     password: '',
     full_name: '',

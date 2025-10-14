@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
-import type { LoginCredentials } from '@/lib/auth/config/auth-types';
+// import type { LoginCredentials } from '@/lib/auth/config/auth-types';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -32,7 +32,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const { toast } = useToast();
   const { login, loading } = useAuth();
   
-  const [formData, setFormData] = useState<LoginCredentials>({
+  const [formData, setFormData] = useState<any>({
     email: '',
     password: '',
   });

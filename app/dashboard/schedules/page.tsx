@@ -24,9 +24,9 @@ import { ScheduleCard } from '@/components/schedules/ScheduleCard';
 import { CreateScheduleDialog } from '@/components/schedules/CreateScheduleDialog';
 import { EditScheduleDialog } from '@/components/schedules/EditScheduleDialog';
 import { ScheduleStats } from '@/components/schedules/ScheduleStats';
-import type { Schedule } from '@/lib/db/supabase';
+// import type { Schedule } from '@/lib/db/supabase';
 
-interface ScheduleWithReview extends Schedule {
+type ScheduleWithReview = any & {
   // Review data is now stored directly in schedule table
   video_title?: string;
   video_thumbnail?: string;
@@ -434,7 +434,7 @@ export default function SchedulesPage() {
             <h2 className="text-lg font-semibold text-red-800 mb-2">Lỗi tải dữ liệu</h2>
             <p className="text-red-600">{error}</p>
             <Button 
-              onClick={fetchSchedules}
+              onClick={() => fetchSchedules()}
               className="mt-4"
             >
               Thử lại

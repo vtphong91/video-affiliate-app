@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 
 export default function CategoriesPage() {
   const { user } = useAuth();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export default function CategoriesPage() {
     }
   };
 
-  const handleEdit = (category: Category) => {
+  const handleEdit = (category: any) => {
     setFormData({
       name: category.name,
       slug: category.slug,

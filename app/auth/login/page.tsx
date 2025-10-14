@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 
 function LoginPageContent() {
   return (
-    <ClientProviders useSupabase={true}>
+    <ClientProviders>
       <LoginPageForm />
     </ClientProviders>
   );
