@@ -112,17 +112,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       // Wait a bit for cookie to be set, then redirect
       setTimeout(() => {
         console.log('Redirecting to dashboard after login success');
+        setIsSubmitting(false); // Reset button state before redirect
         if (onSuccess) {
           onSuccess();
         } else {
-          // Use window.location.href instead of router.push for more reliable redirect
+          // Use router.push for safer redirect
           const redirectTo = '/dashboard';
           console.log('Attempting redirect to:', redirectTo);
-          // Decode any URL-encoded characters
-          const decodedRedirect = decodeURIComponent(redirectTo);
-          window.location.href = decodedRedirect;
+          router.push(redirectTo);
         }
-      }, 1000); // Increased timeout to ensure auth state is fully updated
+      }, 100); // Very fast timeout - 100ms
     } catch (error) {
       console.error('Login error:', error);
       toast({

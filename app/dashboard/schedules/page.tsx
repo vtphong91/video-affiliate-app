@@ -27,12 +27,18 @@ import { ScheduleStats } from '@/components/schedules/ScheduleStats';
 import type { Schedule } from '@/lib/db/supabase';
 
 interface ScheduleWithReview extends Schedule {
-  reviews: {
-    id: string;
-    video_title: string;
-    video_thumbnail: string;
-    slug: string;
-  };
+  // Review data is now stored directly in schedule table
+  video_title?: string;
+  video_thumbnail?: string;
+  video_url?: string;
+  channel_name?: string;
+  review_summary?: string;
+  review_pros?: any[];
+  review_cons?: any[];
+  review_key_points?: any[];
+  review_target_audience?: any[];
+  review_cta?: string;
+  review_seo_keywords?: any[];
 }
 
 interface ScheduleStats {
@@ -61,6 +67,11 @@ export default function SchedulesPage() {
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const { toast } = useToast();
 
+  // Auto refresh state
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [refreshInterval, setRefreshInterval] = useState(3 * 60 * 1000); // 3 minutes default
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -71,14 +82,43 @@ export default function SchedulesPage() {
     fetchSchedules();
   }, [currentPage, activeTab]); // Refetch when page or tab changes
 
-  // Auto-refresh every 5 minutes to get latest status (only data, not full page)
+  // Auto refresh effect
   useEffect(() => {
+    if (!autoRefreshEnabled) return;
+
     const interval = setInterval(() => {
-      fetchSchedules(true); // true = auto refresh, no loading spinner
-    }, 300000); // 5 minutes (5 * 60 * 1000)
+      console.log('🔄 Auto refreshing schedules...');
+      setIsAutoRefreshing(true);
+      fetchSchedules(true).finally(() => {
+        setIsAutoRefreshing(false);
+        setLastRefreshTime(new Date());
+      });
+    }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [currentPage, activeTab]);
+  }, [autoRefreshEnabled, refreshInterval]);
+
+  // Manual refresh function
+  const handleManualRefresh = async () => {
+    setIsAutoRefreshing(true);
+    try {
+      await fetchSchedules(true);
+      setLastRefreshTime(new Date());
+      toast({
+        title: '✅ Đã cập nhật',
+        description: 'Danh sách lịch đăng bài đã được cập nhật',
+      });
+    } catch (error) {
+      console.error('Manual refresh error:', error);
+      toast({
+        title: '❌ Lỗi cập nhật',
+        description: 'Không thể cập nhật danh sách lịch đăng bài',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAutoRefreshing(false);
+    }
+  };
 
   const fetchSchedules = async (isAutoRefresh = false) => {
     try {
@@ -98,11 +138,21 @@ export default function SchedulesPage() {
         'Content-Type': 'application/json',
       };
       
-      // Add authentication headers if session exists
+      // Add authentication headers if session exists (optimized)
       if (session?.user) {
         headers['x-user-id'] = session.user.id;
         headers['x-user-email'] = session.user.email || '';
-        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+        // Get role from user_metadata or default to 'user'
+        const userRole = session.user.user_metadata?.role || 
+                        session.user.user_metadata?.full_name ? 'admin' : 'user';
+        headers['x-user-role'] = userRole;
+        console.log('🔍 Sending auth headers:', {
+          userId: session.user.id,
+          email: session.user.email,
+          role: userRole
+        });
+      } else {
+        console.log('⚠️ No session found, request may fail');
       }
       
       const response = await fetch(`/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}`, {
@@ -151,8 +201,22 @@ export default function SchedulesPage() {
 
   const handleDeleteSchedule = async (id: string) => {
     try {
+      // Get authentication headers from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication headers if session exists
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+      }
+      
       const response = await fetch(`/api/schedules/${id}`, {
         method: 'DELETE',
+        headers,
       });
 
       const result = await response.json();
@@ -177,8 +241,22 @@ export default function SchedulesPage() {
 
   const handleRetrySchedule = async (id: string) => {
     try {
+      // Get authentication headers from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication headers if session exists
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+      }
+      
       const response = await fetch(`/api/schedules/${id}/retry`, {
         method: 'POST',
+        headers,
       });
 
       const result = await response.json();
@@ -208,35 +286,71 @@ export default function SchedulesPage() {
 
   const handleUpdateSchedule = async (scheduleId: string, newScheduledFor: string) => {
     try {
+      console.log('🔄 Starting schedule update:', { scheduleId, newScheduledFor });
+      
+      // Get authentication headers from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication headers if session exists
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+        console.log('✅ Auth headers added:', { userId: session.user.id, role: session.user.user_metadata?.role });
+      } else {
+        console.log('❌ No session found');
+      }
+      
+      console.log('📤 Sending PUT request to:', `/api/schedules/${scheduleId}`);
       const response = await fetch(`/api/schedules/${scheduleId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           scheduled_for: newScheduledFor,
         }),
       });
 
+      console.log('📥 Response status:', response.status);
       const result = await response.json();
+      console.log('📥 Response data:', result);
       
       if (result.success) {
         toast({
-          title: 'Thành công',
-          description: 'Đã cập nhật thời gian đăng bài',
+          title: '✅ Cập nhật thành công',
+          description: 'Thời gian đăng bài đã được cập nhật thành công!',
         });
-        fetchSchedules(); // Refresh the list
+        
+        // Close dialog immediately after successful update
+        console.log('🔒 Closing edit dialog after successful update');
+        setShowEditDialog(false);
+        setEditingSchedule(null);
+        
+        // Refresh schedules after a short delay to avoid conflicts
+        setTimeout(() => {
+          console.log('🔄 Refreshing schedules after update');
+          fetchSchedules();
+        }, 500);
+        
+        return true; // Return success status
       } else {
-        throw new Error(result.error || 'Failed to update schedule');
+        toast({
+          title: '❌ Lỗi cập nhật',
+          description: result.error || 'Không thể cập nhật lịch đăng bài',
+          variant: 'destructive',
+        });
+        return false; // Return failure status
       }
     } catch (error) {
-      console.error('Error updating schedule:', error);
+      console.error('❌ Error updating schedule:', error);
       toast({
-        title: 'Lỗi',
+        title: '❌ Lỗi',
         description: error instanceof Error ? error.message : 'Không thể cập nhật lịch đăng bài',
         variant: 'destructive',
       });
-      throw error; // Re-throw to let EditScheduleDialog handle it
+      return false; // Return failure status
     }
   };
 
@@ -350,14 +464,41 @@ export default function SchedulesPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Auto Refresh Controls */}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <label className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={autoRefreshEnabled}
+                    onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
+                    className="rounded"
+                  />
+                  Auto refresh
+                </label>
+                <select
+                  value={refreshInterval / (60 * 1000)}
+                  onChange={(e) => setRefreshInterval(parseInt(e.target.value) * 60 * 1000)}
+                  className="px-2 py-1 border rounded text-xs"
+                  disabled={!autoRefreshEnabled}
+                >
+                  <option value={1}>1 phút</option>
+                  <option value={3}>3 phút</option>
+                  <option value={5}>5 phút</option>
+                  <option value={10}>10 phút</option>
+                </select>
+                <span className="text-xs text-gray-500">
+                  Cập nhật lần cuối: {lastRefreshTime.toLocaleTimeString('vi-VN')}
+                </span>
+              </div>
+              
               <Button 
-                onClick={() => fetchSchedules(false)}
+                onClick={handleManualRefresh}
                 variant="outline"
                 className="flex items-center gap-2"
-                disabled={loading}
+                disabled={loading || isAutoRefreshing}
               >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Đang tải...' : 'Làm mới'}
+                <RefreshCw className={`h-4 w-4 ${(loading || isAutoRefreshing) ? 'animate-spin' : ''}`} />
+                {loading ? 'Đang tải...' : isAutoRefreshing ? 'Đang cập nhật...' : 'Làm mới'}
               </Button>
               <Button 
                 onClick={() => setShowCreateDialog(true)}

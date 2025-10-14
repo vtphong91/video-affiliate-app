@@ -42,6 +42,16 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCa
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
+  // Debug logging for affiliate_links
+  console.log('🔍 ScheduleCard affiliate_links debug:', {
+    scheduleId: schedule.id,
+    videoTitle: schedule.video_title,
+    hasAffiliateLinks: !!schedule.affiliate_links,
+    affiliateLinksType: typeof schedule.affiliate_links,
+    affiliateLinksLength: Array.isArray(schedule.affiliate_links) ? schedule.affiliate_links.length : 'not array',
+    affiliateLinks: schedule.affiliate_links
+  });
+
   const formatScheduledTime = (timestamp: string, status: string) => {
     // Nếu đã đăng hoặc thất bại, không hiển thị countdown
     if (status === 'posted' || status === 'failed') {
@@ -159,7 +169,7 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCa
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg font-semibold line-clamp-2">
-              {schedule.reviews.video_title}
+              {schedule.video_title || schedule.reviews?.video_title || 'Không có tiêu đề'}
             </CardTitle>
             <div className="flex items-center gap-2 mt-2">
               {getStatusIcon(schedule.status)}
@@ -196,11 +206,11 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCa
       
       <CardContent className="space-y-4">
         {/* Review thumbnail */}
-        {schedule.reviews.video_thumbnail && (
+        {schedule.video_thumbnail && (
           <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
             <img 
-              src={schedule.reviews.video_thumbnail} 
-              alt={schedule.reviews.video_title}
+              src={schedule.video_thumbnail} 
+              alt={schedule.video_title || 'Video thumbnail'}
               className="w-full h-full object-cover"
             />
           </div>

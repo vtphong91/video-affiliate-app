@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Video, List, Settings, Tag, Home, Calendar, PlusCircle, LayoutDashboard } from 'lucide-react';
+import { Video, List, Settings, Tag, Home, Calendar, PlusCircle, LayoutDashboard, Shield, Users, UserCheck } from 'lucide-react';
 import { AuthButton } from '@/components/auth/ui/AuthButton';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
+import { useRoles } from '@/lib/auth/hooks/useRoles';
 import { withDashboardRoute } from '@/lib/auth/middleware/route-protection';
 import { ClientProviders } from '@/components/providers/ClientProviders';
 
@@ -14,9 +15,11 @@ function DashboardLayoutContent({
   children: React.ReactNode;
 }) {
   const { user, userProfile, loading } = useAuth();
+  const { canAccessAdmin, currentRole } = useRoles();
   
   // Debug logging
   console.log('DashboardLayout - user:', user, 'userProfile:', userProfile, 'loading:', loading);
+  console.log('DashboardLayout - currentRole:', currentRole, 'canAccessAdmin:', canAccessAdmin());
   console.log('DashboardLayout - user type:', typeof user, 'user exists:', !!user);
   console.log('DashboardLayout - userProfile type:', typeof userProfile, 'userProfile exists:', !!userProfile);
 
@@ -60,9 +63,24 @@ function DashboardLayoutContent({
             {/* User info and logout - always show AuthButton */}
             <div className="flex items-center gap-2">
               {user && (
-                <span className="text-sm text-gray-600 hidden sm:inline">
-                  {userProfile?.full_name || user.email || 'User'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600 hidden sm:inline">
+                    {userProfile?.full_name || user.email || 'User'}
+                  </span>
+                  {currentRole && (
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      currentRole === 'admin' 
+                        ? 'bg-red-100 text-red-800' 
+                        : currentRole === 'editor'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {currentRole === 'admin' ? 'Admin' : 
+                       currentRole === 'editor' ? 'Editor' : 
+                       currentRole === 'viewer' ? 'Viewer' : currentRole}
+                    </span>
+                  )}
+                </div>
               )}
               <AuthButton showText={false} variant="ghost" size="sm" />
             </div>
@@ -118,6 +136,24 @@ function DashboardLayoutContent({
                   Cài Đặt
                 </Button>
               </Link>
+              
+              {/* Admin Menu - Only show for admin users */}
+              {canAccessAdmin() && (
+                <>
+                  <div className="border-t border-gray-200 my-2"></div>
+                  <div className="px-2 py-1">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Quản Trị
+                    </span>
+                  </div>
+                  <Link href="/admin">
+                    <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Quản Trị Hệ Thống
+                    </Button>
+                  </Link>
+                </>
+              )}
             </nav>
           </aside>
 
@@ -141,5 +177,5 @@ function DashboardLayout({
   );
 }
 
-// Export with dashboard route protection
-export default withDashboardRoute(DashboardLayout);
+// Export without route protection wrapper to avoid conflicts
+export default DashboardLayout;

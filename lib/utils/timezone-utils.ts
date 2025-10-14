@@ -50,6 +50,45 @@ export function createTimestampFromDatePicker(date: Date, time: string): string 
 }
 
 /**
+ * Tạo timestamp GMT+7 từ datetime-local input string
+ * Input: datetime-local string (YYYY-MM-DDTHH:MM)
+ * Output: GMT+7 ISO string để lưu database
+ */
+export function createTimestampFromDateTimeLocal(dateTimeString: string): string {
+  console.log('🔍 createTimestampFromDateTimeLocal - Input:', dateTimeString);
+  
+  if (!dateTimeString || typeof dateTimeString !== 'string') {
+    console.error('❌ Invalid datetime-local parameter:', dateTimeString);
+    throw new Error('DateTime parameter is required and must be a string');
+  }
+  
+  // Parse datetime-local string (YYYY-MM-DDTHH:MM)
+  const date = new Date(dateTimeString);
+  
+  if (isNaN(date.getTime())) {
+    console.error('❌ Invalid datetime format:', dateTimeString);
+    throw new Error('Invalid datetime format');
+  }
+  
+  console.log('🔍 Parsed Date:', date);
+  
+  // Tạo GMT+7 ISO string với timezone offset để lưu database
+  // Format: YYYY-MM-DDTHH:mm:ss.sss+07:00
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hour = date.getHours().toString().padStart(2, '0');
+  const minute = date.getMinutes().toString().padStart(2, '0');
+  const second = date.getSeconds().toString().padStart(2, '0');
+  
+  const gmt7ISOString = `${year}-${month}-${day}T${hour}:${minute}:${second}.000+07:00`;
+  
+  console.log('🔍 GMT+7 ISO string for database:', gmt7ISOString);
+
+  return gmt7ISOString; // Store as GMT+7 ISO string
+}
+
+/**
  * Parse timestamp GMT+7 từ database cho display
  * Input: GMT+7 ISO string từ database
  * Output: Date object GMT+7 để hiển thị UI (không cần conversion)

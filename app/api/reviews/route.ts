@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Reviews API called');
+    
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status'); // 'draft', 'published', or null for all
     const excludeScheduled = searchParams.get('excludeScheduled') === 'true';
@@ -15,9 +17,15 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
     const page = parseInt(searchParams.get('page') || '1');
 
+    console.log('🔍 Reviews API params:', { status, excludeScheduled, limit, offset, page });
+
     // Get authenticated user ID
+    console.log('🔍 Getting user ID from request...');
     const userId = await getUserIdFromRequest(request);
+    console.log('🔍 User ID result:', userId);
+    
     if (!userId) {
+      console.log('❌ No user ID found, returning 401');
       return NextResponse.json(
         createErrorResponse('AUTHENTICATION_ERROR', 'Authentication required'),
         { status: 401 }

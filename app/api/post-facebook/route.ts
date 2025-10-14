@@ -17,7 +17,6 @@ interface PostWebhookRequest {
   landingPageUrl: string; // url_landing_page
   videoThumbnail: string; // video_thumbnail
   imageUrl?: string; // optional image
-  affiliateComment?: string | null; // optional affiliate comment
 }
 
 interface MakeWebhookResponse {
@@ -38,7 +37,6 @@ export async function POST(request: NextRequest) {
       landingPageUrl,
       videoThumbnail,
       imageUrl,
-      affiliateComment,
     } = body;
 
     // Get webhook configuration from environment variables
@@ -86,31 +84,72 @@ export async function POST(request: NextRequest) {
       console.warn('Could not fetch review data:', error);
     }
 
+    // Format affiliate_links array to readable text for webhook
+    const affiliateLinksText = formatAffiliateLinksForWebhook(affiliateLinks);
+    
+    // Helper function to format affiliate links to readable text
+    function formatAffiliateLinksForWebhook(affiliateLinks: any[]): string {
+      if (!affiliateLinks || affiliateLinks.length === 0) {
+        return '';
+      }
+
+      let text = 'Đặt mua sản phẩm giá tốt tại:\n';
+      
+      affiliateLinks.forEach((link, index) => {
+        if (link && typeof link === 'object') {
+          text += `- ${link.platform || `Affiliate Link ${index + 1}`}`;
+          if (link.url) {
+            text += `: ${link.url}`;
+          }
+          if (link.price) {
+            text += ` (${link.price})`;
+          }
+          text += '\n';
+        }
+      });
+
+      return text.trim();
+    }
+
     // Prepare webhook payload với tên biến đồng bộ với cron service
     const webhookPayload: any = {
-      // Các trường chính theo chuẩn cron service
+      // Core Identification Fields (matching cron auto)
       scheduleId: `manual-${Date.now()}`, // ID cho manual post
       reviewId: reviewId,
+      postType: 'manual', // Distinguish from scheduled posts
+      
+      // Target Information (matching cron auto)
       targetType: 'page', // Mặc định là page
       targetId: 'make-com-handled', // Mặc định là make-com-handled
       targetName: 'Make.com Manual', // Mặc định là manual
+      
+      // Content Fields (matching cron auto)
       message: message,
-      link: landingPageUrl,
+      landing_page_url: landingPageUrl, // Chuẩn hóa với cron auto
       imageUrl: imageUrl || videoThumbnail,
       videoUrl: videoUrl,
       videoTitle: reviewData?.video_title || reviewData?.custom_title || '',
       channelName: reviewData?.channel_name || '',
-      affiliateLinks: affiliateLinks,
-      reviewSummary: reviewData?.summary || '',
-      reviewPros: reviewData?.pros || [],
-      reviewCons: reviewData?.cons || [],
-      reviewKeyPoints: reviewData?.key_points || [],
-      reviewTargetAudience: reviewData?.target_audience || [],
-      reviewCta: reviewData?.cta || '',
-      reviewSeoKeywords: reviewData?.seo_keywords || [],
+      
+      // Affiliate Information (matching cron auto)
+      affiliateLinksText: affiliateLinksText, // Formatted text for webhook
+      
+      // Review Content Fields (matching cron auto field names)
+      reviewSummary: reviewData?.review_summary || reviewData?.summary || '',
+      reviewPros: reviewData?.review_pros || reviewData?.pros || [],
+      reviewCons: reviewData?.review_cons || reviewData?.cons || [],
+      reviewKeyPoints: reviewData?.review_key_points || reviewData?.key_points || [],
+      reviewTargetAudience: reviewData?.review_target_audience || reviewData?.target_audience || [],
+      reviewCta: reviewData?.review_cta || reviewData?.cta || '',
+      review_seo_keywords: reviewData?.review_seo_keywords || reviewData?.seo_keywords || [],
+      
+      // Timing Fields (matching cron auto)
       scheduledFor: new Date().toISOString(), // Thời gian hiện tại
       triggeredAt: new Date().toISOString(),
       retryAttempt: 0, // Manual post không có retry
+      
+      // Optional Fields (matching cron auto)
+      metadata: {}, // Optional metadata for future extensibility
     };
 
     // Add optional fields
@@ -118,15 +157,8 @@ export async function POST(request: NextRequest) {
       webhookPayload.imageUrl = imageUrl;
     }
 
-    // Add affiliate comment if provided
-    if (affiliateComment) {
-      webhookPayload.affiliateComment = affiliateComment;
-    }
-
-    // Add secret for verification if provided
-    if (webhookSecret) {
-      webhookPayload.secret = webhookSecret;
-    }
+    // Note: secret field removed to match cron auto payload structure
+    // Webhook secret is handled via environment variables
 
     console.log('Sending webhook to Make.com:', { webhookUrl, reviewId });
 

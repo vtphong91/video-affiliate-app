@@ -11,6 +11,8 @@ import { CalendarIcon, Clock, Target, MessageSquare, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Review } from '@/types';
 import { createTimestampFromDatePicker, debugTimezone } from '@/lib/utils/timezone-utils';
+import { formatFacebookPost } from '@/lib/apis/facebook';
+import { supabase } from '@/lib/db/supabase';
 
 interface CreateScheduleDialogProps {
   open: boolean;
@@ -19,6 +21,8 @@ interface CreateScheduleDialogProps {
 }
 
 export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateScheduleDialogProps) {
+  console.log('🔍 CreateScheduleDialog: Component rendered with open:', open);
+  
   const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,25 +37,83 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
     })(),
   });
 
+  // Helper functions for date/time handling
+  const getDateInputValue = (date: Date): string => {
+    if (!date || isNaN(date.getTime())) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 1);
+      return fallback.toISOString().split('T')[0];
+    }
+    return date.toISOString().split('T')[0];
+  };
+
+  const getTimeInputValue = (date: Date): string => {
+    if (!date || isNaN(date.getTime())) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 1);
+      fallback.setHours(9, 0, 0, 0);
+      return fallback.toTimeString().slice(0, 5);
+    }
+    return date.toTimeString().slice(0, 5);
+  };
+
+  const updateScheduledFor = (newDate: Date) => {
+    if (!newDate || isNaN(newDate.getTime())) {
+      console.error('❌ Invalid date provided to updateScheduledFor:', newDate);
+      return;
+    }
+    
+    console.log('🔄 Updating scheduledFor from:', formData.scheduledFor, 'to:', newDate);
+    setFormData(prev => ({ ...prev, scheduledFor: newDate }));
+  };
+
   useEffect(() => {
+    console.log('🔍 CreateScheduleDialog: useEffect triggered, open:', open);
     if (open) {
+      console.log('🔍 CreateScheduleDialog: Opening dialog, calling fetchReviews');
       fetchReviews();
+    } else {
+      console.log('🔍 CreateScheduleDialog: Dialog closed');
     }
   }, [open]);
 
   const fetchReviews = async () => {
     try {
       setReviewsLoading(true);
-      const response = await fetch('/api/reviews?excludeScheduled=true');
-      const result = await response.json();
+      console.log('🔍 CreateScheduleDialog: Fetching reviews...');
       
-      if (result.success) {
-        console.log('📊 Reviews API response:', result);
-        const reviewsData = result.data?.reviews || result.data || [];
-        console.log('✅ Reviews loaded:', reviewsData);
-        setReviews(reviewsData);
+      // Fetch both reviews and used review IDs
+      const [reviewsResponse, usedIdsResponse] = await Promise.all([
+        fetch('/api/reviews-fast'), // Use fast API
+        fetch('/api/schedules/used-review-ids')
+      ]);
+      
+      console.log('🔍 CreateScheduleDialog: Reviews response status:', reviewsResponse.status);
+      console.log('🔍 CreateScheduleDialog: Used IDs response status:', usedIdsResponse.status);
+      
+      const reviewsResult = await reviewsResponse.json();
+      const usedIdsResult = await usedIdsResponse.json();
+      
+      if (reviewsResult.success) {
+        const allReviews = reviewsResult.data || [];
+        const usedReviewIds = usedIdsResult.success ? usedIdsResult.usedReviewIds : [];
+        
+        console.log('🔍 CreateScheduleDialog: Used IDs data:', usedIdsResult);
+        console.log('🔍 CreateScheduleDialog: Used review IDs:', usedReviewIds);
+        
+        // Filter out reviews that are already used in schedules
+        const availableReviews = allReviews.filter((review: any) => {
+          const isUsed = usedReviewIds.includes(review.id);
+          console.log(`🔍 Review ${review.id} (${review.video_title}): ${isUsed ? 'USED' : 'AVAILABLE'}`);
+          return !isUsed;
+        });
+        
+        console.log(`✅ Total reviews: ${allReviews.length}, Used: ${usedReviewIds.length}, Available: ${availableReviews.length}`);
+        console.log('🔍 Available reviews:', availableReviews.map(r => ({ id: r.id, title: r.video_title })));
+        
+        setReviews(availableReviews);
       } else {
-        console.error('❌ Reviews API failed:', result.error);
+        console.error('❌ Reviews API failed:', reviewsResult.error);
         setReviews([]);
       }
     } catch (error) {
@@ -124,7 +186,7 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
       // Debug timezone handling - only if localTime is a valid Date
       try {
         if (localTime instanceof Date) {
-          debugTimezone(localTime, 'CreateScheduleDialog - Before API call');
+          debugTimezone('CreateScheduleDialog - Before API call', localTime);
         }
       } catch (debugError) {
         console.error('❌ Debug timezone error:', debugError);
@@ -137,51 +199,29 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
         throw new Error('Review not found');
       }
 
+      console.log('🔍 Selected review affiliate_links:', {
+        reviewId: selectedReview.id,
+        videoTitle: selectedReview.video_title,
+        affiliate_links: selectedReview.affiliate_links,
+        affiliate_links_type: typeof selectedReview.affiliate_links,
+        affiliate_links_length: Array.isArray(selectedReview.affiliate_links) ? selectedReview.affiliate_links.length : 'not array'
+      });
+
       // Generate real post message from review
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const landingPageUrl = `${baseUrl}/review/${selectedReview.slug}`;
       
-      // Create post message similar to formatFacebookPost
-      let postMessage = `🔥 ${selectedReview.custom_title || selectedReview.video_title}\n\n`;
-      postMessage += `📝 ${selectedReview.summary}\n\n`;
-      
-      if (selectedReview.pros && selectedReview.pros.length > 0) {
-        postMessage += '✅ ƯU ĐIỂM:\n';
-        selectedReview.pros.slice(0, 5).forEach((pro) => {
-          postMessage += `• ${pro}\n`;
-        });
-        postMessage += '\n';
-      }
-      
-      if (selectedReview.cons && selectedReview.cons.length > 0) {
-        postMessage += '⚠️ NHƯỢC ĐIỂM CẦN LƯU Ý:\n';
-        selectedReview.cons.slice(0, 3).forEach((con) => {
-          postMessage += `• ${con}\n`;
-        });
-        postMessage += '\n';
-      }
-      
-      if (selectedReview.target_audience && selectedReview.target_audience.length > 0) {
-        postMessage += '👥 PHÙ HỢP VỚI:\n';
-        selectedReview.target_audience.forEach((audience) => {
-          postMessage += `• ${audience}\n`;
-        });
-        postMessage += '\n';
-      }
-      
-      postMessage += `🎥 Xem video gốc:\n${selectedReview.video_url}\n\n`;
-      
-      const channelCredit = selectedReview.channel_name || 'kênh gốc';
-      postMessage += `⚖️ Bản quyền video thuộc về ${channelCredit}\n`;
-      postMessage += `Mọi quyền thuộc về kênh gốc. Đây chỉ là nội dung tham khảo.\n\n`;
-      
-      // Add hashtags
-      if (selectedReview.seo_keywords && selectedReview.seo_keywords.length > 0) {
-        const hashtags = selectedReview.seo_keywords
-          .slice(0, 10)
-          .map((k) => `#${k.replace(/\s+/g, '').replace(/[^\w\u00C0-\u1EF9]/g, '')}`);
-        postMessage += `\n\n${hashtags.join(' ')}`;
-      }
+      // Sử dụng function chuẩn từ Facebook module với field mapping đúng
+      const postMessage = formatFacebookPost({
+        title: selectedReview.video_title,
+        summary: selectedReview.review_summary || selectedReview.summary || 'Đánh giá chi tiết về sản phẩm',
+        pros: selectedReview.review_pros || selectedReview.pros || [],
+        cons: selectedReview.review_cons || selectedReview.cons || [],
+        targetAudience: selectedReview.review_target_audience || selectedReview.target_audience || [],
+        keywords: selectedReview.review_seo_keywords || selectedReview.seo_keywords || [],
+        channelName: selectedReview.channel_name,
+        landingUrl: landingPageUrl
+      });
 
       const scheduleData = {
         reviewId: formData.reviewId,
@@ -195,21 +235,39 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
       };
       
       console.log('📤 Sending schedule data:', scheduleData);
+      console.log('🔍 Schedule data affiliate_links:', {
+        affiliate_links: scheduleData.affiliate_links,
+        affiliate_links_type: typeof scheduleData.affiliate_links,
+        affiliate_links_length: Array.isArray(scheduleData.affiliate_links) ? scheduleData.affiliate_links.length : 'not array'
+      });
       
-      const response = await fetch('/api/schedules', {
+      console.log('🔍 Step 1: Starting fast schedule creation...');
+      
+      console.log('🔍 Step 2: Making API call...');
+      
+      const response = await fetch('/api/schedules-fast', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(scheduleData),
       });
+
+      console.log('🔍 Step 3: API response received');
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response ok:', response.ok);
 
       const data = await response.json();
       console.log('📥 Response data:', data);
 
+      console.log('🔍 Step 4: Checking response validity...');
+
       if (!response.ok || !data.success) {
+        console.error('❌ API call failed:', { status: response.status, data });
         throw new Error(data.error || 'Có lỗi xảy ra');
       }
 
-      console.log('📅 Schedule created from CreateScheduleDialog:', data.data);
+      console.log('🔍 Step 7: Schedule created successfully');
       
       // Don't call onSubmit with the created schedule data
       // The parent component will handle the success
@@ -240,14 +298,16 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
   };
 
   const resetForm = () => {
+    const defaultDate = (() => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0); // 9:00 AM tomorrow
+      return tomorrow;
+    })();
+    
     setFormData({
       reviewId: '',
-      scheduledFor: (() => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9, 0, 0, 0); // 9:00 AM tomorrow
-        return tomorrow;
-      })(),
+      scheduledFor: defaultDate,
     });
   };
 
@@ -307,52 +367,45 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
               <div className="flex items-center gap-2">
                 <Input
                   type="date"
-                  value={(() => {
-                    try {
-                      return formData.scheduledFor.toISOString().split('T')[0];
-                    } catch {
-                      const fallback = new Date();
-                      fallback.setDate(fallback.getDate() + 1);
-                      return fallback.toISOString().split('T')[0];
-                    }
-                  })()}
+                  value={getDateInputValue(formData.scheduledFor)}
                   onChange={(e) => {
-                    try {
-                      const newDate = new Date(e.target.value);
-                      if (!isNaN(newDate.getTime())) {
-                        newDate.setHours(formData.scheduledFor.getHours());
-                        newDate.setMinutes(formData.scheduledFor.getMinutes());
-                        setFormData(prev => ({ ...prev, scheduledFor: newDate }));
-                      }
-                    } catch (error) {
-                      console.error('Date change error:', error);
+                    if (!e.target.value) return;
+                    
+                    const newDate = new Date(e.target.value);
+                    if (!isNaN(newDate.getTime())) {
+                      // Preserve existing time when changing date
+                      newDate.setHours(formData.scheduledFor.getHours());
+                      newDate.setMinutes(formData.scheduledFor.getMinutes());
+                      newDate.setSeconds(formData.scheduledFor.getSeconds());
+                      updateScheduledFor(newDate);
                     }
                   }}
                   className="flex-1"
                 />
                 <Input
                   type="time"
-                  value={(() => {
-                    try {
-                      return formData.scheduledFor.toTimeString().slice(0, 5);
-                    } catch {
-                      return '09:00';
-                    }
-                  })()}
+                  value={getTimeInputValue(formData.scheduledFor)}
                   onChange={(e) => {
-                    try {
-                      const [hours, minutes] = e.target.value.split(':');
+                    if (!e.target.value) return;
+                    
+                    const [hours, minutes] = e.target.value.split(':').map(Number);
+                    
+                    // Validate parsed values
+                    if (hours !== undefined && minutes !== undefined && 
+                        !isNaN(hours) && !isNaN(minutes) &&
+                        hours >= 0 && hours <= 23 && 
+                        minutes >= 0 && minutes <= 59) {
+                      
                       const newDate = new Date(formData.scheduledFor);
-                      newDate.setHours(parseInt(hours), parseInt(minutes));
-                      if (!isNaN(newDate.getTime())) {
-                        setFormData(prev => ({ ...prev, scheduledFor: newDate }));
-                      }
-                    } catch (error) {
-                      console.error('Time change error:', error);
+                      newDate.setHours(hours, minutes, 0, 0);
+                      updateScheduledFor(newDate);
                     }
                   }}
                   className="w-32"
                 />
+              </div>
+              <div className="text-sm text-gray-600">
+                <strong>Thời gian đã chọn:</strong> {formData.scheduledFor.toLocaleString('vi-VN')}
               </div>
             </div>
 

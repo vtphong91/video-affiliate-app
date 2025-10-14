@@ -59,30 +59,52 @@ export const db = {
     try {
       const { userId, status, limit = 10, offset = 0 } = options;
       
-      let query = supabase
+      console.log('🔍 db.getReviews called with:', { userId, status, limit, offset });
+      
+      let query = supabaseAdmin
         .from('reviews')
-        .select('*')
+        .select(`
+          id, 
+          slug, 
+          video_title, 
+          video_url, 
+          video_platform, 
+          video_thumbnail, 
+          channel_name,
+          summary,
+          pros,
+          cons,
+          target_audience,
+          seo_keywords,
+          affiliate_links,
+          status, 
+          created_at, 
+          user_id
+        `)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (userId) {
         query = query.eq('user_id', userId);
+        console.log('🔍 Filtering by user_id:', userId);
       }
 
       if (status) {
         query = query.eq('status', status);
+        console.log('🔍 Filtering by status:', status);
       }
 
       const { data, error } = await query;
       
       if (error) {
-        console.error('Error fetching reviews:', error);
+        console.error('❌ Error fetching reviews:', error);
         return [];
       }
       
+      console.log('✅ Reviews fetched:', data?.length || 0, 'reviews');
       return data || [];
     } catch (error) {
-      console.error('Exception in getReviews:', error);
+      console.error('❌ Exception in getReviews:', error);
       return [];
     }
   },
@@ -91,7 +113,7 @@ export const db = {
     try {
       const { userId, status } = options;
       
-      let query = supabase
+      let query = supabaseAdmin
         .from('reviews')
         .select('*', { count: 'exact', head: true });
 
@@ -119,7 +141,7 @@ export const db = {
 
   async getReview(id: string) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('reviews')
         .select('*')
         .eq('id', id)
@@ -238,16 +260,23 @@ export const db = {
   },
 
   // Schedules
-  async getSchedules(userId?: string, limit = 10, offset = 0) {
+  async getSchedules(userId?: string, status?: string, limit = 10, offset = 0) {
     try {
-      let query = supabase
+      let query = supabaseAdmin
         .from('schedules')
-        .select('*')
+        .select(`
+          *,
+          affiliate_links
+        `)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (userId) {
         query = query.eq('user_id', userId);
+      }
+
+      if (status) {
+        query = query.eq('status', status);
       }
 
       const { data, error } = await query;
@@ -257,6 +286,7 @@ export const db = {
         return [];
       }
       
+      console.log(`📋 getSchedules: Found ${data?.length || 0} schedules for user ${userId}, status: ${status}`);
       return data || [];
     } catch (error) {
       console.error('Exception in getSchedules:', error);
@@ -264,14 +294,18 @@ export const db = {
     }
   },
 
-  async getSchedulesCount(userId?: string) {
+  async getSchedulesCount(userId?: string, status?: string) {
     try {
-      let query = supabase
+      let query = supabaseAdmin
         .from('schedules')
         .select('*', { count: 'exact', head: true });
 
       if (userId) {
         query = query.eq('user_id', userId);
+      }
+
+      if (status) {
+        query = query.eq('status', status);
       }
 
       const { count, error } = await query;
@@ -281,6 +315,7 @@ export const db = {
         return 0;
       }
       
+      console.log(`📊 getSchedulesCount: Found ${count || 0} schedules for user ${userId}, status: ${status}`);
       return count || 0;
     } catch (error) {
       console.error('Exception in getSchedulesCount:', error);
@@ -290,11 +325,17 @@ export const db = {
 
   async getPendingSchedules() {
     try {
+      // Import getCurrentTimestamp for GMT+7 timezone
+      const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
+      
+      const currentGMT7 = getCurrentTimestamp();
+      console.log('🔍 getPendingSchedules - Current GMT+7:', currentGMT7);
+      
       const { data, error } = await supabase
         .from('schedules')
         .select('*')
         .eq('status', 'pending')
-        .lte('scheduled_for', new Date().toISOString())
+        .lte('scheduled_for', currentGMT7)
         .order('scheduled_for', { ascending: true });
 
       if (error) {
@@ -302,6 +343,7 @@ export const db = {
         return [];
       }
 
+      console.log(`📋 getPendingSchedules: Found ${data?.length || 0} pending schedules`);
       return data || [];
     } catch (error) {
       console.error('Exception in getPendingSchedules:', error);
@@ -352,7 +394,7 @@ export const db = {
 
   async updateSchedule(id: string, updates: Partial<Schedule>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('schedules')
         .update(updates)
         .eq('id', id)
@@ -371,9 +413,30 @@ export const db = {
     }
   },
 
+  async getSchedule(id: string) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('schedules')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching schedule:', error);
+        throw error;
+      }
+
+      console.log(`📋 getSchedule: Found schedule ${id}`);
+      return data;
+    } catch (error) {
+      console.error('Exception in getSchedule:', error);
+      throw error;
+    }
+  },
+
   async deleteSchedule(id: string) {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('schedules')
         .delete()
         .eq('id', id);
@@ -383,6 +446,7 @@ export const db = {
         throw error;
       }
 
+      console.log(`🗑️ deleteSchedule: Deleted schedule ${id}`);
       return true;
     } catch (error) {
       console.error('Exception in deleteSchedule:', error);

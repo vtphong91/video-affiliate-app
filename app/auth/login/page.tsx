@@ -38,13 +38,10 @@ function LoginPageForm() {
       // Don't decode if it's already decoded
       const finalRedirect = redirectTo.startsWith('%') ? decodeURIComponent(redirectTo) : redirectTo;
       console.log('🔍 Redirecting to:', finalRedirect);
-      // Use window.location.href to avoid Next.js router issues
-      // Add small delay to ensure auth state is fully updated
-      setTimeout(() => {
-        window.location.href = finalRedirect;
-      }, 100);
+      // Use router.push for safer redirect
+      router.push(finalRedirect);
     }
-  }, [user, loading, searchParams]);
+  }, [user, loading, searchParams, router]);
 
   // Handle success
   const handleSuccess = () => {
@@ -52,8 +49,8 @@ function LoginPageForm() {
     // Decode URL-encoded characters
     const decodedRedirect = decodeURIComponent(redirectTo);
     console.log('Login success handler - redirecting to:', decodedRedirect);
-    // Use window.location.href for more reliable redirect
-    window.location.href = decodedRedirect;
+    // Use router.push for safer redirect
+    router.push(decodedRedirect);
   };
 
   // Handle switch to register

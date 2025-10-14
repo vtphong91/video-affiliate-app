@@ -14,7 +14,7 @@ import { useUser } from '@/lib/auth/hooks/useUser';
 import type { Review } from '@/types';
 
 function ReviewsPage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { displayName } = useUser();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,8 +27,15 @@ function ReviewsPage() {
   const itemsPerPage = 6; // Show 6 reviews per page
 
   useEffect(() => {
-    fetchReviews();
-  }, [currentPage]); // Refetch when page changes
+    // Only fetch reviews if user is authenticated (even if userProfile is null)
+    if (user) {
+      console.log('🔍 ReviewsPage: User authenticated, fetching reviews...');
+      fetchReviews();
+    } else {
+      console.log('🔍 ReviewsPage: No user, skipping fetch');
+      setLoading(false);
+    }
+  }, [currentPage, user]); // Use user instead of isAuthenticated
 
   const fetchReviews = async () => {
     try {
@@ -48,7 +55,8 @@ function ReviewsPage() {
         headers['x-user-role'] = session.user.user_metadata?.role || 'user';
       }
       
-      const response = await fetch(`/api/reviews?page=${currentPage}&limit=${itemsPerPage}`, {
+      // Use main API with authentication - only show published reviews
+      const response = await fetch(`/api/reviews?page=${currentPage}&limit=${itemsPerPage}&status=published`, {
         headers
       });
       const data = await response.json();
@@ -87,10 +95,14 @@ function ReviewsPage() {
     }
   };
 
-  if (loading) {
+  // Show loading if still loading or if no user (waiting for auth)
+  if (loading || !user) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">
+          {!user ? 'Đang xác thực...' : 'Đang tải reviews...'}
+        </span>
       </div>
     );
   }

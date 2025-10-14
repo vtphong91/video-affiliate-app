@@ -152,7 +152,8 @@ export async function getPageAccessToken(
 }
 
 /**
- * Format Facebook post message - Full review content
+ * Format Facebook post message - Full review content (UPDATED for schedules)
+ * Affiliate links are stored separately in schedules.affiliate_links field
  */
 export function formatFacebookPost(params: {
   title: string;
@@ -161,7 +162,6 @@ export function formatFacebookPost(params: {
   cons: string[];
   targetAudience: string[];
   keywords: string[];
-  videoUrl: string;
   channelName?: string;
   landingUrl: string;
 }): string {
@@ -172,7 +172,6 @@ export function formatFacebookPost(params: {
     cons,
     targetAudience,
     keywords,
-    videoUrl,
     channelName,
     landingUrl
   } = params;
@@ -200,22 +199,18 @@ export function formatFacebookPost(params: {
     message += '\n';
   }
 
-  // Target Audience
-  if (targetAudience.length > 0) {
-    message += '👥 PHÙ HỢP VỚI:\n';
-    targetAudience.forEach((audience) => {
-      message += `• ${audience}\n`;
-    });
-    message += '\n';
-  }
+        // Target Audience
+        if (targetAudience.length > 0) {
+          message += '👥 PHÙ HỢP VỚI:\n';
+          targetAudience.forEach((audience) => {
+            message += `• ${audience}\n`;
+          });
+          message += '\n';
+        }
 
-  // Video link
-  message += `🎥 Xem video gốc:\n${videoUrl}\n\n`;
-
-  // Copyright notice
-  const channelCredit = channelName || 'kênh gốc';
-  message += `⚖️ Bản quyền video thuộc về ${channelCredit}\n`;
-  message += `Mọi quyền thuộc về kênh gốc. Đây chỉ là nội dung tham khảo.\n\n`;
+        // Copyright notice (corrected format)
+        const channelCredit = channelName || 'kênh gốc';
+        message += `⚖️Nội dung Video thuộc về kênh ${channelCredit} - Mọi thông tin về sản phẩm được tham khảo từ video. Bản quyền thuộc về kênh gốc.\n\n`;
 
   // Hashtags
   if (keywords.length > 0) {
