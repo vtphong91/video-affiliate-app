@@ -325,28 +325,37 @@ export const db = {
 
   async getPendingSchedules() {
     try {
-      // Import getCurrentTimestamp for GMT+7 timezone
-      const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
+      // Get current time in ISO format (UTC) for comparison
+      const now = new Date();
+      const currentTime = now.toISOString();
 
-      const currentGMT7 = getCurrentTimestamp();
-      console.log('🔍 getPendingSchedules - Current GMT+7:', currentGMT7);
+      console.log('🔍 getPendingSchedules - Current UTC:', currentTime);
+      console.log('🔍 getPendingSchedules - Current Local:', now.toString());
 
       const { data, error } = await supabaseAdmin
         .from('schedules')
         .select('*')
         .eq('status', 'pending')
-        .lte('scheduled_for', currentGMT7)
+        .lte('scheduled_for', currentTime)
         .order('scheduled_for', { ascending: true });
 
       if (error) {
-        console.error('Error fetching pending schedules:', error);
+        console.error('❌ Error fetching pending schedules:', error);
         return [];
       }
 
       console.log(`📋 getPendingSchedules: Found ${data?.length || 0} pending schedules`);
+
+      // Log each schedule for debugging
+      if (data && data.length > 0) {
+        data.forEach((schedule: any) => {
+          console.log(`  - Schedule ${schedule.id.substring(0, 8)}: scheduled_for=${schedule.scheduled_for}`);
+        });
+      }
+
       return data || [];
     } catch (error) {
-      console.error('Exception in getPendingSchedules:', error);
+      console.error('❌ Exception in getPendingSchedules:', error);
       return [];
     }
   },
