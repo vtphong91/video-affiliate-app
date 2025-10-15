@@ -591,7 +591,7 @@ export const db = {
   // Activity Logs
   async createActivityLog(log: Partial<ActivityLog>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('activity_logs')
         .insert(log)
         .select()
