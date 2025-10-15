@@ -18,33 +18,38 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
       return userIdFromHeader;
     }
 
-    // Method 2: Try to get from cookies (faster than Bearer token)
-    const accessToken = request.cookies.get('sb-access-token')?.value;
-    const refreshToken = request.cookies.get('sb-refresh-token')?.value;
-    
-    if (accessToken && refreshToken) {
+    // Method 2: Try to get from Supabase cookies (correct cookie names)
+    // Supabase stores auth in cookies with project-specific names
+    // Format: sb-{project-ref}-auth-token
+    const cookies = request.cookies;
+    const authTokenCookie = cookies.getAll().find(cookie =>
+      cookie.name.includes('auth-token') && cookie.name.startsWith('sb-')
+    );
+
+    if (authTokenCookie) {
       try {
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        
-        if (!error && data.session?.user) {
-          console.log('🔍 User ID from cookies:', data.session.user.id);
-          return data.session.user.id;
+        // Parse the auth token cookie value (it's a JSON string)
+        const authData = JSON.parse(authTokenCookie.value);
+        if (authData.access_token) {
+          const { data, error } = await supabase.auth.getUser(authData.access_token);
+
+          if (!error && data.user) {
+            console.log('🔍 User ID from Supabase auth cookie:', data.user.id);
+            return data.user.id;
+          }
         }
       } catch (error) {
-        console.log('⚠️ Cookie auth failed, trying next method');
+        console.log('⚠️ Supabase cookie auth failed, trying next method');
       }
     }
 
-    // Method 3: Try Bearer token (slower but fallback)
+    // Method 3: Try Bearer token (fallback)
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       try {
         const { data, error } = await supabase.auth.getUser(token);
-        
+
         if (!error && data.user) {
           console.log('🔍 User ID from Bearer token:', data.user.id);
           return data.user.id;
