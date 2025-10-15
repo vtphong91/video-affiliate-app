@@ -325,12 +325,22 @@ export const db = {
 
   async getPendingSchedules() {
     try {
-      console.log('🔍 getPendingSchedules - Getting all pending schedules...');
+      console.log('🔍 getPendingSchedules - Getting pending schedules that are due...');
 
+      // Get current UTC time
+      const nowUTC = new Date();
+      const nowUTCString = nowUTC.toISOString();
+
+      console.log('🔍 Current UTC time:', nowUTCString);
+
+      // Query schedules that are:
+      // 1. Status = 'pending'
+      // 2. scheduled_for <= current UTC time
       const { data, error } = await supabaseAdmin
         .from('schedules')
         .select('*')
         .eq('status', 'pending')
+        .lte('scheduled_for', nowUTCString)
         .order('scheduled_for', { ascending: true });
 
       if (error) {
@@ -338,53 +348,14 @@ export const db = {
         return [];
       }
 
-      // Get current time in GMT+7 (Asia/Ho_Chi_Minh)
-      const now = new Date();
-      const gmt7Offset = 7 * 60 * 60 * 1000; // GMT+7 offset in milliseconds
-      const currentGMT7 = new Date(now.getTime() + gmt7Offset);
+      console.log(`📋 Found ${data?.length || 0} pending schedules that are due`);
 
-      console.log('🔍 getPendingSchedules - Server UTC:', now.toISOString());
-      console.log('🔍 getPendingSchedules - Current GMT+7:', currentGMT7.toISOString());
-      console.log(`📋 getPendingSchedules: Total pending: ${data?.length || 0}`);
-
-      // Filter schedules that are due (scheduled_for <= current time)
-      const dueSchedules = (data || []).filter((schedule: any) => {
-        const scheduledFor = schedule.scheduled_for;
-
-        // Parse the scheduled_for time - handle both formats
-        let scheduledDate: Date;
-
-        if (scheduledFor.includes('T') || scheduledFor.includes('Z')) {
-          // ISO format - parse directly
-          scheduledDate = new Date(scheduledFor);
-        } else {
-          // PostgreSQL format: "2025-10-14 16:25:00" - treat as GMT+7
-          const [datePart, timePart] = scheduledFor.split(' ');
-          const [year, month, day] = datePart.split('-').map(Number);
-          const [hours, minutes, seconds] = timePart.split(':').map(Number);
-
-          // Create date assuming GMT+7 timezone
-          // Convert GMT+7 to UTC by subtracting 7 hours
-          scheduledDate = new Date(Date.UTC(year, month - 1, day, hours - 7, minutes, seconds));
-        }
-
-        // Convert scheduled time to GMT+7 for comparison
-        const scheduledGMT7 = new Date(scheduledDate.getTime() + gmt7Offset);
-        const isDue = scheduledGMT7.getTime() <= currentGMT7.getTime();
-
-        console.log(`  - Schedule ${schedule.id.substring(0, 8)}:`);
-        console.log(`    scheduled_for (raw): ${scheduledFor}`);
-        console.log(`    scheduled_for (parsed UTC): ${scheduledDate.toISOString()}`);
-        console.log(`    scheduled_for (GMT+7): ${scheduledGMT7.toISOString()}`);
-        console.log(`    current (GMT+7): ${currentGMT7.toISOString()}`);
-        console.log(`    isDue: ${isDue}`);
-
-        return isDue;
+      // Log each schedule for debugging
+      (data || []).forEach((schedule: any) => {
+        console.log(`  ✓ Schedule ${schedule.id.substring(0, 8)}: scheduled_for=${schedule.scheduled_for}`);
       });
 
-      console.log(`📋 getPendingSchedules: Found ${dueSchedules.length} due schedules`);
-
-      return dueSchedules;
+      return data || [];
     } catch (error) {
       console.error('❌ Exception in getPendingSchedules:', error);
       return [];

@@ -6,9 +6,9 @@ import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 const TARGET_TIMEZONE = 'Asia/Ho_Chi_Minh'; // GMT+7
 
 /**
- * Tạo timestamp GMT+7 từ DateTimePicker để lưu database
+ * Tạo UTC timestamp từ DateTimePicker để lưu database
  * Input: Date object từ DateTimePicker (user's local time - GMT+7)
- * Output: GMT+7 timestamp string cho PostgreSQL
+ * Output: UTC ISO string cho PostgreSQL timestamptz
  */
 export function createTimestampFromDatePicker(date: Date, time: string): string {
   console.log('🔍 createTimestampFromDatePicker - Input Date:', date, 'Time:', time);
@@ -27,25 +27,24 @@ export function createTimestampFromDatePicker(date: Date, time: string): string 
     throw new Error('Time must be in HH:MM format');
   }
 
-  // Create timestamp in GMT+7 (user's timezone)
-  const localDate = new Date(date);
-  localDate.setHours(hours, minutes, 0, 0);
+  // Create date in GMT+7 timezone
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
 
-  console.log('🔍 Local Date:', localDate);
+  // Create a date object in GMT+7 timezone
+  const gmt7DateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
 
-  // Format as PostgreSQL timestamp: YYYY-MM-DD HH:MM:SS
-  const year = localDate.getFullYear();
-  const month = String(localDate.getMonth() + 1).padStart(2, '0');
-  const day = String(localDate.getDate()).padStart(2, '0');
-  const hour = String(localDate.getHours()).padStart(2, '0');
-  const minute = String(localDate.getMinutes()).padStart(2, '0');
-  const second = String(localDate.getSeconds()).padStart(2, '0');
+  // Parse as GMT+7 and convert to UTC
+  const gmt7Date = toZonedTime(new Date(gmt7DateString), TARGET_TIMEZONE);
+  const utcDate = fromZonedTime(gmt7Date, TARGET_TIMEZONE);
+  const utcISOString = utcDate.toISOString();
 
-  const timestampString = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+  console.log('🔍 GMT+7 Date String:', gmt7DateString);
+  console.log('🔍 GMT+7 Date Object:', gmt7Date);
+  console.log('🔍 UTC ISO String for database:', utcISOString);
 
-  console.log('🔍 Timestamp string for database:', timestampString);
-
-  return timestampString; // Store as GMT+7 timestamp
+  return utcISOString; // Store as UTC ISO string
 }
 
 /**
