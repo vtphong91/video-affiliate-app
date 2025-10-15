@@ -42,11 +42,14 @@ export default function ReviewsPage() {
 
   const fetchReviews = async () => {
     try {
-      const response = await fetch('/api/reviews');
+      // Use public API endpoint (no authentication required)
+      const response = await fetch('/api/reviews-public');
       const data = await response.json();
       console.log('Reviews API response:', data);
       if (data.success) {
         setReviews(data.data?.reviews || data.data || []);
+      } else {
+        console.error('Failed to fetch reviews:', data.error);
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);
