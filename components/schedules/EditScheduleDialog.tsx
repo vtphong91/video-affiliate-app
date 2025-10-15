@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Calendar, Clock, Save, X } from 'lucide-react';
 import { createTimestampFromDateTimeLocal } from '@/lib/utils/timezone-utils';
+import { toZonedTime } from 'date-fns-tz';
 
 interface Schedule {
   id: string;
@@ -42,19 +43,27 @@ export function EditScheduleDialog({ isOpen, onClose, schedule, onUpdate }: Edit
   // Initialize form when schedule changes
   useEffect(() => {
     if (schedule) {
-      // Parse GMT+7 timestamp from database
-      const gmt7Date = new Date(schedule.scheduled_for);
-      
+      console.log('🔍 EditScheduleDialog - Parsing scheduled_for:', schedule.scheduled_for);
+
+      // Parse UTC timestamp from database and convert to GMT+7
+      const utcDate = new Date(schedule.scheduled_for);
+      const gmt7Date = toZonedTime(utcDate, 'Asia/Ho_Chi_Minh');
+
+      console.log('🔍 UTC Date:', utcDate.toISOString());
+      console.log('🔍 GMT+7 Date:', gmt7Date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
+
       // Format for datetime-local input (YYYY-MM-DDTHH:MM)
       const year = gmt7Date.getFullYear();
       const month = (gmt7Date.getMonth() + 1).toString().padStart(2, '0');
       const day = gmt7Date.getDate().toString().padStart(2, '0');
       const hours = gmt7Date.getHours().toString().padStart(2, '0');
       const minutes = gmt7Date.getMinutes().toString().padStart(2, '0');
-      
+
       const formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+      console.log('🔍 Formatted datetime-local:', formattedDateTime);
+
       setScheduledDateTime(formattedDateTime);
-      
+
       // Validate initial time
       validateTime(formattedDateTime);
     }
