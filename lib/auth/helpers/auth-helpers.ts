@@ -4,17 +4,21 @@
  */
 
 import { NextRequest } from 'next/server';
-import { supabase } from '@/lib/db/supabase';
+import { supabase, supabaseAdmin } from '@/lib/db/supabase';
 
 /**
  * Get user ID from request headers or session (optimized version)
  */
 export async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
   try {
+    console.log('🔍 getUserIdFromRequest - Starting authentication check');
+    console.log('🔍 Headers:', Object.fromEntries(request.headers.entries()));
+    console.log('🔍 Cookies:', request.cookies.getAll());
+
     // Method 1: Try to get from headers first (fastest)
     const userIdFromHeader = request.headers.get('x-user-id');
     if (userIdFromHeader) {
-      console.log('🔍 User ID from header (fast):', userIdFromHeader);
+      console.log('✅ User ID from header (fast):', userIdFromHeader);
       return userIdFromHeader;
     }
 
@@ -22,24 +26,40 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
     // Supabase stores auth in cookies with project-specific names
     // Format: sb-{project-ref}-auth-token
     const cookies = request.cookies;
-    const authTokenCookie = cookies.getAll().find(cookie =>
+    const allCookies = cookies.getAll();
+    console.log('🔍 All cookies count:', allCookies.length);
+
+    const authTokenCookie = allCookies.find(cookie =>
       cookie.name.includes('auth-token') && cookie.name.startsWith('sb-')
     );
 
+    console.log('🔍 Auth token cookie found:', authTokenCookie ? authTokenCookie.name : 'NONE');
+
     if (authTokenCookie) {
       try {
+        console.log('🔍 Parsing auth cookie value...');
         // Parse the auth token cookie value (it's a JSON string)
         const authData = JSON.parse(authTokenCookie.value);
-        if (authData.access_token) {
-          const { data, error } = await supabase.auth.getUser(authData.access_token);
+        console.log('🔍 Auth data keys:', Object.keys(authData));
 
-          if (!error && data.user) {
-            console.log('🔍 User ID from Supabase auth cookie:', data.user.id);
+        if (authData.access_token) {
+          console.log('🔍 Access token found, verifying with Supabase...');
+          // Use supabaseAdmin for server-side token verification in API routes
+          const { data, error } = await supabaseAdmin.auth.getUser(authData.access_token);
+
+          if (error) {
+            console.log('⚠️ Supabase auth error:', error.message);
+          } else if (!data.user) {
+            console.log('⚠️ No user data returned from Supabase');
+          } else {
+            console.log('✅ User ID from Supabase auth cookie:', data.user.id);
             return data.user.id;
           }
+        } else {
+          console.log('⚠️ No access_token in auth data');
         }
       } catch (error) {
-        console.log('⚠️ Supabase cookie auth failed, trying next method');
+        console.log('⚠️ Supabase cookie auth failed:', error);
       }
     }
 
@@ -48,10 +68,11 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       try {
-        const { data, error } = await supabase.auth.getUser(token);
+        // Use supabaseAdmin for server-side token verification
+        const { data, error } = await supabaseAdmin.auth.getUser(token);
 
         if (!error && data.user) {
-          console.log('🔍 User ID from Bearer token:', data.user.id);
+          console.log('✅ User ID from Bearer token:', data.user.id);
           return data.user.id;
         }
       } catch (error) {
@@ -78,12 +99,18 @@ export async function getUserEmailFromRequest(request: NextRequest): Promise<str
       return emailFromHeader;
     }
 
-    // Method 2: Try to get from session
+    // Method 2: Get user ID first, then query user_profiles table
     const userId = await getUserIdFromRequest(request);
     if (userId) {
-      const { data, error } = await supabase.auth.getUser();
-      if (!error && data.user) {
-        return data.user.email || null;
+      // Query user_profiles table for email using supabaseAdmin
+      const { data, error } = await supabaseAdmin
+        .from('user_profiles')
+        .select('email')
+        .eq('id', userId)
+        .single();
+
+      if (!error && data) {
+        return data.email || null;
       }
     }
 

@@ -15,6 +15,7 @@ import { Loader2, Save } from 'lucide-react';
 import { withUserRoute } from '@/lib/auth/middleware/route-protection';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
+import { supabase } from '@/lib/db/supabase';
 import type { VideoInfo, AIAnalysis, AffiliateLink, Category } from '@/types';
 
 function CreateReviewPage() {
@@ -80,9 +81,19 @@ function CreateReviewPage() {
     setIsSaving(true);
 
     try {
+      // Get session token from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+
       const response = await fetch('/api/create-review', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}` // Send auth token in header
+        },
         body: JSON.stringify({
           videoUrl: `https://youtube.com/watch?v=${videoInfo.videoId}`, // Use videoId to construct URL
           videoInfo,
