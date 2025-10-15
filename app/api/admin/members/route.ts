@@ -1,9 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 import type { EnhancedUserProfile, UserRole, Permission } from '@/lib/auth/config/auth-types';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
+
+// Check if user is admin
+async function checkAdminAccess(request: NextRequest): Promise<{ isAdmin: boolean; userId: string | null }> {
+  const userId = await getUserIdFromRequest(request);
+
+  if (!userId) {
+    return { isAdmin: false, userId: null };
+  }
+
+  // Check user role
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+
+  const isAdmin = profile?.role === 'admin';
+
+  return { isAdmin, userId };
+}
 
 // Generate secure random password
 function generateSecurePassword(): string {
@@ -152,6 +173,16 @@ async function sendAccountEmail(email: string, fullName: string, password: strin
 // GET /api/admin/members - Get all members
 export async function GET(request: NextRequest) {
   try {
+    // Check admin access
+    const { isAdmin } = await checkAdminAccess(request);
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -235,6 +266,16 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/members - Create new member
 export async function POST(request: NextRequest) {
   try {
+    // Check admin access
+    const { isAdmin } = await checkAdminAccess(request);
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { email, full_name, role, permissions } = body;
 

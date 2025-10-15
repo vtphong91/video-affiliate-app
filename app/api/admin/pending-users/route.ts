@@ -1,11 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
+
+// Check if user is admin
+async function checkAdminAccess(request: NextRequest): Promise<{ isAdmin: boolean; userId: string | null }> {
+  const userId = await getUserIdFromRequest(request);
+
+  if (!userId) {
+    return { isAdmin: false, userId: null };
+  }
+
+  // Check user role
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+
+  const isAdmin = profile?.role === 'admin';
+
+  return { isAdmin, userId };
+}
 
 // GET /api/admin/pending-users - Get all pending users
 export async function GET(request: NextRequest) {
   try {
+    // Check admin access
+    const { isAdmin } = await checkAdminAccess(request);
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
+    }
+
     console.log('🔍 Fetching pending users...');
 
     const { data: pendingUsers, error } = await supabaseAdmin

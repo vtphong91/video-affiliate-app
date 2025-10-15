@@ -1,10 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
 interface RejectionRequest {
   reason: string;
+}
+
+// Check if user is admin
+async function checkAdminAccess(request: NextRequest): Promise<{ isAdmin: boolean; userId: string | null }> {
+  const userId = await getUserIdFromRequest(request);
+
+  if (!userId) {
+    return { isAdmin: false, userId: null };
+  }
+
+  // Check user role
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+
+  const isAdmin = profile?.role === 'admin';
+
+  return { isAdmin, userId };
 }
 
 // POST /api/admin/users/[id]/reject - Reject a user
@@ -13,6 +34,16 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check admin access
+    const { isAdmin, userId: adminId } = await checkAdminAccess(request);
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const userId = params.id;
     const body: RejectionRequest = await request.json();
     const { reason } = body;

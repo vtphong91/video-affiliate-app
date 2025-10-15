@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
-import { 
-  Users, 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
+import { supabase } from '@/lib/db/supabase';
+import {
+  Users,
+  Search,
+  Plus,
+  Edit,
+  Trash2,
   MoreHorizontal,
   Mail,
   Calendar,
@@ -19,7 +20,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -75,6 +76,15 @@ export default function MemberManagement() {
   const fetchMembers = async () => {
     try {
       setLoading(true);
+
+      // Get session token
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.error('No session token found');
+        return;
+      }
+
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
@@ -83,9 +93,13 @@ export default function MemberManagement() {
         ...(statusFilter !== 'all' && { active: statusFilter }),
       });
 
-      const response = await fetch(`/api/admin/members?${params}`);
+      const response = await fetch(`/api/admin/members?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
       console.log('🔍 API Response:', response.status, response.statusText);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('📊 API Data:', data);
@@ -105,10 +119,21 @@ export default function MemberManagement() {
   const createMember = async () => {
     try {
       setIsCreating(true);
+
+      // Get session token
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        setIsCreating(false);
+        return;
+      }
+
       const response = await fetch('/api/admin/members', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(createForm),
       });
