@@ -3,6 +3,7 @@ import { db } from '@/lib/db/supabase';
 import { supabaseAdmin } from '@/lib/db/supabase';
 import { z } from 'zod';
 import { requireAuth, getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
+import { ActivityLogger } from '@/lib/utils/activity-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -228,6 +229,9 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('✅ Schedule created successfully:', schedule.id);
+
+    // Log activity
+    await ActivityLogger.scheduleCreated(userId, schedule.id, validatedData.scheduledFor);
 
     return NextResponse.json({
       success: true,

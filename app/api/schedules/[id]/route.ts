@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
 import { z } from 'zod';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
+import { ActivityLogger } from '@/lib/utils/activity-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,6 +132,9 @@ export async function PUT(
 
     const schedule = await db.updateSchedule(params.id, updateData);
 
+    // Log activity
+    await ActivityLogger.scheduleUpdated(userId, schedule.id, schedule.scheduled_for);
+
     return NextResponse.json({
       success: true,
       data: schedule,
@@ -204,6 +208,9 @@ export async function DELETE(
     }
 
     await db.deleteSchedule(params.id);
+
+    // Log activity
+    await ActivityLogger.scheduleDeleted(userId, params.id);
 
     return NextResponse.json({
       success: true,

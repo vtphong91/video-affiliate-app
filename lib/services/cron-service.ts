@@ -1,4 +1,5 @@
 import { db } from '@/lib/db/supabase';
+import { ActivityLogger } from '@/lib/utils/activity-logger';
 
 export interface CronResult {
   scheduleId: string;
@@ -300,12 +301,19 @@ export class CronService {
         const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
         const postedAtGMT7 = getCurrentTimestamp(); // This returns GMT+7 format
         console.log('🕐 Setting posted_at to GMT+7:', postedAtGMT7);
-        
+
         await db.updateSchedule(schedule.id, {
           status: 'posted',
           posted_at: postedAtGMT7,
           retry_count: schedule.retry_count + 1,
         });
+
+        // Log activity - post published successfully
+        await ActivityLogger.postPublished(
+          schedule.user_id,
+          schedule.id,
+          undefined // Facebook URL not available yet from Make.com
+        );
 
         return {
           scheduleId: schedule.id,
@@ -317,12 +325,19 @@ export class CronService {
         const { getCurrentTimestamp } = await import('@/lib/utils/timezone-utils');
         const postedAtGMT7 = getCurrentTimestamp(); // This returns GMT+7 format
         console.log('🕐 Setting posted_at to GMT+7 (fallback):', postedAtGMT7);
-        
+
         await db.updateSchedule(schedule.id, {
           status: 'posted',
           posted_at: postedAtGMT7,
           error_message: webhookResult.error,
         });
+
+        // Log activity - webhook failed but marked as posted
+        await ActivityLogger.webhookFailed(
+          schedule.user_id,
+          schedule.id,
+          webhookResult.error || 'Webhook URL not configured'
+        );
 
         return {
           scheduleId: schedule.id,
@@ -333,13 +348,20 @@ export class CronService {
         // Mark as failed
         const newRetryCount = schedule.retry_count + 1;
         const maxRetries = schedule.max_retries || 3;
-        
+
         if (newRetryCount >= maxRetries) {
           await db.updateSchedule(schedule.id, {
             status: 'failed',
             error_message: webhookResult.error,
             retry_count: newRetryCount,
           });
+
+          // Log activity - post failed after max retries
+          await ActivityLogger.postFailed(
+            schedule.user_id,
+            schedule.id,
+            `Failed after ${maxRetries} retries: ${webhookResult.error}`
+          );
         } else {
           await db.updateSchedule(schedule.id, {
             status: 'failed',
@@ -347,6 +369,13 @@ export class CronService {
             retry_count: newRetryCount,
             next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // Retry in 5 minutes
           });
+
+          // Log activity - post failed, will retry
+          await ActivityLogger.postFailed(
+            schedule.user_id,
+            schedule.id,
+            `Failed (retry ${newRetryCount}/${maxRetries}): ${webhookResult.error}`
+          );
         }
 
         return {

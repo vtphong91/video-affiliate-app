@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
 import { generateSlug } from '@/lib/utils';
+import { ActivityLogger } from '@/lib/utils/activity-logger';
 import type { CreateReviewRequest, CreateReviewResponse } from '@/types';
 import { randomUUID } from 'crypto';
 
@@ -71,6 +72,13 @@ export async function POST(request: NextRequest) {
       console.log('💾 Saving review to database...');
       review = await db.createReview(reviewData);
       console.log('✅ Review saved successfully:', review.id);
+
+      // Log activity
+      await ActivityLogger.reviewCreated(
+        userId,
+        review.video_title,
+        review.id
+      );
     }
 
     const response: CreateReviewResponse = {

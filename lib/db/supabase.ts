@@ -609,11 +609,19 @@ export const db = {
     }
   },
 
-  async getActivityLogs(userId?: string, limit = 50) {
+  async getActivityLogs(userId?: string, limit = 50, hoursAgo = 48) {
     try {
-      let query = supabase
+      // Calculate timestamp for X hours ago
+      const timestampCutoff = new Date();
+      timestampCutoff.setHours(timestampCutoff.getHours() - hoursAgo);
+      const cutoffISO = timestampCutoff.toISOString();
+
+      console.log(`🔍 getActivityLogs: Fetching logs from last ${hoursAgo}h (since ${cutoffISO})`);
+
+      let query = supabaseAdmin
         .from('activity_logs')
         .select('*')
+        .gte('created_at', cutoffISO) // Only logs from last X hours
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -622,12 +630,13 @@ export const db = {
       }
 
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('Error fetching activity logs:', error);
         return [];
       }
-      
+
+      console.log(`✅ Found ${data?.length || 0} activity logs in last ${hoursAgo}h`);
       return data || [];
     } catch (error) {
       console.error('Exception in getActivityLogs:', error);
