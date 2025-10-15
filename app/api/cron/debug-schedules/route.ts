@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, supabaseAdmin } from '@/lib/db/supabase';
+import { checkScheduleHealth } from '@/lib/utils/schedule-monitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,9 @@ export async function GET(request: NextRequest) {
     // Get failed schedules for retry
     const failedSchedules = await db.getFailedSchedulesForRetry();
 
+    // Check schedule health
+    const healthReport = await checkScheduleHealth(30); // 30 minute threshold
+
     // Check webhook configuration
     const webhookUrl = process.env.MAKECOM_WEBHOOK_URL;
     const cronSecretConfig = process.env.CRON_SECRET;
@@ -59,7 +63,7 @@ export async function GET(request: NextRequest) {
         currentTime: {
           utc: now.toISOString(),
           gmt7: currentGMT7.toISOString(),
-          gmt7Formatted: currentGMT7.toLocaleString('en-US', { 
+          gmt7Formatted: currentGMT7.toLocaleString('en-US', {
             timeZone: 'Asia/Ho_Chi_Minh',
             year: 'numeric',
             month: '2-digit',
@@ -68,6 +72,14 @@ export async function GET(request: NextRequest) {
             minute: '2-digit',
             second: '2-digit'
           })
+        },
+        scheduleHealth: {
+          status: healthReport.healthy ? '🟢 HEALTHY' : '🔴 UNHEALTHY',
+          totalPending: healthReport.totalPending,
+          overdueCount: healthReport.overdueCount,
+          overdueSeverity: healthReport.overdueSeverity,
+          overdueSchedules: healthReport.overdueSchedules.slice(0, 5), // Show top 5
+          recommendations: healthReport.recommendations
         },
         pendingSchedules: {
           count: allPendingSchedules?.length || 0,
