@@ -11,14 +11,9 @@ import { supabase, supabaseAdmin } from '@/lib/db/supabase';
  */
 export async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
   try {
-    console.log('🔍 getUserIdFromRequest - Starting authentication check');
-    console.log('🔍 Headers:', Object.fromEntries(request.headers.entries()));
-    console.log('🔍 Cookies:', request.cookies.getAll());
-
     // Method 1: Try to get from headers first (fastest)
     const userIdFromHeader = request.headers.get('x-user-id');
     if (userIdFromHeader) {
-      console.log('✅ User ID from header (fast):', userIdFromHeader);
       return userIdFromHeader;
     }
 
@@ -26,40 +21,25 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
     // Supabase stores auth in cookies with project-specific names
     // Format: sb-{project-ref}-auth-token
     const cookies = request.cookies;
-    const allCookies = cookies.getAll();
-    console.log('🔍 All cookies count:', allCookies.length);
-
-    const authTokenCookie = allCookies.find(cookie =>
+    const authTokenCookie = cookies.getAll().find(cookie =>
       cookie.name.includes('auth-token') && cookie.name.startsWith('sb-')
     );
 
-    console.log('🔍 Auth token cookie found:', authTokenCookie ? authTokenCookie.name : 'NONE');
-
     if (authTokenCookie) {
       try {
-        console.log('🔍 Parsing auth cookie value...');
         // Parse the auth token cookie value (it's a JSON string)
         const authData = JSON.parse(authTokenCookie.value);
-        console.log('🔍 Auth data keys:', Object.keys(authData));
 
         if (authData.access_token) {
-          console.log('🔍 Access token found, verifying with Supabase...');
           // Use supabaseAdmin for server-side token verification in API routes
           const { data, error } = await supabaseAdmin.auth.getUser(authData.access_token);
 
-          if (error) {
-            console.log('⚠️ Supabase auth error:', error.message);
-          } else if (!data.user) {
-            console.log('⚠️ No user data returned from Supabase');
-          } else {
-            console.log('✅ User ID from Supabase auth cookie:', data.user.id);
+          if (!error && data.user) {
             return data.user.id;
           }
-        } else {
-          console.log('⚠️ No access_token in auth data');
         }
       } catch (error) {
-        console.log('⚠️ Supabase cookie auth failed:', error);
+        // Cookie auth failed, try next method
       }
     }
 
@@ -72,18 +52,16 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
         const { data, error } = await supabaseAdmin.auth.getUser(token);
 
         if (!error && data.user) {
-          console.log('✅ User ID from Bearer token:', data.user.id);
           return data.user.id;
         }
       } catch (error) {
-        console.log('⚠️ Bearer token auth failed');
+        // Bearer token auth failed
       }
     }
 
-    console.log('❌ No user ID found in request');
     return null;
   } catch (error) {
-    console.error('❌ Error getting user ID from request:', error);
+    console.error('Error getting user ID from request:', error);
     return null;
   }
 }
@@ -116,7 +94,7 @@ export async function getUserEmailFromRequest(request: NextRequest): Promise<str
 
     return null;
   } catch (error) {
-    console.error('❌ Error getting user email from request:', error);
+    console.error('Error getting user email from request:', error);
     return null;
   }
 }
@@ -140,7 +118,7 @@ export async function getUserRoleFromRequest(request: NextRequest): Promise<stri
         .select('role')
         .eq('id', userId)
         .single();
-      
+
       if (!error && data) {
         return data.role;
       }
@@ -148,7 +126,7 @@ export async function getUserRoleFromRequest(request: NextRequest): Promise<stri
 
     return null;
   } catch (error) {
-    console.error('❌ Error getting user role from request:', error);
+    console.error('Error getting user role from request:', error);
     return null;
   }
 }
