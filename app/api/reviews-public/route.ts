@@ -41,7 +41,12 @@ export async function GET(request: NextRequest) {
         affiliate_links,
         status,
         created_at,
-        views
+        views,
+        categories (
+          id,
+          name,
+          slug
+        )
       `)
       .eq('status', 'published')
       .order('created_at', { ascending: false })
