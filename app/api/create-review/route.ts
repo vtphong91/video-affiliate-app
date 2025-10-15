@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
 import { generateSlug } from '@/lib/utils';
 import { ActivityLogger } from '@/lib/utils/activity-logger';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 import type { CreateReviewRequest, CreateReviewResponse } from '@/types';
-import { randomUUID } from 'crypto';
 
 // Set to false để lưu vào database thật
 const SKIP_DATABASE = false;
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user ID
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body: any = await request.json();
     const { videoUrl, videoInfo, analysis, affiliateLinks = [], customTitle, customContent, categoryId, status } = body;
 
@@ -23,9 +32,6 @@ export async function POST(request: NextRequest) {
     const baseSlug = generateSlug(customTitle || videoInfo.title);
     const timestamp = Date.now().toString().slice(-6);
     const slug = baseSlug + '-' + timestamp;
-
-    // Generate proper UUID for user_id (in production, get from auth)
-    const userId = randomUUID();
 
     // Prepare data for database
     const reviewData: any = {
@@ -58,9 +64,10 @@ export async function POST(request: NextRequest) {
     };
 
     let review;
-    
+
     if (SKIP_DATABASE) {
       console.log('⚠️ SKIP_DATABASE mode: Review not saved to database');
+      const { randomUUID } = await import('crypto');
       review = {
         id: randomUUID(),
         ...reviewData,

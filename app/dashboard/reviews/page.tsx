@@ -55,8 +55,8 @@ function ReviewsPage() {
         headers['x-user-role'] = session.user.user_metadata?.role || 'user';
       }
       
-      // Use main API with authentication - only show published reviews
-      const response = await fetch(`/api/reviews?page=${currentPage}&limit=${itemsPerPage}&status=published`, {
+      // Use main API with authentication - show all reviews (draft + published)
+      const response = await fetch(`/api/reviews?page=${currentPage}&limit=${itemsPerPage}`, {
         headers
       });
       const data = await response.json();
