@@ -332,15 +332,14 @@ export const db = {
       const nowUTCString = nowUTC.toISOString();
 
       console.log('🔍 Current UTC time:', nowUTCString);
+      console.log('🔍 Current server time:', new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
 
-      // Query schedules that are:
-      // 1. Status = 'pending'
-      // 2. scheduled_for <= current UTC time
+      // TEMP FIX: Get ALL pending schedules first, then filter in JavaScript
+      // This works regardless of database column type (TEXT, TIMESTAMP, or TIMESTAMPTZ)
       const { data, error } = await supabaseAdmin
         .from('schedules')
         .select('*')
         .eq('status', 'pending')
-        .lte('scheduled_for', nowUTCString)
         .order('scheduled_for', { ascending: true });
 
       if (error) {
@@ -348,14 +347,34 @@ export const db = {
         return [];
       }
 
-      console.log(`📋 Found ${data?.length || 0} pending schedules that are due`);
+      console.log(`📋 Total pending schedules: ${data?.length || 0}`);
 
-      // Log each schedule for debugging
-      (data || []).forEach((schedule: any) => {
-        console.log(`  ✓ Schedule ${schedule.id.substring(0, 8)}: scheduled_for=${schedule.scheduled_for}`);
+      // Filter in JavaScript: scheduled_for <= current time
+      const nowTime = Date.now();
+      const dueSchedules = (data || []).filter((schedule: any) => {
+        try {
+          // Parse scheduled_for - handle multiple formats
+          const scheduledTime = new Date(schedule.scheduled_for).getTime();
+          const isDue = scheduledTime <= nowTime;
+
+          console.log(`  ${isDue ? '✓' : '✗'} Schedule ${schedule.id.substring(0, 8)}:`, {
+            scheduled_for: schedule.scheduled_for,
+            scheduled_time: new Date(schedule.scheduled_for).toISOString(),
+            current_time: new Date(nowTime).toISOString(),
+            is_due: isDue,
+            diff_minutes: Math.round((scheduledTime - nowTime) / 60000)
+          });
+
+          return isDue;
+        } catch (parseError) {
+          console.error(`❌ Error parsing schedule ${schedule.id}:`, parseError);
+          return false;
+        }
       });
 
-      return data || [];
+      console.log(`📋 Found ${dueSchedules.length} pending schedules that are due`);
+
+      return dueSchedules;
     } catch (error) {
       console.error('❌ Exception in getPendingSchedules:', error);
       return [];
