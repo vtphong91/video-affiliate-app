@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Fast schedule creation API called');
-    
+
     const body = await request.json();
     const {
       reviewId,
@@ -19,6 +19,20 @@ export async function POST(request: NextRequest) {
       landingPageUrl,
       affiliate_links = []
     } = body;
+
+    // Get current user ID from request
+    const { getUserIdFromRequest } = await import('@/lib/auth/helpers/auth-helpers');
+    const userId = await getUserIdFromRequest(request);
+
+    if (!userId) {
+      console.error('❌ User not authenticated');
+      return NextResponse.json({
+        success: false,
+        error: 'Unauthorized - Please login first'
+      }, { status: 401 });
+    }
+
+    console.log('👤 Creating schedule for user:', userId);
 
     // Get review data
     const review = await db.getReview(reviewId);
@@ -51,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Create schedule directly
     const schedule = await db.createSchedule({
-      user_id: '1788ee95-7d22-4b0b-8e45-07ae2d03c7e1', // Hardcoded for testing
+      user_id: userId, // Use authenticated user ID
       review_id: reviewId,
       scheduled_for: scheduledFor,
       timezone: 'Asia/Ho_Chi_Minh',

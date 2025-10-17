@@ -18,7 +18,8 @@ import {
   Calendar,
   Shield,
   CheckCircle,
-  XCircle
+  XCircle,
+  RotateCcw
 } from 'lucide-react';
 import {
   Dialog,
@@ -61,6 +62,8 @@ export default function MemberManagement() {
   
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [createForm, setCreateForm] = useState<CreateMemberData>({
     email: '',
     full_name: '',
@@ -68,6 +71,7 @@ export default function MemberManagement() {
     permissions: []
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     fetchMembers();
@@ -197,6 +201,122 @@ export default function MemberManagement() {
         return 'Người xem';
       default:
         return role;
+    }
+  };
+
+  const openEditDialog = (member: Member) => {
+    setSelectedMember(member);
+    setEditDialogOpen(true);
+  };
+
+  const updateMember = async () => {
+    if (!selectedMember) return;
+
+    try {
+      setIsUpdating(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      const response = await fetch(`/api/admin/members/${selectedMember.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          full_name: selectedMember.full_name,
+          role: selectedMember.role,
+          is_active: selectedMember.is_active
+        }),
+      });
+
+      if (response.ok) {
+        setEditDialogOpen(false);
+        setSelectedMember(null);
+        fetchMembers();
+        alert('Cập nhật thành viên thành công!');
+      } else {
+        const error = await response.json();
+        alert(`Lỗi: ${error.error || 'Không thể cập nhật thành viên'}`);
+      }
+    } catch (error) {
+      console.error('Error updating member:', error);
+      alert('Có lỗi xảy ra khi cập nhật thành viên');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const deleteMember = async (memberId: string, memberName: string) => {
+    if (!confirm(`Bạn có chắc muốn vô hiệu hóa thành viên "${memberName}"?\n\nThành viên sẽ không thể đăng nhập nhưng dữ liệu vẫn được giữ lại.\nBạn có thể khôi phục sau này.`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      const response = await fetch(`/api/admin/members/${memberId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        fetchMembers();
+        alert(result.message || 'Đã vô hiệu hóa thành viên thành công!');
+      } else {
+        const error = await response.json();
+        alert(`Lỗi: ${error.error || 'Không thể vô hiệu hóa thành viên'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting member:', error);
+      alert('Có lỗi xảy ra khi vô hiệu hóa thành viên');
+    }
+  };
+
+  const restoreMember = async (memberId: string, memberName: string) => {
+    if (!confirm(`Bạn có chắc muốn khôi phục thành viên "${memberName}"?\n\nThành viên sẽ có thể đăng nhập lại sau khi khôi phục.`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      const response = await fetch(`/api/admin/members/${memberId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        fetchMembers();
+        alert(result.message || 'Đã khôi phục thành viên thành công!');
+      } else {
+        const error = await response.json();
+        alert(`Lỗi: ${error.error || 'Không thể khôi phục thành viên'}`);
+      }
+    } catch (error) {
+      console.error('Error restoring member:', error);
+      alert('Có lỗi xảy ra khi khôi phục thành viên');
     }
   };
 
@@ -375,15 +495,41 @@ export default function MemberManagement() {
                       {getRoleDisplayName(member.role)}
                     </Badge>
                     <Badge className={member.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                      {member.is_active ? 'Hoạt động' : 'Không hoạt động'}
+                      {member.is_active ? 'Hoạt động' : 'Đã vô hiệu hóa'}
                     </Badge>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {member.is_active ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(member)}
+                            title="Chỉnh sửa"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteMember(member.id, member.full_name)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Vô hiệu hóa"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => restoreMember(member.id, member.full_name)}
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          title="Khôi phục"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" />
+                          Khôi phục
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -417,6 +563,122 @@ export default function MemberManagement() {
           </div>
         </div>
       )}
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa thành viên</DialogTitle>
+          </DialogHeader>
+          {selectedMember && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={selectedMember.email}
+                  disabled
+                  className="bg-gray-100"
+                />
+                <p className="text-xs text-gray-500">Email không thể thay đổi</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_full_name">Họ và tên</Label>
+                <Input
+                  id="edit_full_name"
+                  value={selectedMember.full_name}
+                  onChange={(e) => setSelectedMember(prev => prev ? { ...prev, full_name: e.target.value } : null)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_role">Vai trò</Label>
+                <select
+                  id="edit_role"
+                  value={selectedMember.role}
+                  onChange={(e) => setSelectedMember(prev => prev ? { ...prev, role: e.target.value } : null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="viewer">Người xem</option>
+                  <option value="editor">Biên tập viên</option>
+                  <option value="admin">Quản trị viên</option>
+                </select>
+                <p className="text-xs text-gray-500">Thay đổi vai trò sẽ cập nhật quyền hạn của thành viên</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_status">Trạng thái</Label>
+                <select
+                  id="edit_status"
+                  value={selectedMember.is_active ? 'true' : 'false'}
+                  onChange={(e) => setSelectedMember(prev => prev ? { ...prev, is_active: e.target.value === 'true' } : null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="true">Hoạt động</option>
+                  <option value="false">Không hoạt động</option>
+                </select>
+                <p className="text-xs text-gray-500">Vô hiệu hóa thành viên sẽ ngăn họ truy cập hệ thống</p>
+              </div>
+
+              {/* Role Permissions Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-2">
+                  <Shield className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <h4 className="font-medium text-blue-900 mb-1">Quyền hạn vai trò {getRoleDisplayName(selectedMember.role)}</h4>
+                    <div className="space-y-1 text-blue-700 text-xs">
+                      {selectedMember.role === 'admin' && (
+                        <>
+                          <p>✓ Toàn quyền quản trị hệ thống</p>
+                          <p>✓ Quản lý thành viên và phân quyền</p>
+                          <p>✓ Tạo, sửa, xóa tất cả nội dung</p>
+                          <p>✓ Xem tất cả thống kê và báo cáo</p>
+                        </>
+                      )}
+                      {selectedMember.role === 'editor' && (
+                        <>
+                          <p>✓ Tạo và chỉnh sửa reviews</p>
+                          <p>✓ Quản lý lịch đăng bài</p>
+                          <p>✓ Quản lý danh mục</p>
+                          <p>✗ Không thể quản lý thành viên</p>
+                        </>
+                      )}
+                      {selectedMember.role === 'viewer' && (
+                        <>
+                          <p>✓ Xem reviews và lịch đăng</p>
+                          <p>✓ Xem thống kê cơ bản</p>
+                          <p>✗ Không thể tạo hoặc chỉnh sửa</p>
+                          <p>✗ Không thể quản lý hệ thống</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditDialogOpen(false);
+                setSelectedMember(null);
+              }}
+              disabled={isUpdating}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={updateMember}
+              disabled={isUpdating}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isUpdating ? 'Đang cập nhật...' : 'Cập nhật'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

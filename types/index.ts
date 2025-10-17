@@ -56,7 +56,7 @@ export interface Category {
   slug: string;
   description?: string;
   icon?: string;
-  color: string;
+  color?: string;
   created_at: string;
   updated_at: string;
 }

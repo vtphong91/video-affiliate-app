@@ -21,7 +21,7 @@ export default function CategoriesPage() {
     slug: '',
     description: '',
     icon: '',
-    color: '#3b82f6',
+    color: '',
   });
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function CategoriesPage() {
         slug: '',
         description: '',
         icon: '',
-        color: '#3b82f6',
+        color: '',
       });
       setShowForm(false);
       setEditingId(null);
@@ -114,7 +114,7 @@ export default function CategoriesPage() {
       slug: category.slug,
       description: category.description || '',
       icon: category.icon || '',
-      color: category.color,
+      color: category.color || '',
     });
     setEditingId(category.id);
     setShowForm(true);
@@ -147,7 +147,7 @@ export default function CategoriesPage() {
       slug: '',
       description: '',
       icon: '',
-      color: '#3b82f6',
+      color: '',
     });
     setShowForm(false);
     setEditingId(null);
@@ -258,7 +258,7 @@ export default function CategoriesPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, icon: e.target.value })
                     }
-                    placeholder="🏍️"
+                    placeholder="🏍️ (tùy chọn)"
                     maxLength={2}
                   />
                 </div>
@@ -269,7 +269,7 @@ export default function CategoriesPage() {
                   <div className="flex gap-2">
                     <Input
                       type="color"
-                      value={formData.color}
+                      value={formData.color || '#3b82f6'}
                       onChange={(e) =>
                         setFormData({ ...formData, color: e.target.value })
                       }
@@ -281,7 +281,7 @@ export default function CategoriesPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, color: e.target.value })
                       }
-                      placeholder="#3b82f6"
+                      placeholder="#3b82f6 (tùy chọn)"
                     />
                   </div>
                 </div>
@@ -341,10 +341,12 @@ export default function CategoriesPage() {
                       </p>
                     </div>
                   </div>
-                  <div
-                    className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
-                    style={{ backgroundColor: category.color }}
-                  />
+                  {category.color && (
+                    <div
+                      className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
+                      style={{ backgroundColor: category.color }}
+                    />
+                  )}
                 </div>
 
                 {category.description && (

@@ -59,7 +59,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function getCategoryColor(colorHex: string): string {
+function getCategoryColor(colorHex?: string | null): string {
+  // Return default if no color provided
+  if (!colorHex) {
+    return 'bg-gray-100 text-gray-600';
+  }
+
   // Convert hex color to Tailwind classes
   const colorMap: { [key: string]: string } = {
     '#3b82f6': 'bg-blue-100 text-blue-600',
@@ -81,7 +86,7 @@ const createCategorySchema = z.object({
   slug: z.string().min(1, 'Slug is required'),
   description: z.string().optional(),
   icon: z.string().optional(),
-  color: z.string().default('#3b82f6'),
+  color: z.string().optional().default('#3b82f6'),
 });
 
 export async function POST(request: NextRequest) {

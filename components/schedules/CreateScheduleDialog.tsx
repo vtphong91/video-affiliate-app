@@ -244,11 +244,19 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
       console.log('🔍 Step 1: Starting fast schedule creation...');
       
       console.log('🔍 Step 2: Making API call...');
-      
+
+      // Get session token for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+
       const response = await fetch('/api/schedules-fast', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(scheduleData),
       });
