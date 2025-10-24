@@ -161,7 +161,7 @@ export const db = {
 
   async createReview(review: Partial<Review>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('reviews')
         .insert(review)
         .select()
@@ -181,7 +181,7 @@ export const db = {
 
   async updateReview(id: string, updates: Partial<Review>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('reviews')
         .update(updates)
         .eq('id', id)
@@ -202,7 +202,7 @@ export const db = {
 
   async deleteReview(id: string) {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('reviews')
         .delete()
         .eq('id', id);
@@ -222,7 +222,7 @@ export const db = {
   // Categories
   async getCategories() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('categories')
         .select('*')
         .order('name');
@@ -241,7 +241,7 @@ export const db = {
 
   async createCategory(category: Partial<Category>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('categories')
         .insert(category)
         .select()
@@ -261,7 +261,7 @@ export const db = {
 
   async updateCategory(id: string, updates: Partial<Category>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('categories')
         .update(updates)
         .eq('id', id)
@@ -282,7 +282,7 @@ export const db = {
 
   async deleteCategory(id: string) {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('categories')
         .delete()
         .eq('id', id);
@@ -527,7 +527,7 @@ export const db = {
   // Webhook Logs
   async createWebhookLog(log: Partial<WebhookLog>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('webhook_logs')
         .insert(log)
         .select()
@@ -547,7 +547,7 @@ export const db = {
 
   async updateWebhookLog(id: string, updates: Partial<WebhookLog>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('webhook_logs')
         .update(updates)
         .eq('id', id)
@@ -569,7 +569,7 @@ export const db = {
   // User Profiles
   async getUserProfile(userId: string) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
@@ -589,7 +589,7 @@ export const db = {
 
   async createUserProfile(profile: any) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('user_profiles')
         .insert(profile)
         .select()
@@ -609,7 +609,7 @@ export const db = {
 
   async updateUserProfile(userId: string, updates: any) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('user_profiles')
         .update(updates)
         .eq('user_id', userId)
@@ -687,7 +687,7 @@ export const db = {
   // User Settings
   async getUserSettings(userId: string) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('user_settings')
         .select('*')
         .eq('user_id', userId)
@@ -707,7 +707,7 @@ export const db = {
 
   async updateUserSettings(userId: string, settings: Partial<UserSettings>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('user_settings')
         .upsert({ user_id: userId, ...settings })
         .select()
