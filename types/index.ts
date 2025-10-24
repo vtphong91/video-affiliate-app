@@ -403,10 +403,38 @@ export interface CreateTemplateRequest {
   category: PromptCategory;
   platform: PromptPlatform;
   content_type: PromptContentType;
+  version?: '1.0' | '2.0'; // v2.0 = 10-element framework
+
+  // Configuration (Elements 1, 4, 7)
   config: PromptConfig;
-  prompt_template: string;
-  variables: Record<string, string>;
+
+  // Template content (Element 4: Structure)
+  prompt_template?: string;
+  variables?: Record<string, string>;
+
+  // Element 2: Role Instruction
+  role_instruction?: string;
+
+  // Element 3: Objective
+  objective?: PromptObjective;
+
+  // Element 5: Constraints
+  constraints?: PromptConstraints;
+
+  // Element 6: Examples
+  example_input?: Record<string, string>;
   example_output?: string;
+
+  // Element 8: Feedback Loop
+  feedback_instructions?: string;
+
+  // Element 9: AI Parameters
+  ai_parameters?: AIParameters;
+
+  // Element 10: Additional Notes
+  additional_notes?: string;
+
+  // Flags
   is_public?: boolean;
 }
 

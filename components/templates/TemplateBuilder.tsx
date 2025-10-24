@@ -135,7 +135,11 @@ const defaultFormData: TemplateFormData = {
   variables: {},
 };
 
-export function TemplateBuilder() {
+interface TemplateBuilderProps {
+  redirectPath?: string;
+}
+
+export function TemplateBuilder({ redirectPath = '/dashboard/templates' }: TemplateBuilderProps = {}) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'basic' | 'structure' | 'advanced'>('basic');
   const [formData, setFormData] = useState<TemplateFormData>(defaultFormData);
