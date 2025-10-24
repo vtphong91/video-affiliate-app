@@ -257,3 +257,199 @@ export interface AuthContextType {
   hasPermission: (permission: string) => boolean;
   updateProfile?: (data: any) => Promise<{ error?: any }>;
 }
+
+// ============================================
+// PROMPT TEMPLATES SYSTEM
+// ============================================
+
+export type PromptCategory = 'tech' | 'beauty' | 'food' | 'travel' | 'general';
+export type PromptPlatform = 'blog' | 'facebook' | 'instagram' | 'tiktok';
+export type PromptContentType = 'review' | 'comparison' | 'tutorial' | 'unboxing' | 'listicle';
+export type PromptTone = 'professional' | 'casual' | 'funny' | 'formal';
+export type PromptLength = 'short' | 'medium' | 'long';
+export type PromptLanguage = 'vi' | 'en';
+export type EmojiUsage = 'none' | 'minimal' | 'moderate' | 'heavy';
+
+export interface PromptStructure {
+  intro: boolean;
+  hook: boolean;
+  summary: boolean;
+  keyPoints: boolean;
+  prosCons: boolean;
+  comparison: boolean;
+  priceAnalysis: boolean;
+  verdict: boolean;
+  callToAction: boolean;
+}
+
+// 10-Element Prompt Engineering Framework Types
+
+export interface PromptObjective {
+  primary_goal: string;
+  secondary_goal?: string;
+  success_metrics?: string;
+}
+
+export interface PromptConstraints {
+  do_list: string[];
+  dont_list: string[];
+  compliance?: string[];
+  seo_requirements?: string[];
+}
+
+export interface AIParameters {
+  temperature: number; // 0.0 - 1.0
+  max_tokens: number;
+  top_p?: number; // 0.0 - 1.0
+  frequency_penalty?: number; // -2.0 - 2.0
+  presence_penalty?: number; // -2.0 - 2.0
+}
+
+export interface PromptContext {
+  business_type?: string;
+  target_audience?: string;
+  brand_voice?: string;
+  campaign_goal?: string;
+}
+
+export interface PromptConfig {
+  // Element 1: Context
+  context?: PromptContext;
+
+  // Element 4: Requirements
+  tone: PromptTone;
+  length: PromptLength;
+  language: PromptLanguage;
+  structure: PromptStructure;
+  emojiUsage: EmojiUsage;
+  hashtagCount?: number;
+  seoOptimized: boolean;
+  includeTimestamps: boolean;
+
+  // Element 7: Tone & Style (extended)
+  formality?: 'formal' | 'informal' | 'neutral';
+  perspective?: 'first_person' | 'second_person' | 'third_person';
+  emotional_tone?: 'enthusiastic' | 'balanced' | 'critical' | 'inspirational';
+  punctuation_style?: 'neutral' | 'exclamatory' | 'question-based';
+}
+
+export interface PromptTemplate {
+  id: string;
+  user_id?: string; // NULL = system template
+
+  // Metadata
+  name: string;
+  description?: string;
+  category: PromptCategory;
+  platform: PromptPlatform;
+  content_type: PromptContentType;
+  version: '1.0' | '2.0'; // v2.0 = 10-element framework
+
+  // Configuration (Elements 1, 4, 7)
+  config: PromptConfig;
+
+  // Template content (Element 4: Structure)
+  prompt_template: string;
+  variables: Record<string, string>;
+
+  // Element 2: Role Instruction
+  role_instruction?: string;
+
+  // Element 3: Objective
+  objective?: PromptObjective;
+
+  // Element 5: Constraints
+  constraints?: PromptConstraints;
+
+  // Element 6: Examples
+  example_input?: Record<string, string>;
+  example_output?: string;
+
+  // Element 8: Feedback Loop
+  feedback_instructions?: string;
+
+  // Element 9: AI Parameters
+  ai_parameters?: AIParameters;
+
+  // Element 10: Additional Notes
+  additional_notes?: string;
+
+  // Flags
+  is_system: boolean;
+  is_public: boolean;
+  is_active: boolean;
+
+  // Stats
+  usage_count: number;
+
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewTemplateUsage {
+  id: string;
+  review_id: string;
+  template_id: string;
+  user_id: string;
+  variables_used: Record<string, string>;
+  created_at: string;
+}
+
+// API Types
+export interface CreateTemplateRequest {
+  name: string;
+  description?: string;
+  category: PromptCategory;
+  platform: PromptPlatform;
+  content_type: PromptContentType;
+  config: PromptConfig;
+  prompt_template: string;
+  variables: Record<string, string>;
+  example_output?: string;
+  is_public?: boolean;
+}
+
+export interface UpdateTemplateRequest {
+  name?: string;
+  description?: string;
+  config?: PromptConfig;
+  prompt_template?: string;
+  variables?: Record<string, string>;
+  example_output?: string;
+  is_public?: boolean;
+  is_active?: boolean;
+}
+
+export interface TemplateRecommendationRequest {
+  video_title: string;
+  video_description: string;
+  platform: PromptPlatform;
+}
+
+export interface TemplateRecommendationResponse {
+  recommended_template: PromptTemplate;
+  confidence: number;
+  alternatives: PromptTemplate[];
+}
+
+export interface TemplatePreviewRequest {
+  template_id: string;
+  variables: Record<string, string>;
+}
+
+export interface TemplatePreviewResponse {
+  final_prompt: string;
+  estimated_tokens: number;
+}
+
+export interface CreateReviewWithTemplateRequest {
+  template_id: string;
+  video_url?: string;
+  video_info?: VideoInfo; // ✅ Video info từ client
+  ai_analysis?: AIAnalysis; // ✅ AI analysis từ client
+  variables: Record<string, string>;
+  schedule_for?: string;
+  category_id?: string;
+  affiliate_links?: AffiliateLink[];
+}

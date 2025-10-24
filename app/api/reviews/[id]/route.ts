@@ -3,6 +3,9 @@ import { db } from '@/lib/db/supabase';
 import { ActivityLogger } from '@/lib/utils/activity-logger';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
+// Force dynamic rendering to prevent caching issues
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -31,26 +34,56 @@ export async function DELETE(
   try {
     const userId = await getUserIdFromRequest(request);
 
+    console.log('🗑️ Deleting review:', params.id);
+
     // Get review details before deleting
     const review = await db.getReview(params.id);
-    const reviewTitle = review?.video_title || 'Unknown';
 
+    if (!review) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Review not found'
+        },
+        { status: 404 }
+      );
+    }
+
+    const reviewTitle = review.video_title || 'Unknown';
+
+    // Delete the review
     await db.deleteReview(params.id);
+
+    console.log('✅ Review deleted successfully:', params.id);
 
     // Log activity
     if (userId) {
       await ActivityLogger.reviewDeleted(userId, reviewTitle, params.id);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Review deleted successfully',
-    });
+    // Return success with cache-control headers
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Review deleted successfully',
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error) {
-    console.error('Error deleting review:', error);
+    console.error('❌ Error deleting review:', error);
 
     return NextResponse.json(
-      { error: 'Failed to delete review' },
+      {
+        success: false,
+        error: 'Failed to delete review',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

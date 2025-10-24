@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Review, UserSettings, Category, Schedule, WebhookLog, ActivityLog } from '@/types';
+import type { Review, UserSettings, Category, Schedule, WebhookLog, ActivityLog, PromptTemplate, ReviewTemplateUsage } from '@/types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -159,6 +159,29 @@ export const db = {
     }
   },
 
+  async getReviewBySlug(slug: string) {
+    try {
+      console.log('🔍 getReviewBySlug: Fetching review with slug:', slug);
+
+      const { data, error } = await supabaseAdmin
+        .from('reviews')
+        .select('*')
+        .eq('slug', slug)
+        .single();
+
+      if (error) {
+        console.error('❌ Error fetching review by slug:', error);
+        return null;
+      }
+
+      console.log('✅ getReviewBySlug: Found review:', data?.id);
+      return data;
+    } catch (error) {
+      console.error('❌ Exception in getReviewBySlug:', error);
+      return null;
+    }
+  },
+
   async createReview(review: Partial<Review>) {
     try {
       const { data, error } = await supabase
@@ -181,7 +204,7 @@ export const db = {
 
   async updateReview(id: string, updates: Partial<Review>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin  // ✅ Use supabaseAdmin to bypass RLS
         .from('reviews')
         .update(updates)
         .eq('id', id)
@@ -202,19 +225,22 @@ export const db = {
 
   async deleteReview(id: string) {
     try {
-      const { error } = await supabase
+      console.log('🗑️ deleteReview: Deleting review with ID:', id);
+
+      const { error } = await supabaseAdmin  // ✅ Use supabaseAdmin to bypass RLS
         .from('reviews')
         .delete()
         .eq('id', id);
 
       if (error) {
-        console.error('Error deleting review:', error);
+        console.error('❌ Error deleting review:', error);
         throw error;
       }
 
+      console.log('✅ deleteReview: Successfully deleted review', id);
       return true;
     } catch (error) {
-      console.error('Exception in deleteReview:', error);
+      console.error('❌ Exception in deleteReview:', error);
       throw error;
     }
   },
@@ -722,6 +748,218 @@ export const db = {
     } catch (error) {
       console.error('Exception in updateUserSettings:', error);
       throw error;
+    }
+  },
+
+  // ============================================
+  // PROMPT TEMPLATES
+  // ============================================
+
+  async getTemplates(options: {
+    userId?: string;
+    category?: string;
+    platform?: string;
+    contentType?: string;
+    isSystem?: boolean;
+    isActive?: boolean;
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    try {
+      const {
+        userId,
+        category,
+        platform,
+        contentType,
+        isSystem,
+        isActive = true,
+        limit = 50,
+        offset = 0,
+      } = options;
+
+      let query = supabaseAdmin
+        .from('prompt_templates')
+        .select('*')
+        .eq('is_active', isActive)
+        .order('usage_count', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (userId !== undefined) {
+        query = query.eq('user_id', userId);
+      }
+
+      if (category) {
+        query = query.eq('category', category);
+      }
+
+      if (platform) {
+        query = query.eq('platform', platform);
+      }
+
+      if (contentType) {
+        query = query.eq('content_type', contentType);
+      }
+
+      if (isSystem !== undefined) {
+        query = query.eq('is_system', isSystem);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching templates:', error);
+        return [];
+      }
+
+      console.log(`✅ Found ${data?.length || 0} templates`);
+      return data || [];
+    } catch (error) {
+      console.error('Exception in getTemplates:', error);
+      return [];
+    }
+  },
+
+  async getTemplate(id: string) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('prompt_templates')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching template:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Exception in getTemplate:', error);
+      return null;
+    }
+  },
+
+  async createTemplate(template: Partial<PromptTemplate>) {
+    try {
+      const { data, error } = await supabase
+        .from('prompt_templates')
+        .insert(template)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating template:', error);
+        throw error;
+      }
+
+      console.log('✅ Template created:', data.id);
+      return data;
+    } catch (error) {
+      console.error('Exception in createTemplate:', error);
+      throw error;
+    }
+  },
+
+  async updateTemplate(id: string, updates: Partial<PromptTemplate>) {
+    try {
+      const { data, error } = await supabase
+        .from('prompt_templates')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating template:', error);
+        throw error;
+      }
+
+      console.log('✅ Template updated:', id);
+      return data;
+    } catch (error) {
+      console.error('Exception in updateTemplate:', error);
+      throw error;
+    }
+  },
+
+  async deleteTemplate(id: string) {
+    try {
+      // Soft delete by setting is_active = false
+      const { data, error } = await supabase
+        .from('prompt_templates')
+        .update({ is_active: false })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error deleting template:', error);
+        throw error;
+      }
+
+      console.log('✅ Template deleted (soft):', id);
+      return true;
+    } catch (error) {
+      console.error('Exception in deleteTemplate:', error);
+      throw error;
+    }
+  },
+
+  async incrementTemplateUsage(templateId: string) {
+    try {
+      const { error } = await supabaseAdmin
+        .from('prompt_templates')
+        .update({ usage_count: supabaseAdmin.raw('usage_count + 1') })
+        .eq('id', templateId);
+
+      if (error) {
+        console.error('Error incrementing template usage:', error);
+      }
+    } catch (error) {
+      console.error('Exception in incrementTemplateUsage:', error);
+    }
+  },
+
+  async createTemplateUsage(usage: Partial<ReviewTemplateUsage>) {
+    try {
+      const { data, error } = await supabase
+        .from('review_template_usage')
+        .insert(usage)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating template usage:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Exception in createTemplateUsage:', error);
+      throw error;
+    }
+  },
+
+  async getTemplateUsage(reviewId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('review_template_usage')
+        .select(`
+          *,
+          template:prompt_templates(*)
+        `)
+        .eq('review_id', reviewId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching template usage:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Exception in getTemplateUsage:', error);
+      return null;
     }
   }
 };

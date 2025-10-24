@@ -57,3 +57,72 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* React Quill Editor Styles */
+.rich-text-editor .quill {
+  @apply rounded-lg border border-gray-300;
+}
+
+.rich-text-editor .ql-toolbar {
+  @apply bg-gray-50 rounded-t-lg border-b border-gray-300;
+}
+
+.rich-text-editor .ql-container {
+  @apply bg-white rounded-b-lg;
+  min-height: 300px;
+}
+
+.rich-text-editor .ql-editor {
+  @apply text-gray-800;
+  min-height: 300px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.rich-text-editor .ql-editor.ql-blank::before {
+  @apply text-gray-400 italic;
+}
+
+.rich-text-editor .ql-editor h1 {
+  @apply text-3xl font-bold mb-4 mt-6;
+}
+
+.rich-text-editor .ql-editor h2 {
+  @apply text-2xl font-bold mb-3 mt-5;
+}
+
+.rich-text-editor .ql-editor h3 {
+  @apply text-xl font-bold mb-2 mt-4;
+}
+
+.rich-text-editor .ql-editor ul {
+  @apply pl-6 mb-3;
+}
+
+.rich-text-editor .ql-editor ol {
+  @apply pl-6 mb-3;
+}
+
+.rich-text-editor .ql-editor li {
+  @apply mb-1;
+}
+
+.rich-text-editor .ql-editor blockquote {
+  @apply border-l-4 border-gray-300 pl-4 italic my-4;
+}
+
+.rich-text-editor .ql-editor code {
+  @apply bg-gray-100 px-2 py-1 rounded text-sm font-mono;
+}
+
+.rich-text-editor .ql-editor pre {
+  @apply bg-gray-100 p-4 rounded my-4 overflow-x-auto;
+}
+
+.rich-text-editor .ql-editor a {
+  @apply text-blue-600 underline hover:text-blue-800;
+}
+
+.rich-text-editor .ql-editor img {
+  @apply max-w-full h-auto rounded-lg my-4;
+}

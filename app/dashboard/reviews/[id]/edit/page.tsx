@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Save, ArrowLeft, Plus, X, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
+import { RichTextEditor } from '@/components/editors/RichTextEditor';
 import type { Review, KeyPoint, AffiliateLink, AIAnalysis, Category } from '@/types';
 
 export default function EditReviewPage() {
@@ -30,6 +31,7 @@ export default function EditReviewPage() {
   // Basic fields
   const [customTitle, setCustomTitle] = useState('');
   const [summary, setSummary] = useState('');
+  const [customContent, setCustomContent] = useState(''); // ✅ NEW: Custom content with rich text
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
@@ -85,6 +87,7 @@ export default function EditReviewPage() {
         setReview(rev);
         setCustomTitle(rev.custom_title || rev.video_title);
         setSummary(rev.summary);
+        setCustomContent(rev.custom_content || ''); // ✅ NEW: Load custom content
         setStatus(rev.status);
         setSelectedCategoryId(rev.category_id || '');
         setPros(rev.pros || []);
@@ -112,6 +115,7 @@ export default function EditReviewPage() {
         body: JSON.stringify({
           custom_title: customTitle,
           summary,
+          custom_content: customContent, // ✅ NEW: Include custom content in update
           status,
           ...(selectedCategoryId && { category_id: selectedCategoryId }),
           pros,
@@ -366,14 +370,38 @@ export default function EditReviewPage() {
           </Card>
 
           {/* AI Content Tabs */}
-          <Tabs defaultValue="pros-cons">
-            <TabsList className="grid w-full grid-cols-5">
+          <Tabs defaultValue="custom-content">
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="custom-content">Nội dung</TabsTrigger>
               <TabsTrigger value="pros-cons">Ưu/Nhược</TabsTrigger>
               <TabsTrigger value="keypoints">Điểm Nổi Bật</TabsTrigger>
               <TabsTrigger value="audience">Đối Tượng</TabsTrigger>
               <TabsTrigger value="affiliate">Affiliate</TabsTrigger>
               <TabsTrigger value="facebook">Facebook</TabsTrigger>
             </TabsList>
+
+            {/* Custom Content Tab - ✅ NEW */}
+            <TabsContent value="custom-content">
+              <Card>
+                <CardHeader>
+                  <CardTitle>📝 Nội dung tùy chỉnh</CardTitle>
+                  <p className="text-sm text-gray-500">
+                    Chỉnh sửa nội dung review đầy đủ với trình soạn thảo rich text.
+                    Nội dung này sẽ hiển thị trên trang review công khai.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <RichTextEditor
+                    content={customContent}
+                    onChange={setCustomContent}
+                    placeholder="Nhập nội dung review đầy đủ tại đây..."
+                  />
+                  <p className="text-xs text-gray-400 mt-2">
+                    💡 Mẹo: Sử dụng các công cụ định dạng phía trên để tạo nội dung hấp dẫn với heading, list, link, hình ảnh, v.v.
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             {/* Pros & Cons */}
             <TabsContent value="pros-cons" className="space-y-4">

@@ -133,3 +133,35 @@ export async function analyzeVideoWithClaudeHaiku(
     throw new Error('Failed to analyze video content');
   }
 }
+
+/**
+ * Generate content with custom prompt using Claude
+ * Used for template-based review generation
+ */
+export async function generateContentWithClaude(prompt: string): Promise<string> {
+  try {
+    const client = getAnthropic();
+
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 3000,
+      temperature: 0.7,
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    });
+
+    const content = message.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Invalid response type from Claude');
+    }
+
+    return content.text.trim();
+  } catch (error) {
+    console.error('Error generating content with Claude:', error);
+    throw new Error('Failed to generate content with Claude');
+  }
+}

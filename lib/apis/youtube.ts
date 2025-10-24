@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { YoutubeTranscript } from 'youtube-transcript';
 import type { VideoInfo } from '@/types';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
@@ -85,29 +86,40 @@ export async function getYouTubeVideoInfo(
   }
 
   try {
-    const response = await axios.get<YouTubeVideoResponse>(
-      `${YOUTUBE_API_BASE}/videos`,
-      {
-        params: {
-          part: 'snippet,contentDetails,statistics',
-          id: videoId,
-          key: YOUTUBE_API_KEY,
-        },
-      }
-    );
+    // Fetch video metadata and transcript in parallel
+    const [videoResponse, transcript] = await Promise.all([
+      axios.get<YouTubeVideoResponse>(
+        `${YOUTUBE_API_BASE}/videos`,
+        {
+          params: {
+            part: 'snippet,contentDetails,statistics',
+            id: videoId,
+            key: YOUTUBE_API_KEY,
+          },
+        }
+      ),
+      getYouTubeTranscript(videoId), // Fetch transcript in parallel
+    ]);
 
-    if (!response.data.items || response.data.items.length === 0) {
+    console.log('📺 YouTube API - Transcript result:', {
+      videoId,
+      hasTranscript: !!transcript,
+      transcriptLength: transcript?.length,
+      transcriptPreview: transcript?.substring(0, 100)
+    });
+
+    if (!videoResponse.data.items || videoResponse.data.items.length === 0) {
       throw new Error('Video not found');
     }
 
-    const video = response.data.items[0];
+    const video = videoResponse.data.items[0];
     const thumbnail =
       video.snippet.thumbnails.maxres?.url ||
       video.snippet.thumbnails.high?.url ||
       video.snippet.thumbnails.medium.url;
 
-    return {
-      platform: 'youtube',
+    const videoInfo = {
+      platform: 'youtube' as const,
       videoId,
       title: video.snippet.title,
       description: video.snippet.description,
@@ -116,8 +128,17 @@ export async function getYouTubeVideoInfo(
       channelName: video.snippet.channelTitle,
       channelUrl: `https://www.youtube.com/channel/${video.snippet.channelId}`,
       viewCount: parseInt(video.statistics.viewCount),
-      publishedAt: new Date().toISOString(), // Could parse from snippet.publishedAt
+      publishedAt: new Date().toISOString(),
+      transcript: transcript || undefined, // ✅ Add transcript if available
     };
+
+    console.log('📺 YouTube API - Final videoInfo:', {
+      title: videoInfo.title.substring(0, 50),
+      hasTranscript: !!videoInfo.transcript,
+      transcriptLength: videoInfo.transcript?.length
+    });
+
+    return videoInfo;
   } catch (error) {
     console.error('Error fetching YouTube video info:', error);
     throw new Error('Failed to fetch video information');
@@ -125,17 +146,44 @@ export async function getYouTubeVideoInfo(
 }
 
 /**
- * Get video transcript/captions (requires additional API call)
- * Note: YouTube API v3 doesn't provide direct transcript access
- * This is a placeholder - you might need to use youtube-transcript package
+ * Get video transcript/captions using youtube-transcript package
+ * This fetches the auto-generated or manual captions from YouTube
  */
 export async function getYouTubeTranscript(
   videoId: string
 ): Promise<string | null> {
-  // This would require the youtube-transcript npm package or similar
-  // For now, return null as it's optional
-  console.log('Transcript fetching not implemented yet for:', videoId);
-  return null;
+  try {
+    // Fetch transcript items (array of { text, duration, offset })
+    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId, {
+      lang: 'vi', // Try Vietnamese first
+    });
+
+    // Combine all text segments into a single string
+    const fullTranscript = transcriptItems
+      .map((item) => item.text)
+      .join(' ')
+      .trim();
+
+    return fullTranscript || null;
+  } catch (error) {
+    // If Vietnamese transcript not available, try English
+    try {
+      const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId, {
+        lang: 'en',
+      });
+
+      const fullTranscript = transcriptItems
+        .map((item) => item.text)
+        .join(' ')
+        .trim();
+
+      return fullTranscript || null;
+    } catch (fallbackError) {
+      // If no transcript available at all, log and return null
+      console.log('No transcript available for video:', videoId);
+      return null;
+    }
+  }
 }
 
 /**

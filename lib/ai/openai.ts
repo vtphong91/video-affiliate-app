@@ -109,3 +109,32 @@ export async function analyzeVideoWithGPT35(
     throw new Error('Failed to analyze video content');
   }
 }
+
+/**
+ * Generate content with custom prompt using OpenAI
+ * Used for template-based review generation
+ */
+export async function generateContentWithOpenAI(prompt: string): Promise<string> {
+  try {
+    const client = getOpenAI();
+
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 3000,
+    });
+
+    const content = completion.choices[0].message.content;
+    if (!content) {
+      throw new Error('No content received from OpenAI');
+    }
+
+    return content.trim();
+  } catch (error) {
+    console.error('Error generating content with OpenAI:', error);
+    throw new Error('Failed to generate content with OpenAI');
+  }
+}

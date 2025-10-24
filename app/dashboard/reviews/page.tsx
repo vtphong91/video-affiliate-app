@@ -78,14 +78,41 @@ function ReviewsPage() {
 
     try {
       setDeleting(id);
+
+      // Get session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-email'] = session.user.email || '';
+        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
+      }
+
       const response = await fetch(`/api/reviews/${id}`, {
         method: 'DELETE',
+        headers,
       });
 
       if (response.ok) {
-        setReviews(reviews.filter(r => r.id !== id));
+        // ✅ FIX: Refetch data from server instead of just filtering local state
+        console.log('✅ Review deleted successfully, refetching data...');
+
+        // Check if we need to go back a page (if this was the last item on current page)
+        const remainingItems = reviews.length - 1;
+        if (remainingItems === 0 && currentPage > 1) {
+          // Go back one page if current page becomes empty
+          setCurrentPage(currentPage - 1);
+        } else {
+          // Refetch current page
+          await fetchReviews();
+        }
       } else {
-        alert('Không thể xóa review');
+        const errorData = await response.json();
+        alert(errorData.error || 'Không thể xóa review');
       }
     } catch (error) {
       console.error('Error deleting review:', error);

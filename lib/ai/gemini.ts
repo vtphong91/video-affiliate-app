@@ -119,3 +119,32 @@ export async function analyzeVideoWithGeminiPro(
     throw new Error('Failed to analyze video content');
   }
 }
+
+/**
+ * Generate content with custom prompt using Gemini
+ * Used for template-based review generation
+ */
+export async function generateContentWithGemini(prompt: string): Promise<string> {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 3000,
+      },
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+
+    if (!text) {
+      throw new Error('No content received from Gemini');
+    }
+
+    return text.trim();
+  } catch (error) {
+    console.error('Error generating content with Gemini:', error);
+    throw new Error('Failed to generate content with Gemini');
+  }
+}
