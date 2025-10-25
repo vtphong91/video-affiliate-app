@@ -159,7 +159,7 @@ async function sendAccountEmail(email: string, fullName: string, password: strin
     console.log(`To: ${email}`);
     console.log(`Subject: Thông tin tài khoản Video Affiliate App`);
     console.log('Content: Professional HTML email template');
-    console.log('Password:', password);
+    console.log('Password: [REDACTED FOR SECURITY]');
     console.log('Role:', role);
     console.log('=====================================');
     
@@ -300,7 +300,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Generate secure password
       const generatedPassword = generateSecurePassword();
-      console.log('🔐 Generated password for', email, ':', generatedPassword);
+      console.log('🔐 Secure password generated for', email);
 
       // Create new user in auth.users
       const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
