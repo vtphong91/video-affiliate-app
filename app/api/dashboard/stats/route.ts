@@ -42,7 +42,9 @@ export async function GET(request: NextRequest) {
     // Get ALL reviews and schedules for accurate statistics
     // Use high limit to get all data (not default 10)
     const reviews = await db.getReviews({ limit: 10000 });
-    const schedules = await db.getSchedules?.(undefined, undefined, 10000) || [];
+    const schedules = db.getSchedules
+      ? await db.getSchedules(undefined, undefined, 10000)
+      : [];
 
     console.log('✅ Fetched data:', {
       reviewsCount: reviews.length,
