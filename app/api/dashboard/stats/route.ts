@@ -37,14 +37,22 @@ interface ActivityItem {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get basic stats
-    const reviews = await db.getReviews();
-    const schedules = await db.getSchedules?.() || [];
-    
+    console.log('📊 Fetching dashboard stats...');
+
+    // Get ALL reviews and schedules for accurate statistics
+    // Use high limit to get all data (not default 10)
+    const reviews = await db.getReviews({ limit: 10000 });
+    const schedules = await db.getSchedules?.(undefined, undefined, 10000) || [];
+
+    console.log('✅ Fetched data:', {
+      reviewsCount: reviews.length,
+      schedulesCount: schedules.length
+    });
+
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const stats: DashboardStats = {
       totalReviews: reviews.length,
       totalSchedules: schedules.length,
@@ -52,11 +60,13 @@ export async function GET(request: NextRequest) {
       pendingSchedules: schedules.filter(s => s.status === 'pending').length,
       failedPosts: schedules.filter(s => s.status === 'failed').length,
       reviewsToday: reviews.filter(r => new Date(r.created_at) >= today).length,
-      postsToday: schedules.filter(s => 
+      postsToday: schedules.filter(s =>
         s.status === 'posted' && new Date(s.posted_at || s.created_at) >= today
       ).length,
       averageResponseTime: 245, // Mock data
     };
+
+    console.log('📈 Calculated stats:', stats);
 
     // Generate chart data
     const reviewsByDay: ChartData[] = [];
@@ -96,16 +106,45 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Platform distribution
+    // Platform distribution - Use video_platform field if available, fallback to URL
     const platformStats: ChartData[] = [
-      { label: 'YouTube', value: reviews.filter(r => r.video_url?.includes('youtube')).length, color: '#FF0000' },
-      { label: 'TikTok', value: reviews.filter(r => r.video_url?.includes('tiktok')).length, color: '#000000' },
-      { label: 'Facebook', value: reviews.filter(r => r.video_url?.includes('facebook')).length, color: '#1877F2' },
-      { label: 'Khác', value: reviews.filter(r => 
-        !r.video_url?.includes('youtube') && 
-        !r.video_url?.includes('tiktok') && 
-        !r.video_url?.includes('facebook')
-      ).length, color: '#6B7280' },
+      {
+        label: 'YouTube',
+        value: reviews.filter(r =>
+          r.video_platform?.toLowerCase() === 'youtube' ||
+          r.video_url?.includes('youtube') ||
+          r.video_url?.includes('youtu.be')
+        ).length,
+        color: '#FF0000'
+      },
+      {
+        label: 'TikTok',
+        value: reviews.filter(r =>
+          r.video_platform?.toLowerCase() === 'tiktok' ||
+          r.video_url?.includes('tiktok')
+        ).length,
+        color: '#000000'
+      },
+      {
+        label: 'Facebook',
+        value: reviews.filter(r =>
+          r.video_platform?.toLowerCase() === 'facebook' ||
+          r.video_url?.includes('facebook') ||
+          r.video_url?.includes('fb.watch')
+        ).length,
+        color: '#1877F2'
+      },
+      {
+        label: 'Khác',
+        value: reviews.filter(r => {
+          const platform = r.video_platform?.toLowerCase() || '';
+          const url = r.video_url?.toLowerCase() || '';
+          return platform !== 'youtube' && platform !== 'tiktok' && platform !== 'facebook' &&
+                 !url.includes('youtube') && !url.includes('youtu.be') &&
+                 !url.includes('tiktok') && !url.includes('facebook') && !url.includes('fb.watch');
+        }).length,
+        color: '#6B7280'
+      },
     ];
 
     // Status distribution
@@ -127,6 +166,17 @@ export async function GET(request: NextRequest) {
       status: log.status as ActivityItem['status'],
       metadata: log.metadata,
     }));
+
+    console.log('📊 Dashboard data prepared:', {
+      statsCount: Object.keys(stats).length,
+      activitiesCount: activities.length,
+      chartsData: {
+        reviewsByDay: reviewsByDay.length,
+        postsByDay: postsByDay.length,
+        platformStats: platformStats.map(p => `${p.label}: ${p.value}`),
+        statusStats: statusStats.map(s => `${s.label}: ${s.value}`)
+      }
+    });
 
     return NextResponse.json({
       success: true,
