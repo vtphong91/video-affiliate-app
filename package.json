@@ -10,7 +10,10 @@
     "check-supabase": "node scripts/check-supabase.js",
     "check-email": "node scripts/check-email-config.js",
     "delete-users": "node scripts/delete-users.js",
-    "seed-templates": "tsx scripts/seed-templates.ts"
+    "seed-templates": "tsx scripts/seed-templates.ts",
+    "sync": "./auto-sync.sh",
+    "watch-sync": "node watch-and-sync.js",
+    "watch-sync:fast": "node watch-and-sync.js --interval 180 --debounce 15"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.17.0",

@@ -1,0 +1,103 @@
+name: Auto Sync to GitHub
+
+on:
+  # Tự động chạy mỗi 6 giờ
+  schedule:
+    - cron: '0 */6 * * *'  # Chạy vào 0:00, 6:00, 12:00, 18:00 UTC mỗi ngày
+
+  # Hoặc trigger thủ công
+  workflow_dispatch:
+    inputs:
+      commit_message:
+        description: 'Custom commit message (optional)'
+        required: false
+        default: 'Auto-sync: Update codebase'
+
+jobs:
+  auto-sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Cho phép push code
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          # Kiểm tra xem có thay đổi không committed không
+          if [[ -n $(git status -s) ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Found uncommitted changes"
+            git status -s
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No changes to commit"
+          fi
+
+      - name: Commit and Push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          # Tạo commit message
+          TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          if [ -n "${{ github.event.inputs.commit_message }}" ]; then
+            COMMIT_MSG="${{ github.event.inputs.commit_message }}"
+          else
+            COMMIT_MSG="Auto-sync: Update codebase ($TIMESTAMP)"
+          fi
+
+          # Add tất cả file changes
+          git add -A
+
+          # Commit với message
+          git commit -m "$COMMIT_MSG" || echo "Nothing to commit"
+
+          # Push lên branch hiện tại
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "Pushing to branch: $CURRENT_BRANCH"
+
+          # Retry logic với exponential backoff
+          max_retries=4
+          retry_count=0
+          retry_delay=2
+
+          while [ $retry_count -lt $max_retries ]; do
+            if git push -u origin "$CURRENT_BRANCH"; then
+              echo "✅ Successfully pushed to $CURRENT_BRANCH"
+              exit 0
+            else
+              retry_count=$((retry_count + 1))
+              if [ $retry_count -lt $max_retries ]; then
+                echo "⚠️ Push failed, retrying in ${retry_delay}s... (Attempt $retry_count/$max_retries)"
+                sleep $retry_delay
+                retry_delay=$((retry_delay * 2))
+              else
+                echo "❌ Failed to push after $max_retries attempts"
+                exit 1
+              fi
+            fi
+          done
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Auto-Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: $(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Has Changes**: ${{ steps.check_changes.outputs.has_changes }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_changes.outputs.has_changes }}" = "true" ]; then
+            echo "- **Status**: ✅ Changes synced successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ℹ️ No changes to sync" >> $GITHUB_STEP_SUMMARY
+          fi
