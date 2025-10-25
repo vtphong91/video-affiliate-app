@@ -100,10 +100,21 @@ export async function PATCH(
 
     const review = await db.updateReview(params.id, updates);
 
+    if (!review) {
+      console.error('❌ Review not found or update failed:', params.id);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Review not found or update failed'
+        },
+        { status: 404 }
+      );
+    }
+
     console.log('✅ Review updated successfully:', review.id);
 
     // Log activity
-    if (userId) {
+    if (userId && review.video_title) {
       await ActivityLogger.reviewUpdated(userId, review.video_title, review.id);
     }
 
@@ -117,12 +128,16 @@ export async function PATCH(
 
     // Return more detailed error information
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error('Error details:', { errorMessage, errorStack });
 
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to update review',
-        details: errorMessage
+        details: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
       },
       { status: 500 }
     );

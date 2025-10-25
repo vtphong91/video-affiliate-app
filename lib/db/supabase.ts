@@ -204,7 +204,7 @@ export const db = {
 
   async updateReview(id: string, updates: Partial<Review>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('reviews')
         .update(updates)
         .eq('id', id)
@@ -225,7 +225,7 @@ export const db = {
 
   async deleteReview(id: string) {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('reviews')
         .delete()
         .eq('id', id);
