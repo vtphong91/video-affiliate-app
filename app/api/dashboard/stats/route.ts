@@ -55,8 +55,9 @@ export async function GET(request: NextRequest) {
 
     // Get basic stats FOR THIS USER ONLY
     // Note: getReviews expects an object with userId, getSchedules expects userId as first param
-    const reviews = await db.getReviews({ userId });
-    const schedules = await db.getSchedules(userId) || [];
+    // IMPORTANT: Pass high limit to get ALL items, not just first 10
+    const reviews = await db.getReviews({ userId, limit: 9999 });
+    const schedules = await db.getSchedules(userId, undefined, 9999) || [];
 
     console.log('📊 User stats:', {
       userId,
