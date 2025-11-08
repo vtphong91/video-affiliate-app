@@ -94,17 +94,53 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('🔍 PATCH /api/reviews/[id] - Starting update');
+    console.log('📋 Review ID:', params.id);
+
     const userId = await getUserIdFromRequest(request);
-    const updates = await request.json();
-    console.log('📝 Updating review:', params.id, 'with data:', updates);
+    console.log('👤 User ID:', userId);
 
+    // Parse request body with error handling
+    let updates;
+    try {
+      updates = await request.json();
+      console.log('📝 Update data:', JSON.stringify(updates, null, 2));
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid JSON in request body',
+          details: parseError instanceof Error ? parseError.message : 'Unknown parse error'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate that we have something to update
+    if (!updates || Object.keys(updates).length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'No update data provided'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Update review
+    console.log('🔄 Calling db.updateReview...');
     const review = await db.updateReview(params.id, updates);
-
-    console.log('✅ Review updated successfully:', review.id);
+    console.log('✅ Review updated successfully:', review?.id);
 
     // Log activity
-    if (userId) {
-      await ActivityLogger.reviewUpdated(userId, review.video_title, review.id);
+    if (userId && review) {
+      try {
+        await ActivityLogger.reviewUpdated(userId, review.video_title, review.id);
+      } catch (logError) {
+        console.warn('⚠️ Failed to log activity:', logError);
+        // Don't fail the request if activity logging fails
+      }
     }
 
     return NextResponse.json({
@@ -114,15 +150,18 @@ export async function PATCH(
     });
   } catch (error) {
     console.error('❌ Error updating review:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
 
     // Return more detailed error information
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
 
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to update review',
-        details: errorMessage
+        details: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
       },
       { status: 500 }
     );
