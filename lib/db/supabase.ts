@@ -204,7 +204,10 @@ export const db = {
 
   async updateReview(id: string, updates: Partial<Review>) {
     try {
-      const { data, error } = await supabase
+      console.log('🔄 db.updateReview called with:', { id, updateFields: Object.keys(updates) });
+
+      // Use supabaseAdmin for server-side operations to bypass RLS
+      const { data, error } = await supabaseAdmin
         .from('reviews')
         .update(updates)
         .eq('id', id)
@@ -212,13 +215,20 @@ export const db = {
         .single();
 
       if (error) {
-        console.error('Error updating review:', error);
+        console.error('❌ Supabase error updating review:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         throw error;
       }
 
+      console.log('✅ Review updated in database:', data.id);
       return data;
     } catch (error) {
-      console.error('Exception in updateReview:', error);
+      console.error('❌ Exception in updateReview:', error);
       throw error;
     }
   },
