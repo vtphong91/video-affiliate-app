@@ -54,8 +54,9 @@ export async function GET(request: NextRequest) {
     console.log('👤 Authenticated user ID for dashboard stats:', userId);
 
     // Get basic stats FOR THIS USER ONLY
-    const reviews = await db.getReviews(userId);
-    const schedules = await db.getSchedules?.(userId) || [];
+    // Note: getReviews expects an object with userId, getSchedules expects userId as first param
+    const reviews = await db.getReviews({ userId });
+    const schedules = await db.getSchedules(userId) || [];
 
     console.log('📊 User stats:', {
       userId,
