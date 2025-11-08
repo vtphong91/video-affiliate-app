@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,14 +38,35 @@ interface ActivityItem {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get basic stats
-    const reviews = await db.getReviews();
-    const schedules = await db.getSchedules?.() || [];
-    
+    // Get authenticated user ID
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      console.log('❌ No user ID found in request');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Authentication required'
+        },
+        { status: 401 }
+      );
+    }
+
+    console.log('👤 Authenticated user ID for dashboard stats:', userId);
+
+    // Get basic stats FOR THIS USER ONLY
+    const reviews = await db.getReviews(userId);
+    const schedules = await db.getSchedules?.(userId) || [];
+
+    console.log('📊 User stats:', {
+      userId,
+      totalReviews: reviews.length,
+      totalSchedules: schedules.length,
+    });
+
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const stats: DashboardStats = {
       totalReviews: reviews.length,
       totalSchedules: schedules.length,
@@ -52,7 +74,7 @@ export async function GET(request: NextRequest) {
       pendingSchedules: schedules.filter(s => s.status === 'pending').length,
       failedPosts: schedules.filter(s => s.status === 'failed').length,
       reviewsToday: reviews.filter(r => new Date(r.created_at) >= today).length,
-      postsToday: schedules.filter(s => 
+      postsToday: schedules.filter(s =>
         s.status === 'posted' && new Date(s.posted_at || s.created_at) >= today
       ).length,
       averageResponseTime: 245, // Mock data
@@ -116,8 +138,8 @@ export async function GET(request: NextRequest) {
       { label: 'Đang xử lý', value: schedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
     ];
 
-    // Get real activity logs
-    const activityLogs = await db.getActivityLogs();
+    // Get real activity logs FOR THIS USER ONLY
+    const activityLogs = await db.getActivityLogs(userId, 50, 48); // Last 48 hours
     const activities: ActivityItem[] = activityLogs.map(log => ({
       id: log.id,
       type: log.type as ActivityItem['type'],
