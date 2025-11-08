@@ -14,6 +14,7 @@ import {
   Activity,
   BarChart3
 } from 'lucide-react';
+import { supabase } from '@/lib/db/supabase';
 
 interface DashboardStats {
   totalReviews: number;
@@ -63,9 +64,22 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      // Include credentials to send cookies (required for auth)
+
+      // Get session from Supabase client
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        setLoading(false);
+        return;
+      }
+
+      // Use Authorization header instead of cookies (more reliable)
       const response = await fetch('/api/dashboard/stats', {
-        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
       });
       const result = await response.json();
 
