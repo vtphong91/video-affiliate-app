@@ -21,6 +21,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { calculateTimeRemaining, formatTimestampForDisplay } from '@/lib/utils/timezone-utils';
 import { cn } from '@/lib/utils';
 import type { Schedule } from '@/types';
+import { ScheduleDetailDialog } from './ScheduleDetailDialog';
 
 interface ScheduleWithReview extends Schedule {
   reviews: {
@@ -40,6 +41,7 @@ interface ScheduleCardProps {
 
 export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const { toast } = useToast();
 
   // Debug logging for affiliate_links
@@ -277,7 +279,12 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCa
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2 border-t">
-          <Button variant="outline" size="sm" className="flex-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => setShowDetailDialog(true)}
+          >
             <Eye className="h-4 w-4 mr-2" />
             Xem chi tiết
           </Button>
@@ -303,6 +310,13 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCa
           </div>
         )}
       </CardContent>
+
+      {/* Schedule Detail Dialog */}
+      <ScheduleDetailDialog
+        schedule={schedule}
+        open={showDetailDialog}
+        onOpenChange={setShowDetailDialog}
+      />
     </Card>
   );
 }
