@@ -63,7 +63,10 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/dashboard/stats');
+      // Include credentials to send cookies (required for auth)
+      const response = await fetch('/api/dashboard/stats', {
+        credentials: 'include',
+      });
       const result = await response.json();
 
       if (result.success) {
