@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Users, 
-  Shield, 
-  Settings, 
-  BarChart3, 
-  Menu, 
-  X, 
+import {
+  Users,
+  Shield,
+  Settings,
+  BarChart3,
+  Menu,
+  X,
   Home,
   Key,
   Activity,
@@ -18,7 +18,8 @@ import {
   Crown,
   Zap,
   TrendingUp,
-  Globe
+  Globe,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +57,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       title: 'Thành viên',
       href: '/admin/members',
       icon: Users,
+      permission: 'read:users',
+    },
+    {
+      title: 'Duyệt đăng ký',
+      href: '/admin/members-new',
+      icon: UserCheck,
       permission: 'read:users',
     },
     {
@@ -291,6 +298,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">
                   {pathname === '/admin' ? '📊 Dashboard' :
+                   pathname.includes('/members-new') ? '✅ Duyệt đăng ký' :
                    pathname.includes('/members') ? '👥 Quản lý thành viên' :
                    pathname.includes('/roles') ? '🛡️ Phân quyền' :
                    pathname.includes('/permissions') ? '🔑 Quyền hạn' :
@@ -300,6 +308,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </h2>
                 <p className="text-sm text-slate-600 mt-1">
                   {pathname === '/admin' ? 'Tổng quan hệ thống và thống kê' :
+                   pathname.includes('/members-new') ? 'Duyệt và quản lý đăng ký thành viên mới' :
                    pathname.includes('/members') ? 'Quản lý thành viên và phân quyền' :
                    pathname.includes('/roles') ? 'Quản lý vai trò người dùng' :
                    pathname.includes('/permissions') ? 'Quản lý quyền hạn chi tiết' :

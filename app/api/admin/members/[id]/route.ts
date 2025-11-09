@@ -81,14 +81,21 @@ export async function PUT(
 
     if (fetchError) throw fetchError;
 
-    const updateData: Partial<EnhancedUserProfile> = {
+    const updateData: Partial<EnhancedUserProfile> & { status?: string } = {
       updated_at: new Date().toISOString()
     };
 
     if (full_name !== undefined) updateData.full_name = full_name;
     if (role !== undefined) updateData.role = role;
     if (permissions !== undefined) updateData.permissions = permissions;
-    if (is_active !== undefined) updateData.is_active = is_active;
+    if (is_active !== undefined) {
+      updateData.is_active = is_active;
+      // ✅ FIX: Sync status with is_active to prevent inconsistency
+      // When activating user, set status to 'active'
+      // When deactivating user, set status to 'inactive'
+      updateData.status = is_active ? 'active' : 'inactive';
+      console.log(`🔄 Syncing status with is_active: ${updateData.status}`);
+    }
 
     const { data, error } = await supabaseAdmin
       .from('user_profiles')

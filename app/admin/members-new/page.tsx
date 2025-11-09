@@ -102,6 +102,11 @@ export default function PendingUserManagement() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
 
+  // Edit member states
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'members') {
       fetchMembers();
@@ -323,6 +328,54 @@ export default function PendingUserManagement() {
     }
   };
 
+  const openEditDialog = (member: Member) => {
+    setSelectedMember(member);
+    setEditDialogOpen(true);
+  };
+
+  const updateMember = async () => {
+    if (!selectedMember) return;
+
+    try {
+      setIsUpdating(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      const response = await fetch(`/api/admin/members/${selectedMember.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          full_name: selectedMember.full_name,
+          role: selectedMember.role,
+          is_active: selectedMember.is_active
+        }),
+      });
+
+      if (response.ok) {
+        setEditDialogOpen(false);
+        setSelectedMember(null);
+        fetchMembers();
+        alert('Cập nhật thành viên thành công!');
+      } else {
+        const error = await response.json();
+        alert(`Lỗi: ${error.error || 'Không thể cập nhật thành viên'}`);
+      }
+    } catch (error) {
+      console.error('Error updating member:', error);
+      alert('Có lỗi xảy ra khi cập nhật thành viên');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'admin':
@@ -523,7 +576,12 @@ export default function PendingUserManagement() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center justify-end space-x-2">
-                              <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-900">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-blue-600 hover:text-blue-900"
+                                onClick={() => openEditDialog(member)}
+                              >
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button variant="outline" size="sm" className="text-red-600 hover:text-red-900">
@@ -719,6 +777,127 @@ export default function PendingUserManagement() {
               className="bg-red-600 hover:bg-red-700"
             >
               {isRejecting ? 'Đang từ chối...' : 'Từ chối thành viên'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa thành viên</DialogTitle>
+          </DialogHeader>
+          {selectedMember && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={selectedMember.email}
+                  disabled
+                  className="bg-gray-100"
+                />
+                <p className="text-xs text-gray-500">Email không thể thay đổi</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_full_name">Họ và tên</Label>
+                <Input
+                  id="edit_full_name"
+                  value={selectedMember.full_name}
+                  onChange={(e) => setSelectedMember(prev => prev ? { ...prev, full_name: e.target.value } : null)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_role">Vai trò</Label>
+                <Select value={selectedMember.role} onValueChange={(value) => setSelectedMember(prev => prev ? { ...prev, role: value } : null)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn vai trò" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="viewer">Người xem</SelectItem>
+                    <SelectItem value="editor">Biên tập viên</SelectItem>
+                    <SelectItem value="admin">Quản trị viên</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">Thay đổi vai trò sẽ cập nhật quyền hạn của thành viên</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_status">Trạng thái</Label>
+                <Select
+                  value={selectedMember.is_active ? 'true' : 'false'}
+                  onValueChange={(value) => setSelectedMember(prev => prev ? { ...prev, is_active: value === 'true' } : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn trạng thái" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Hoạt động</SelectItem>
+                    <SelectItem value="false">Không hoạt động</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">Vô hiệu hóa thành viên sẽ ngăn họ truy cập hệ thống</p>
+              </div>
+
+              {/* Role Permissions Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-2">
+                  <Shield className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <h4 className="font-medium text-blue-900 mb-1">
+                      Quyền hạn vai trò {selectedMember.role === 'admin' ? 'Quản trị viên' : selectedMember.role === 'editor' ? 'Biên tập viên' : 'Người xem'}
+                    </h4>
+                    <div className="space-y-1 text-blue-700 text-xs">
+                      {selectedMember.role === 'admin' && (
+                        <>
+                          <p>✓ Toàn quyền quản trị hệ thống</p>
+                          <p>✓ Quản lý thành viên và phân quyền</p>
+                          <p>✓ Tạo, sửa, xóa tất cả nội dung</p>
+                          <p>✓ Xem tất cả thống kê và báo cáo</p>
+                        </>
+                      )}
+                      {selectedMember.role === 'editor' && (
+                        <>
+                          <p>✓ Tạo và chỉnh sửa reviews</p>
+                          <p>✓ Quản lý lịch đăng bài</p>
+                          <p>✓ Quản lý danh mục</p>
+                          <p>✗ Không thể quản lý thành viên</p>
+                        </>
+                      )}
+                      {selectedMember.role === 'viewer' && (
+                        <>
+                          <p>✓ Xem reviews và lịch đăng</p>
+                          <p>✓ Xem thống kê cơ bản</p>
+                          <p>✗ Không thể tạo hoặc chỉnh sửa</p>
+                          <p>✗ Không thể quản lý hệ thống</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditDialogOpen(false);
+                setSelectedMember(null);
+              }}
+              disabled={isUpdating}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={updateMember}
+              disabled={isUpdating}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isUpdating ? 'Đang cập nhật...' : 'Cập nhật'}
             </Button>
           </div>
         </DialogContent>
