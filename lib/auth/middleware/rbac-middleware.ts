@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { ROLE_PERMISSIONS, type UserRole, type Permission } from '@/lib/auth/config/auth-types';
 
 // Define route permissions
 const ROUTE_PERMISSIONS = {
@@ -92,14 +93,22 @@ export async function middleware(request: NextRequest) {
     // Helper function to check permissions
     const hasPermission = (requiredPermissions: string[]): boolean => {
       if (!userProfile) return false;
-      
+
       // Admin has all permissions
       if (userProfile.role === 'admin') return true;
-      
+
+      // ✅ FIX: Get role-based permissions from ROLE_PERMISSIONS mapping
+      const roleBasedPermissions = ROLE_PERMISSIONS[userProfile.role as UserRole] || [];
+
+      // Get custom permissions from database
+      const customPermissions = (userProfile.permissions || []) as Permission[];
+
+      // Combine both role-based and custom permissions
+      const allPermissions = [...roleBasedPermissions, ...customPermissions];
+
       // Check if user has any of the required permissions
-      const userPermissions = userProfile.permissions || [];
-      return requiredPermissions.some(permission => 
-        userPermissions.includes(permission)
+      return requiredPermissions.some(permission =>
+        allPermissions.includes(permission as Permission)
       );
     };
 
