@@ -342,7 +342,7 @@ export const db = {
           *,
           affiliate_links
         `)
-        .order('scheduled_for', { ascending: true })
+        .order('scheduled_for', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (userId) {
