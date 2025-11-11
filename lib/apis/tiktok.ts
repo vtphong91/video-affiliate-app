@@ -23,40 +23,45 @@ export function extractTikTokVideoId(url: string): string | null {
 
 /**
  * Get TikTok video information
- * Note: TikTok doesn't have a public API, so this uses web scraping
- * Consider using a TikTok API service like RapidAPI's TikTok API
+ * Uses RapidAPI if key is available, otherwise returns placeholder data
+ *
+ * To enable real TikTok data fetching:
+ * 1. Sign up at https://rapidapi.com/
+ * 2. Subscribe to "TikTok Video No Watermark2" API
+ * 3. Add RAPIDAPI_KEY to your .env file
  */
 export async function getTikTokVideoInfo(
   videoId: string
 ): Promise<VideoInfo> {
-  try {
-    // This is a simplified version
-    // In production, you'd want to use a proper TikTok API service
-    // or implement more robust scraping with puppeteer
+  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 
-    // For now, return a placeholder with basic info
-    // You can integrate with services like:
-    // - RapidAPI's TikTok API
-    // - tiktok-scraper npm package
-    // - Custom scraping solution
-
-    console.warn('TikTok video info fetching needs implementation');
-
-    return {
-      platform: 'tiktok',
-      videoId,
-      title: 'TikTok Video', // Would be scraped
-      description: '',
-      thumbnail: `https://p16-sign.tiktokcdn.com/obj/${videoId}`, // Placeholder
-      duration: '0:00',
-      channelName: 'TikTok User',
-      channelUrl: '',
-      viewCount: 0,
-    };
-  } catch (error) {
-    console.error('Error fetching TikTok video info:', error);
-    throw new Error('Failed to fetch TikTok video information');
+  // If RapidAPI key is configured, use it
+  if (RAPIDAPI_KEY) {
+    try {
+      console.log('🎯 Fetching TikTok video via RapidAPI...');
+      return await getTikTokVideoInfoViaRapidAPI(videoId);
+    } catch (error) {
+      console.error('❌ RapidAPI failed:', error);
+      console.warn('⚠️ Falling back to placeholder data');
+      // Fall through to placeholder below
+    }
+  } else {
+    console.warn('⚠️ RAPIDAPI_KEY not configured. TikTok videos will return placeholder data.');
+    console.info('💡 To enable real TikTok data: Add RAPIDAPI_KEY to .env (see .env.example)');
   }
+
+  // Return placeholder data when RapidAPI is not available or failed
+  return {
+    platform: 'tiktok',
+    videoId,
+    title: 'TikTok Video (API Key Required)',
+    description: 'Add RAPIDAPI_KEY to .env to fetch real TikTok video data. See .env.example for instructions.',
+    thumbnail: `https://p16-sign.tiktokcdn.com/obj/${videoId}`, // Placeholder
+    duration: '0:00',
+    channelName: 'TikTok User',
+    channelUrl: '',
+    viewCount: 0,
+  };
 }
 
 /**

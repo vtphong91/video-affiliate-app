@@ -40,10 +40,17 @@ interface YouTubeCaptionListResponse {
 
 /**
  * Extract video ID from YouTube URL
+ * Supports:
+ * - Regular videos: youtube.com/watch?v=VIDEO_ID
+ * - Short URLs: youtu.be/VIDEO_ID
+ * - Shorts: youtube.com/shorts/VIDEO_ID
+ * - Embed: youtube.com/embed/VIDEO_ID
+ * - Legacy: youtube.com/v/VIDEO_ID
  */
 export function extractYouTubeVideoId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+    /youtube\.com\/shorts\/([^&\n?#]+)/, // ✅ Added support for YouTube Shorts
     /youtube\.com\/embed\/([^&\n?#]+)/,
     /youtube\.com\/v\/([^&\n?#]+)/,
   ];

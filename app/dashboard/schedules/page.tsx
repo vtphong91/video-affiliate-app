@@ -159,12 +159,20 @@ export default function SchedulesPage() {
         headers
       });
       const result = await response.json();
-      
+
       if (result.success) {
         setSchedules(result.data.schedules);
         setTotalPages(result.data.totalPages || 1);
         setTotalItems(result.data.total || 0);
-        calculateStats(result.data.schedules);
+
+        // Use stats from API instead of calculating locally
+        if (result.data.stats) {
+          setStats(result.data.stats);
+        } else {
+          // Fallback to local calculation if stats not available
+          calculateStats(result.data.schedules);
+        }
+
         setError(null);
       } else {
         setError(result.error || 'Failed to fetch schedules');
@@ -181,9 +189,12 @@ export default function SchedulesPage() {
     }
   };
 
+  // DEPRECATED: This function is now a fallback only
+  // Stats should come from API for accurate counts across all pages
   const calculateStats = (schedulesData: ScheduleWithReview[]) => {
+    console.warn('⚠️ Using local stats calculation (fallback). Stats may be inaccurate if using pagination.');
     const newStats = {
-      total: schedulesData.length,
+      total: schedulesData.length, // ⚠️ Only counts current page
       pending: schedulesData.filter(s => s.status === 'pending').length,
       posted: schedulesData.filter(s => s.status === 'posted').length,
       failed: schedulesData.filter(s => s.status === 'failed').length,
