@@ -55,24 +55,36 @@ export async function GET(request: NextRequest) {
 
     // ✅ FIX: Get user-specific stats (not global stats from all users)
     const reviews = await db.getReviews({ userId });
-    const schedules = await db.getSchedules(userId) || [];
-    
+
+    // ✅ FIX: Get ALL schedules for accurate stats (not just first 10)
+    // Using getSchedulesCount for accurate totals instead of filtering limited array
+    const totalSchedules = await db.getSchedulesCount(userId);
+    const publishedPosts = await db.getSchedulesCount(userId, 'posted');
+    const pendingSchedules = await db.getSchedulesCount(userId, 'pending');
+    const failedPosts = await db.getSchedulesCount(userId, 'failed');
+    const processingPosts = await db.getSchedulesCount(userId, 'processing');
+
+    // Get recent schedules for "today" stats (need actual data, not just count)
+    const recentSchedules = await db.getSchedules(userId, undefined, 1000, 0); // Get up to 1000 recent schedules
+
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const stats: DashboardStats = {
       totalReviews: reviews.length,
-      totalSchedules: schedules.length,
-      publishedPosts: schedules.filter(s => s.status === 'posted').length,
-      pendingSchedules: schedules.filter(s => s.status === 'pending').length,
-      failedPosts: schedules.filter(s => s.status === 'failed').length,
+      totalSchedules: totalSchedules,
+      publishedPosts: publishedPosts,
+      pendingSchedules: pendingSchedules,
+      failedPosts: failedPosts,
       reviewsToday: reviews.filter(r => new Date(r.created_at) >= today).length,
-      postsToday: schedules.filter(s => 
+      postsToday: recentSchedules.filter(s =>
         s.status === 'posted' && new Date(s.posted_at || s.created_at) >= today
       ).length,
       averageResponseTime: 245, // Mock data
     };
+
+    console.log('📊 Dashboard stats calculated:', stats);
 
     // Generate chart data
     const reviewsByDay: ChartData[] = [];
@@ -94,7 +106,7 @@ export async function GET(request: NextRequest) {
         return reviewDate >= dayStart && reviewDate <= dayEnd;
       }).length;
       
-      const postsCount = schedules.filter(s => {
+      const postsCount = recentSchedules.filter(s => {
         const postDate = new Date(s.posted_at || s.created_at);
         return s.status === 'posted' && postDate >= dayStart && postDate <= dayEnd;
       }).length;
@@ -126,10 +138,10 @@ export async function GET(request: NextRequest) {
 
     // Status distribution
     const statusStats: ChartData[] = [
-      { label: 'Đã đăng', value: stats.publishedPosts, color: '#10B981' },
-      { label: 'Chờ lịch', value: stats.pendingSchedules, color: '#F59E0B' },
-      { label: 'Thất bại', value: stats.failedPosts, color: '#EF4444' },
-      { label: 'Đang xử lý', value: schedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
+      { label: 'Đã đăng', value: publishedPosts, color: '#10B981' },
+      { label: 'Chờ lịch', value: pendingSchedules, color: '#F59E0B' },
+      { label: 'Thất bại', value: failedPosts, color: '#EF4444' },
+      { label: 'Đang xử lý', value: processingPosts, color: '#3B82F6' },
     ];
 
     // ✅ FIX: Get user-specific activity logs (not global logs from all users)
