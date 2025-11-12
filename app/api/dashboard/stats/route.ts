@@ -53,31 +53,30 @@ export async function GET(request: NextRequest) {
 
     console.log('👤 Dashboard stats for user:', userId);
 
-    // ✅ FIX: Get user-specific stats (not global stats from all users)
-    const reviews = await db.getReviews({ userId });
-
-    // ✅ FIX: Get ALL schedules for accurate stats (not just first 10)
-    // Using getSchedulesCount for accurate totals instead of filtering limited array
+    // ✅ FIX: Get ALL reviews and schedules counts for accurate stats (not just first 10)
+    // Use count functions instead of fetching limited arrays
+    const totalReviews = await db.getReviewsCount({ userId });
     const totalSchedules = await db.getSchedulesCount(userId);
     const publishedPosts = await db.getSchedulesCount(userId, 'posted');
     const pendingSchedules = await db.getSchedulesCount(userId, 'pending');
     const failedPosts = await db.getSchedulesCount(userId, 'failed');
     const processingPosts = await db.getSchedulesCount(userId, 'processing');
 
-    // Get recent schedules for "today" stats (need actual data, not just count)
-    const recentSchedules = await db.getSchedules(userId, undefined, 1000, 0); // Get up to 1000 recent schedules
+    // Get recent data for charts and "today" stats (need actual data, not just counts)
+    const recentReviews = await db.getReviews({ userId, limit: 1000, offset: 0 }); // Up to 1000 recent reviews
+    const recentSchedules = await db.getSchedules(userId, undefined, 1000, 0); // Up to 1000 recent schedules
 
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const stats: DashboardStats = {
-      totalReviews: reviews.length,
+      totalReviews: totalReviews, // ✅ FIX: Use count from database, not array length
       totalSchedules: totalSchedules,
       publishedPosts: publishedPosts,
       pendingSchedules: pendingSchedules,
       failedPosts: failedPosts,
-      reviewsToday: reviews.filter(r => new Date(r.created_at) >= today).length,
+      reviewsToday: recentReviews.filter(r => new Date(r.created_at) >= today).length,
       postsToday: recentSchedules.filter(s =>
         s.status === 'posted' && new Date(s.posted_at || s.created_at) >= today
       ).length,
@@ -101,7 +100,7 @@ export async function GET(request: NextRequest) {
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
       
-      const reviewsCount = reviews.filter(r => {
+      const reviewsCount = recentReviews.filter(r => {
         const reviewDate = new Date(r.created_at);
         return reviewDate >= dayStart && reviewDate <= dayEnd;
       }).length;
@@ -126,12 +125,12 @@ export async function GET(request: NextRequest) {
 
     // Platform distribution
     const platformStats: ChartData[] = [
-      { label: 'YouTube', value: reviews.filter(r => r.video_url?.includes('youtube')).length, color: '#FF0000' },
-      { label: 'TikTok', value: reviews.filter(r => r.video_url?.includes('tiktok')).length, color: '#000000' },
-      { label: 'Facebook', value: reviews.filter(r => r.video_url?.includes('facebook')).length, color: '#1877F2' },
-      { label: 'Khác', value: reviews.filter(r => 
-        !r.video_url?.includes('youtube') && 
-        !r.video_url?.includes('tiktok') && 
+      { label: 'YouTube', value: recentReviews.filter(r => r.video_url?.includes('youtube')).length, color: '#FF0000' },
+      { label: 'TikTok', value: recentReviews.filter(r => r.video_url?.includes('tiktok')).length, color: '#000000' },
+      { label: 'Facebook', value: recentReviews.filter(r => r.video_url?.includes('facebook')).length, color: '#1877F2' },
+      { label: 'Khác', value: recentReviews.filter(r =>
+        !r.video_url?.includes('youtube') &&
+        !r.video_url?.includes('tiktok') &&
         !r.video_url?.includes('facebook')
       ).length, color: '#6B7280' },
     ];
