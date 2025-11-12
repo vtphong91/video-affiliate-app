@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/db/supabase';
 import {
   FileText,
   Calendar,
@@ -63,17 +64,42 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/dashboard/stats');
+
+      // ✅ FIX: Get authentication headers from Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authentication headers if session exists
+      if (session?.user) {
+        headers['x-user-id'] = session.user.id;
+        headers['x-user-email'] = session.user.email || '';
+        const userRole = session.user.user_metadata?.role || 'user';
+        headers['x-user-role'] = userRole;
+        console.log('🔍 Dashboard: Sending auth headers:', {
+          userId: session.user.id,
+          email: session.user.email,
+          role: userRole
+        });
+      } else {
+        console.log('⚠️ Dashboard: No session found, request may fail');
+      }
+
+      const response = await fetch('/api/dashboard/stats', { headers });
       const result = await response.json();
 
       if (result.success) {
         setData(result.data);
+        setError(null);
       } else {
         setError(result.error || 'Không thể tải dữ liệu dashboard');
+        console.error('❌ Dashboard API error:', result.error);
       }
     } catch (err) {
       setError('Lỗi kết nối đến server');
-      console.error('Error fetching dashboard data:', err);
+      console.error('❌ Error fetching dashboard data:', err);
     } finally {
       setLoading(false);
     }
