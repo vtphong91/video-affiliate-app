@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,26 +38,52 @@ interface ActivityItem {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get basic stats
-    const reviews = await db.getReviews();
-    const schedules = await db.getSchedules?.() || [];
-    
+    // ✅ FIX: Get authenticated user ID to filter data by user
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      console.log('❌ No user ID found in dashboard stats request');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Authentication required'
+        },
+        { status: 401 }
+      );
+    }
+
+    console.log('👤 Dashboard stats for user:', userId);
+
+    // ✅ FIX: Get ALL reviews and schedules counts for accurate stats (not just first 10)
+    // Use count functions instead of fetching limited arrays
+    const totalReviews = await db.getReviewsCount({ userId });
+    const totalSchedules = await db.getSchedulesCount(userId);
+    const publishedPosts = await db.getSchedulesCount(userId, 'posted');
+    const pendingSchedules = await db.getSchedulesCount(userId, 'pending');
+    const failedPosts = await db.getSchedulesCount(userId, 'failed');
+    const processingPosts = await db.getSchedulesCount(userId, 'processing');
+
+    // Get recent data for charts and "today" stats (need actual data, not just counts)
+    const recentReviews = await db.getReviews({ userId, limit: 1000, offset: 0 }); // Up to 1000 recent reviews
+    const recentSchedules = await db.getSchedules(userId, undefined, 1000, 0); // Up to 1000 recent schedules
+
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const stats: DashboardStats = {
-      totalReviews: reviews.length,
-      totalSchedules: schedules.length,
-      publishedPosts: schedules.filter(s => s.status === 'posted').length,
-      pendingSchedules: schedules.filter(s => s.status === 'pending').length,
-      failedPosts: schedules.filter(s => s.status === 'failed').length,
-      reviewsToday: reviews.filter(r => new Date(r.created_at) >= today).length,
-      postsToday: schedules.filter(s => 
+      totalReviews: totalReviews, // ✅ FIX: Use count from database, not array length
+      totalSchedules: totalSchedules,
+      publishedPosts: publishedPosts,
+      pendingSchedules: pendingSchedules,
+      failedPosts: failedPosts,
+      reviewsToday: recentReviews.filter(r => new Date(r.created_at) >= today).length,
+      postsToday: recentSchedules.filter(s =>
         s.status === 'posted' && new Date(s.posted_at || s.created_at) >= today
       ).length,
       averageResponseTime: 245, // Mock data
     };
+
+    console.log('📊 Dashboard stats calculated:', stats);
 
     // Generate chart data
     const reviewsByDay: ChartData[] = [];
@@ -73,12 +100,12 @@ export async function GET(request: NextRequest) {
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
       
-      const reviewsCount = reviews.filter(r => {
+      const reviewsCount = recentReviews.filter(r => {
         const reviewDate = new Date(r.created_at);
         return reviewDate >= dayStart && reviewDate <= dayEnd;
       }).length;
       
-      const postsCount = schedules.filter(s => {
+      const postsCount = recentSchedules.filter(s => {
         const postDate = new Date(s.posted_at || s.created_at);
         return s.status === 'posted' && postDate >= dayStart && postDate <= dayEnd;
       }).length;
@@ -98,26 +125,26 @@ export async function GET(request: NextRequest) {
 
     // Platform distribution
     const platformStats: ChartData[] = [
-      { label: 'YouTube', value: reviews.filter(r => r.video_url?.includes('youtube')).length, color: '#FF0000' },
-      { label: 'TikTok', value: reviews.filter(r => r.video_url?.includes('tiktok')).length, color: '#000000' },
-      { label: 'Facebook', value: reviews.filter(r => r.video_url?.includes('facebook')).length, color: '#1877F2' },
-      { label: 'Khác', value: reviews.filter(r => 
-        !r.video_url?.includes('youtube') && 
-        !r.video_url?.includes('tiktok') && 
+      { label: 'YouTube', value: recentReviews.filter(r => r.video_url?.includes('youtube')).length, color: '#FF0000' },
+      { label: 'TikTok', value: recentReviews.filter(r => r.video_url?.includes('tiktok')).length, color: '#000000' },
+      { label: 'Facebook', value: recentReviews.filter(r => r.video_url?.includes('facebook')).length, color: '#1877F2' },
+      { label: 'Khác', value: recentReviews.filter(r =>
+        !r.video_url?.includes('youtube') &&
+        !r.video_url?.includes('tiktok') &&
         !r.video_url?.includes('facebook')
       ).length, color: '#6B7280' },
     ];
 
     // Status distribution
     const statusStats: ChartData[] = [
-      { label: 'Đã đăng', value: stats.publishedPosts, color: '#10B981' },
-      { label: 'Chờ lịch', value: stats.pendingSchedules, color: '#F59E0B' },
-      { label: 'Thất bại', value: stats.failedPosts, color: '#EF4444' },
-      { label: 'Đang xử lý', value: schedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
+      { label: 'Đã đăng', value: publishedPosts, color: '#10B981' },
+      { label: 'Chờ lịch', value: pendingSchedules, color: '#F59E0B' },
+      { label: 'Thất bại', value: failedPosts, color: '#EF4444' },
+      { label: 'Đang xử lý', value: processingPosts, color: '#3B82F6' },
     ];
 
-    // Get real activity logs
-    const activityLogs = await db.getActivityLogs();
+    // ✅ FIX: Get user-specific activity logs (not global logs from all users)
+    const activityLogs = await db.getActivityLogs(userId);
     const activities: ActivityItem[] = activityLogs.map(log => ({
       id: log.id,
       type: log.type as ActivityItem['type'],
