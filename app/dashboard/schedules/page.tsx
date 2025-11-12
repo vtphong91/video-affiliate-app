@@ -70,7 +70,7 @@ export default function SchedulesPage() {
   // Auto refresh state
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
-  const [refreshInterval, setRefreshInterval] = useState(3 * 60 * 1000); // 3 minutes default
+  const [refreshInterval, setRefreshInterval] = useState(10 * 60 * 1000); // ✅ 10 minutes (optimized from 3)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,21 +82,43 @@ export default function SchedulesPage() {
     fetchSchedules();
   }, [currentPage, activeTab]); // Refetch when page or tab changes
 
-  // Auto refresh effect
+  // ✅ Auto refresh effect - Only when tab is visible
   useEffect(() => {
     if (!autoRefreshEnabled) return;
 
     const interval = setInterval(() => {
-      console.log('🔄 Auto refreshing schedules...');
-      setIsAutoRefreshing(true);
-      fetchSchedules(true).finally(() => {
-        setIsAutoRefreshing(false);
-        setLastRefreshTime(new Date());
-      });
+      // ✅ Only refresh if tab is visible
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 Auto refreshing schedules...');
+        setIsAutoRefreshing(true);
+        fetchSchedules(true).finally(() => {
+          setIsAutoRefreshing(false);
+          setLastRefreshTime(new Date());
+        });
+      } else {
+        console.log('⏸️ Tab hidden, skipping auto-refresh');
+      }
     }, refreshInterval);
 
     return () => clearInterval(interval);
   }, [autoRefreshEnabled, refreshInterval]);
+
+  // ✅ Refresh when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && autoRefreshEnabled) {
+        console.log('👁️ Tab visible, refreshing schedules...');
+        setIsAutoRefreshing(true);
+        fetchSchedules(true).finally(() => {
+          setIsAutoRefreshing(false);
+          setLastRefreshTime(new Date());
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [autoRefreshEnabled]);
 
   // Manual refresh function
   const handleManualRefresh = async () => {
