@@ -181,12 +181,28 @@ export default function SchedulesPage() {
         headers
       });
       const result = await response.json();
-      
+
       if (result.success) {
         setSchedules(result.data.schedules);
         setTotalPages(result.data.totalPages || 1);
         setTotalItems(result.data.total || 0);
-        calculateStats(result.data.schedules);
+
+        // ✅ FIX: Use stats from API response instead of calculating from current page
+        if (result.data.stats) {
+          setStats({
+            total: result.data.stats.total || 0,
+            pending: result.data.stats.pending || 0,
+            posted: result.data.stats.posted || 0,
+            failed: result.data.stats.failed || 0,
+            processing: result.data.stats.processing || 0,
+          });
+          console.log('📊 Schedules page: Using stats from API:', result.data.stats);
+        } else {
+          // Fallback to old method if API doesn't return stats (backward compatibility)
+          calculateStats(result.data.schedules);
+          console.warn('⚠️ API did not return stats, calculating from current page (inaccurate)');
+        }
+
         setError(null);
       } else {
         setError(result.error || 'Failed to fetch schedules');

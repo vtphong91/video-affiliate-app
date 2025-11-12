@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,9 +38,24 @@ interface ActivityItem {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get basic stats
-    const reviews = await db.getReviews();
-    const schedules = await db.getSchedules?.() || [];
+    // ✅ FIX: Get authenticated user ID to filter data by user
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      console.log('❌ No user ID found in dashboard stats request');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Authentication required'
+        },
+        { status: 401 }
+      );
+    }
+
+    console.log('👤 Dashboard stats for user:', userId);
+
+    // ✅ FIX: Get user-specific stats (not global stats from all users)
+    const reviews = await db.getReviews({ userId });
+    const schedules = await db.getSchedules(userId) || [];
     
     // Calculate stats
     const today = new Date();
@@ -116,8 +132,8 @@ export async function GET(request: NextRequest) {
       { label: 'Đang xử lý', value: schedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
     ];
 
-    // Get real activity logs
-    const activityLogs = await db.getActivityLogs();
+    // ✅ FIX: Get user-specific activity logs (not global logs from all users)
+    const activityLogs = await db.getActivityLogs(userId);
     const activities: ActivityItem[] = activityLogs.map(log => ({
       id: log.id,
       type: log.type as ActivityItem['type'],
