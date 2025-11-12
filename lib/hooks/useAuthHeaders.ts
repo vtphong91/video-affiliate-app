@@ -14,12 +14,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/db/supabase';
 
-export interface AuthHeaders extends HeadersInit {
-  'Content-Type': string;
-  'x-user-id'?: string;
-  'x-user-email'?: string;
-  'x-user-role'?: string;
-}
+// ✅ Use Record type for TypeScript compatibility with HeadersInit
+export type AuthHeaders = Record<string, string>;
 
 let cachedHeaders: AuthHeaders | null = null;
 let cacheTimestamp = 0;
