@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Pagination } from '@/components/ui/pagination';
 import { supabase } from '@/lib/db/supabase';
-import { 
-  Plus,  
-  Calendar, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Plus,
+  Calendar,
+  Clock,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   RefreshCw,
   Trash2,
@@ -21,13 +21,16 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { ScheduleCard } from '@/components/schedules/ScheduleCard';
-import { CreateScheduleDialog } from '@/components/schedules/CreateScheduleDialog';
-import { EditScheduleDialog } from '@/components/schedules/EditScheduleDialog';
 import { ScheduleStats } from '@/components/schedules/ScheduleStats';
-// import type { Schedule } from '@/lib/db/supabase';
+import { cachedFetch, invalidateCache } from '@/lib/utils/request-cache';
+import { useAuthHeaders } from '@/lib/hooks/useAuthHeaders';
+
+// ✅ Lazy load heavy dialog components
+const CreateScheduleDialog = lazy(() => import('@/components/schedules/CreateScheduleDialog').then(mod => ({ default: mod.CreateScheduleDialog })));
+const EditScheduleDialog = lazy(() => import('@/components/schedules/EditScheduleDialog').then(mod => ({ default: mod.EditScheduleDialog })));
+const ViewScheduleDialog = lazy(() => import('@/components/schedules/ViewScheduleDialog').then(mod => ({ default: mod.ViewScheduleDialog })));
 
 type ScheduleWithReview = any & {
-  // Review data is now stored directly in schedule table
   video_title?: string;
   video_thumbnail?: string;
   video_url?: string;
@@ -41,7 +44,7 @@ type ScheduleWithReview = any & {
   review_seo_keywords?: any[];
 }
 
-interface ScheduleStats {
+interface ScheduleStatsType {
   total: number;
   pending: number;
   posted: number;
@@ -50,8 +53,9 @@ interface ScheduleStats {
 }
 
 export default function SchedulesPage() {
+  const headers = useAuthHeaders();
   const [schedules, setSchedules] = useState<ScheduleWithReview[]>([]);
-  const [stats, setStats] = useState<ScheduleStats>({
+  const [stats, setStats] = useState<ScheduleStatsType>({
     total: 0,
     pending: 0,
     posted: 0,
@@ -63,31 +67,86 @@ export default function SchedulesPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ScheduleWithReview | null>(null);
+  const [viewingSchedule, setViewingSchedule] = useState<ScheduleWithReview | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const { toast } = useToast();
 
-  // Auto refresh state
+  // Auto refresh state - Increased to 5 minutes for better performance
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
-  const [refreshInterval, setRefreshInterval] = useState(10 * 60 * 1000); // ✅ 10 minutes (optimized from 3)
+  const [refreshInterval, setRefreshInterval] = useState(5 * 60 * 1000); // 5 minutes default
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const itemsPerPage = 9; // Show 9 schedules per page (3x3 grid)
+  const itemsPerPage = 9;
+
+  // ✅ Memoized fetch function with caching
+  const fetchSchedules = useCallback(async (isAutoRefresh = false) => {
+    try {
+      if (!isAutoRefresh) {
+        setLoading(true);
+      } else {
+        setIsAutoRefreshing(true);
+      }
+
+      const statusParam = activeTab === 'all' ? '' : `&status=${activeTab}`;
+
+      // ✅ Use cachedFetch with 30 second TTL
+      const result = await cachedFetch(
+        `/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}`,
+        {
+          headers,
+          ttl: 30000, // 30 seconds cache
+          force: isAutoRefresh, // Force refresh on manual/auto refresh
+        }
+      );
+
+      if (result.success) {
+        setSchedules(result.data.schedules);
+        setTotalPages(result.data.totalPages || 1);
+        setTotalItems(result.data.total || 0);
+
+        // ✅ Use stats from API response instead of calculating locally
+        if (result.data.stats) {
+          setStats(result.data.stats);
+          console.log('📊 Stats from API:', result.data.stats);
+        } else {
+          // Fallback: calculate from current page schedules (old behavior)
+          calculateStats(result.data.schedules);
+        }
+
+        setError(null);
+      } else {
+        setError(result.error || 'Failed to fetch schedules');
+      }
+    } catch (err) {
+      setError('Network error occurred');
+      console.error('Schedules fetch error:', err);
+    } finally {
+      if (!isAutoRefresh) {
+        setLoading(false);
+      } else {
+        setIsAutoRefreshing(false);
+      }
+    }
+  }, [currentPage, activeTab, headers, itemsPerPage]);
 
   useEffect(() => {
-    fetchSchedules();
-  }, [currentPage, activeTab]); // Refetch when page or tab changes
+    // Only fetch if headers are ready
+    if (headers['x-user-id']) {
+      fetchSchedules();
+    }
+  }, [fetchSchedules, headers]);
 
-  // ✅ Auto refresh effect - Only when tab is visible
+  // ✅ Optimized auto refresh - Only when tab is visible AND enabled
   useEffect(() => {
-    if (!autoRefreshEnabled) return;
+    if (!autoRefreshEnabled || !headers['x-user-id']) return;
 
     const interval = setInterval(() => {
-      // ✅ Only refresh if tab is visible
       if (document.visibilityState === 'visible') {
         console.log('🔄 Auto refreshing schedules...');
         setIsAutoRefreshing(true);
@@ -95,18 +154,16 @@ export default function SchedulesPage() {
           setIsAutoRefreshing(false);
           setLastRefreshTime(new Date());
         });
-      } else {
-        console.log('⏸️ Tab hidden, skipping auto-refresh');
       }
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefreshEnabled, refreshInterval]);
+  }, [autoRefreshEnabled, refreshInterval, fetchSchedules, headers]);
 
   // ✅ Refresh when tab becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && autoRefreshEnabled) {
+      if (document.visibilityState === 'visible' && autoRefreshEnabled && headers['x-user-id']) {
         console.log('👁️ Tab visible, refreshing schedules...');
         setIsAutoRefreshing(true);
         fetchSchedules(true).finally(() => {
@@ -118,12 +175,14 @@ export default function SchedulesPage() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [autoRefreshEnabled]);
+  }, [autoRefreshEnabled, fetchSchedules, headers]);
 
-  // Manual refresh function
-  const handleManualRefresh = async () => {
+  // ✅ Manual refresh function
+  const handleManualRefresh = useCallback(async () => {
     setIsAutoRefreshing(true);
     try {
+      // Invalidate cache for this page
+      invalidateCache(/\/api\/schedules/);
       await fetchSchedules(true);
       setLastRefreshTime(new Date());
       toast({
@@ -140,70 +199,9 @@ export default function SchedulesPage() {
     } finally {
       setIsAutoRefreshing(false);
     }
-  };
+  }, [fetchSchedules, toast]);
 
-  const fetchSchedules = async (isAutoRefresh = false) => {
-    try {
-      // Only show loading spinner on initial load or manual refresh
-      if (!isAutoRefresh) {
-        setLoading(true);
-      } else {
-        setIsAutoRefreshing(true);
-      }
-      
-      const statusParam = activeTab === 'all' ? '' : `&status=${activeTab}`;
-      
-      // Get authentication headers from Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add authentication headers if session exists (optimized)
-      if (session?.user) {
-        headers['x-user-id'] = session.user.id;
-        headers['x-user-email'] = session.user.email || '';
-        // Get role from user_metadata or default to 'user'
-        const userRole = session.user.user_metadata?.role || 
-                        session.user.user_metadata?.full_name ? 'admin' : 'user';
-        headers['x-user-role'] = userRole;
-        console.log('🔍 Sending auth headers:', {
-          userId: session.user.id,
-          email: session.user.email,
-          role: userRole
-        });
-      } else {
-        console.log('⚠️ No session found, request may fail');
-      }
-      
-      const response = await fetch(`/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}`, {
-        headers
-      });
-      const result = await response.json();
-      
-      if (result.success) {
-        setSchedules(result.data.schedules);
-        setTotalPages(result.data.totalPages || 1);
-        setTotalItems(result.data.total || 0);
-        calculateStats(result.data.schedules);
-        setError(null);
-      } else {
-        setError(result.error || 'Failed to fetch schedules');
-      }
-    } catch (err) {
-      setError('Network error occurred');
-      console.error('Schedules fetch error:', err);
-    } finally {
-      if (!isAutoRefresh) {
-        setLoading(false);
-      } else {
-        setIsAutoRefreshing(false);
-      }
-    }
-  };
-
-  const calculateStats = (schedulesData: ScheduleWithReview[]) => {
+  const calculateStats = useCallback((schedulesData: ScheduleWithReview[]) => {
     const newStats = {
       total: schedulesData.length,
       pending: schedulesData.filter(s => s.status === 'pending').length,
@@ -212,43 +210,32 @@ export default function SchedulesPage() {
       processing: schedulesData.filter(s => s.status === 'processing').length,
     };
     setStats(newStats);
-  };
+  }, []);
 
-  const handleCreateSchedule = async (scheduleData: any) => {
-    // This function is no longer called since CreateScheduleDialog handles API call directly
-    // Just refresh the schedules list
+  const handleCreateSchedule = useCallback(async (scheduleData: any) => {
     console.log('📋 Refreshing schedules list...');
-    fetchSchedules();
-  };
+    // Invalidate cache and refresh
+    invalidateCache(/\/api\/schedules/);
+    fetchSchedules(true);
+  }, [fetchSchedules]);
 
-  const handleDeleteSchedule = async (id: string) => {
+  const handleDeleteSchedule = useCallback(async (id: string) => {
     try {
-      // Get authentication headers from Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add authentication headers if session exists
-      if (session?.user) {
-        headers['x-user-id'] = session.user.id;
-        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
-      }
-      
       const response = await fetch(`/api/schedules/${id}`, {
         method: 'DELETE',
         headers,
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         toast({
           title: 'Thành công!',
           description: 'Lịch đăng bài đã được xóa',
         });
-        fetchSchedules(); // Refresh the list
+        // Invalidate cache and refresh
+        invalidateCache(/\/api\/schedules/);
+        fetchSchedules(true);
       } else {
         throw new Error(result.error || 'Failed to delete schedule');
       }
@@ -259,36 +246,25 @@ export default function SchedulesPage() {
         variant: 'destructive',
       });
     }
-  };
+  }, [headers, toast, fetchSchedules]);
 
-  const handleRetrySchedule = async (id: string) => {
+  const handleRetrySchedule = useCallback(async (id: string) => {
     try {
-      // Get authentication headers from Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add authentication headers if session exists
-      if (session?.user) {
-        headers['x-user-id'] = session.user.id;
-        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
-      }
-      
       const response = await fetch(`/api/schedules/${id}/retry`, {
         method: 'POST',
         headers,
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         toast({
           title: 'Thành công!',
           description: 'Lịch đăng bài đã được đưa vào hàng đợi thử lại',
         });
-        fetchSchedules(); // Refresh the list
+        // Invalidate cache and refresh
+        invalidateCache(/\/api\/schedules/);
+        fetchSchedules(true);
       } else {
         throw new Error(result.error || 'Failed to retry schedule');
       }
@@ -299,34 +275,22 @@ export default function SchedulesPage() {
         variant: 'destructive',
       });
     }
-  };
+  }, [headers, toast, fetchSchedules]);
 
-  const handleEditSchedule = (schedule: ScheduleWithReview) => {
+  const handleEditSchedule = useCallback((schedule: ScheduleWithReview) => {
     setEditingSchedule(schedule);
     setShowEditDialog(true);
-  };
+  }, []);
 
-  const handleUpdateSchedule = async (scheduleId: string, newScheduledFor: string) => {
+  const handleViewSchedule = useCallback((schedule: ScheduleWithReview) => {
+    setViewingSchedule(schedule);
+    setShowViewDialog(true);
+  }, []);
+
+  const handleUpdateSchedule = useCallback(async (scheduleId: string, newScheduledFor: string) => {
     try {
       console.log('🔄 Starting schedule update:', { scheduleId, newScheduledFor });
-      
-      // Get authentication headers from Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add authentication headers if session exists
-      if (session?.user) {
-        headers['x-user-id'] = session.user.id;
-        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
-        console.log('✅ Auth headers added:', { userId: session.user.id, role: session.user.user_metadata?.role });
-      } else {
-        console.log('❌ No session found');
-      }
-      
-      console.log('📤 Sending PUT request to:', `/api/schedules/${scheduleId}`);
+
       const response = await fetch(`/api/schedules/${scheduleId}`, {
         method: 'PUT',
         headers,
@@ -335,35 +299,29 @@ export default function SchedulesPage() {
         }),
       });
 
-      console.log('📥 Response status:', response.status);
       const result = await response.json();
-      console.log('📥 Response data:', result);
-      
+
       if (result.success) {
         toast({
           title: '✅ Cập nhật thành công',
           description: 'Thời gian đăng bài đã được cập nhật thành công!',
         });
-        
-        // Close dialog immediately after successful update
-        console.log('🔒 Closing edit dialog after successful update');
+
         setShowEditDialog(false);
         setEditingSchedule(null);
-        
-        // Refresh schedules after a short delay to avoid conflicts
-        setTimeout(() => {
-          console.log('🔄 Refreshing schedules after update');
-          fetchSchedules();
-        }, 500);
-        
-        return true; // Return success status
+
+        // Invalidate cache and refresh
+        invalidateCache(/\/api\/schedules/);
+        setTimeout(() => fetchSchedules(true), 500);
+
+        return true;
       } else {
         toast({
           title: '❌ Lỗi cập nhật',
           description: result.error || 'Không thể cập nhật lịch đăng bài',
           variant: 'destructive',
         });
-        return false; // Return failure status
+        return false;
       }
     } catch (error) {
       console.error('❌ Error updating schedule:', error);
@@ -372,57 +330,18 @@ export default function SchedulesPage() {
         description: error instanceof Error ? error.message : 'Không thể cập nhật lịch đăng bài',
         variant: 'destructive',
       });
-      return false; // Return failure status
+      return false;
     }
-  };
+  }, [headers, toast, fetchSchedules]);
 
-  const getFilteredSchedules = () => {
-    // Since we're fetching filtered data from API, just return schedules
-    return schedules;
-  };
-
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
-    setCurrentPage(1); // Reset to first page when changing tabs
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'processing':
-        return <RefreshCw className="h-4 w-4 text-blue-600" />;
-      case 'posted':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'cancelled':
-        return <AlertCircle className="h-4 w-4 text-gray-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { label: 'Chờ đăng', className: 'bg-yellow-100 text-yellow-800' },
-      processing: { label: 'Đang xử lý', className: 'bg-blue-100 text-blue-800' },
-      posted: { label: 'Đã đăng', className: 'bg-green-100 text-green-800' },
-      failed: { label: 'Thất bại', className: 'bg-red-100 text-red-800' },
-      cancelled: { label: 'Đã hủy', className: 'bg-gray-100 text-gray-800' },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    return (
-      <Badge className={`text-xs ${config.className}`}>
-        {config.label}
-      </Badge>
-    );
-  };
+    setCurrentPage(1);
+  }, []);
 
   if (loading) {
     return (
@@ -432,7 +351,7 @@ export default function SchedulesPage() {
             <h1 className="text-3xl font-bold text-gray-900">Lịch Đăng Bài</h1>
             <p className="text-gray-600 mt-2">Quản lý lịch đăng bài tự động</p>
           </div>
-          
+
           {/* Loading skeleton */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             {[...Array(4)].map((_, i) => (
@@ -455,8 +374,8 @@ export default function SchedulesPage() {
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-red-800 mb-2">Lỗi tải dữ liệu</h2>
             <p className="text-red-600">{error}</p>
-            <Button 
-              onClick={() => fetchSchedules()}
+            <Button
+              onClick={() => fetchSchedules(true)}
               className="mt-4"
             >
               Thử lại
@@ -478,7 +397,7 @@ export default function SchedulesPage() {
               <p className="text-gray-600 mt-2">
                 Quản lý lịch đăng bài tự động
                 {isAutoRefreshing && (
-                  <span className="ml-2 text-blue-600 text-sm flex items-center gap-1">
+                  <span className="ml-2 text-blue-600 text-sm inline-flex items-center gap-1">
                     <RefreshCw className="h-3 w-3 animate-spin" />
                     Đang cập nhật...
                   </span>
@@ -503,17 +422,17 @@ export default function SchedulesPage() {
                   className="px-2 py-1 border rounded text-xs"
                   disabled={!autoRefreshEnabled}
                 >
-                  <option value={1}>1 phút</option>
                   <option value={3}>3 phút</option>
                   <option value={5}>5 phút</option>
                   <option value={10}>10 phút</option>
+                  <option value={15}>15 phút</option>
                 </select>
                 <span className="text-xs text-gray-500">
                   Cập nhật lần cuối: {lastRefreshTime.toLocaleTimeString('vi-VN')}
                 </span>
               </div>
-              
-              <Button 
+
+              <Button
                 onClick={handleManualRefresh}
                 variant="outline"
                 className="flex items-center gap-2"
@@ -522,7 +441,7 @@ export default function SchedulesPage() {
                 <RefreshCw className={`h-4 w-4 ${(loading || isAutoRefreshing) ? 'animate-spin' : ''}`} />
                 {loading ? 'Đang tải...' : isAutoRefreshing ? 'Đang cập nhật...' : 'Làm mới'}
               </Button>
-              <Button 
+              <Button
                 onClick={() => setShowCreateDialog(true)}
                 className="flex items-center gap-2"
               >
@@ -538,7 +457,7 @@ export default function SchedulesPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-8">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="all" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Tất cả ({stats.total})
@@ -563,15 +482,15 @@ export default function SchedulesPage() {
 
           <TabsContent value={activeTab} className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getFilteredSchedules().length === 0 ? (
+              {schedules.length === 0 ? (
                 <div className="col-span-full text-center py-12">
                   <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     {activeTab === 'all' ? 'Chưa có lịch đăng bài nào' : `Không có lịch ${activeTab}`}
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    {activeTab === 'all' 
-                      ? 'Tạo lịch đăng bài đầu tiên để bắt đầu tự động hóa' 
+                    {activeTab === 'all'
+                      ? 'Tạo lịch đăng bài đầu tiên để bắt đầu tự động hóa'
                       : `Không có lịch đăng bài nào ở trạng thái ${activeTab}`
                     }
                   </p>
@@ -583,13 +502,14 @@ export default function SchedulesPage() {
                   )}
                 </div>
               ) : (
-                getFilteredSchedules().map((schedule) => (
+                schedules.map((schedule) => (
                   <ScheduleCard
                     key={schedule.id}
                     schedule={schedule}
                     onDelete={handleDeleteSchedule}
                     onRetry={handleRetrySchedule}
                     onEdit={handleEditSchedule}
+                    onView={handleViewSchedule}
                   />
                 ))
               )}
@@ -611,29 +531,49 @@ export default function SchedulesPage() {
           </div>
         )}
 
-        {/* Create Schedule Dialog */}
-        <CreateScheduleDialog
-          open={showCreateDialog}
-          onOpenChange={(open) => {
-            setShowCreateDialog(open);
-            if (!open) {
-              // Refresh schedules when dialog closes
-              fetchSchedules();
-            }
-          }}
-          onSubmit={handleCreateSchedule}
-        />
+        {/* ✅ Lazy loaded dialogs - Only render when needed */}
+        {showCreateDialog && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <CreateScheduleDialog
+              open={showCreateDialog}
+              onOpenChange={(open) => {
+                setShowCreateDialog(open);
+                if (!open) {
+                  invalidateCache(/\/api\/schedules/);
+                  fetchSchedules(true);
+                }
+              }}
+              onSubmit={handleCreateSchedule}
+            />
+          </Suspense>
+        )}
 
-        {/* Edit Schedule Dialog */}
-        <EditScheduleDialog
-          isOpen={showEditDialog}
-          onClose={() => {
-            setShowEditDialog(false);
-            setEditingSchedule(null);
-          }}
-          schedule={editingSchedule}
-          onUpdate={handleUpdateSchedule}
-        />
+        {showEditDialog && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <EditScheduleDialog
+              isOpen={showEditDialog}
+              onClose={() => {
+                setShowEditDialog(false);
+                setEditingSchedule(null);
+              }}
+              schedule={editingSchedule}
+              onUpdate={handleUpdateSchedule}
+            />
+          </Suspense>
+        )}
+
+        {showViewDialog && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <ViewScheduleDialog
+              isOpen={showViewDialog}
+              onClose={() => {
+                setShowViewDialog(false);
+                setViewingSchedule(null);
+              }}
+              schedule={viewingSchedule}
+            />
+          </Suspense>
+        )}
       </div>
     </div>
   );
