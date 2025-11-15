@@ -109,6 +109,17 @@ export async function GET(request: NextRequest) {
     // Get paginated schedules (user-specific)
     const schedules = await db.getSchedules(userId, status || undefined, limit, (page - 1) * limit);
 
+    // ✅ Calculate stats for all statuses (for ScheduleStats component)
+    const statsData = {
+      total: await db.getSchedulesCount(userId),
+      pending: await db.getSchedulesCount(userId, 'pending'),
+      processing: await db.getSchedulesCount(userId, 'processing'),
+      posted: await db.getSchedulesCount(userId, 'posted'),
+      failed: await db.getSchedulesCount(userId, 'failed'),
+    };
+
+    console.log('📊 Schedule stats:', statsData);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -116,6 +127,7 @@ export async function GET(request: NextRequest) {
         total: totalCount,
         totalPages,
         currentPage: page,
+        stats: statsData, // ✅ Add stats to response
         pagination: {
           page,
           limit,

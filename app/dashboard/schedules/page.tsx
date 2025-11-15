@@ -109,7 +109,16 @@ export default function SchedulesPage() {
         setSchedules(result.data.schedules);
         setTotalPages(result.data.totalPages || 1);
         setTotalItems(result.data.total || 0);
-        calculateStats(result.data.schedules);
+
+        // ✅ Use stats from API response instead of calculating locally
+        if (result.data.stats) {
+          setStats(result.data.stats);
+          console.log('📊 Stats from API:', result.data.stats);
+        } else {
+          // Fallback: calculate from current page schedules (old behavior)
+          calculateStats(result.data.schedules);
+        }
+
         setError(null);
       } else {
         setError(result.error || 'Failed to fetch schedules');

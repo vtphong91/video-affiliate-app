@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,26 +38,44 @@ interface ActivityItem {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get basic stats
-    const reviews = await db.getReviews();
-    const schedules = await db.getSchedules?.() || [];
-    
+    // ✅ Get authenticated user ID
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Authentication required'
+        },
+        { status: 401 }
+      );
+    }
+
+    console.log('👤 Dashboard stats for user:', userId);
+
+    // ✅ Get user-specific data
+    const reviews = await db.getReviews(userId);
+
+    // ✅ Get all schedules for user (no limit) to calculate accurate stats
+    const allSchedules = await db.getSchedules(userId, undefined, 1000, 0);
+
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const stats: DashboardStats = {
       totalReviews: reviews.length,
-      totalSchedules: schedules.length,
-      publishedPosts: schedules.filter(s => s.status === 'posted').length,
-      pendingSchedules: schedules.filter(s => s.status === 'pending').length,
-      failedPosts: schedules.filter(s => s.status === 'failed').length,
+      totalSchedules: allSchedules.length,
+      publishedPosts: allSchedules.filter(s => s.status === 'posted').length,
+      pendingSchedules: allSchedules.filter(s => s.status === 'pending').length,
+      failedPosts: allSchedules.filter(s => s.status === 'failed').length,
       reviewsToday: reviews.filter(r => new Date(r.created_at) >= today).length,
-      postsToday: schedules.filter(s => 
-        s.status === 'posted' && new Date(s.posted_at || s.created_at) >= today
+      postsToday: allSchedules.filter(s =>
+        s.status === 'posted' && s.posted_at && new Date(s.posted_at) >= today
       ).length,
       averageResponseTime: 245, // Mock data
     };
+
+    console.log('📊 Dashboard stats:', stats);
 
     // Generate chart data
     const reviewsByDay: ChartData[] = [];
@@ -78,9 +97,9 @@ export async function GET(request: NextRequest) {
         return reviewDate >= dayStart && reviewDate <= dayEnd;
       }).length;
       
-      const postsCount = schedules.filter(s => {
-        const postDate = new Date(s.posted_at || s.created_at);
-        return s.status === 'posted' && postDate >= dayStart && postDate <= dayEnd;
+      const postsCount = allSchedules.filter(s => {
+        const postDate = s.posted_at ? new Date(s.posted_at) : null;
+        return s.status === 'posted' && postDate && postDate >= dayStart && postDate <= dayEnd;
       }).length;
       
       reviewsByDay.push({
@@ -113,7 +132,7 @@ export async function GET(request: NextRequest) {
       { label: 'Đã đăng', value: stats.publishedPosts, color: '#10B981' },
       { label: 'Chờ lịch', value: stats.pendingSchedules, color: '#F59E0B' },
       { label: 'Thất bại', value: stats.failedPosts, color: '#EF4444' },
-      { label: 'Đang xử lý', value: schedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
+      { label: 'Đang xử lý', value: allSchedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
     ];
 
     // Get real activity logs
