@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
 
     console.log('👤 Dashboard stats for user:', userId);
 
-    // ✅ Get user-specific data
-    const reviews = await db.getReviews(userId);
+    // ✅ Get user-specific data with correct signature
+    const reviews = await db.getReviews({ userId, limit: 1000, offset: 0 });
 
     // ✅ Get all schedules for user (no limit) to calculate accurate stats
     const allSchedules = await db.getSchedules(userId, undefined, 1000, 0);
