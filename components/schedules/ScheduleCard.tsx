@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +39,8 @@ interface ScheduleCardProps {
   onView: (schedule: ScheduleWithReview) => void;
 }
 
-export function ScheduleCard({ schedule, onDelete, onRetry, onEdit, onView }: ScheduleCardProps) {
+// ✅ Memoize ScheduleCard to prevent unnecessary re-renders
+export const ScheduleCard = React.memo(function ScheduleCard({ schedule, onDelete, onRetry, onEdit, onView }: ScheduleCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
@@ -311,4 +312,4 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit, onView }: Sc
       </CardContent>
     </Card>
   );
-}
+});

@@ -1,7 +1,8 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   FileText,
   Calendar,
@@ -14,6 +15,8 @@ import {
   Activity,
   BarChart3
 } from 'lucide-react';
+import { cachedFetch, invalidateCache } from '@/lib/utils/request-cache';
+import { useAuthHeaders } from '@/lib/hooks/useAuthHeaders';
 
 interface DashboardStats {
   totalReviews: number;
@@ -52,22 +55,26 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
+  const headers = useAuthHeaders();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  // ✅ Memoize fetch function
+  const fetchDashboardData = useCallback(async (force = false) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/dashboard/stats');
-      const result = await response.json();
+
+      // ✅ Use cachedFetch with 2 minute TTL for dashboard stats
+      const result = await cachedFetch('/api/dashboard/stats', {
+        headers,
+        ttl: 120000, // 2 minutes cache
+        force,
+      });
 
       if (result.success) {
         setData(result.data);
+        setError(null);
       } else {
         setError(result.error || 'Không thể tải dữ liệu dashboard');
       }
@@ -77,9 +84,17 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [headers]);
 
-  const getStatusColor = (status?: string) => {
+  useEffect(() => {
+    // Only fetch if headers are ready
+    if (headers['x-user-id']) {
+      fetchDashboardData();
+    }
+  }, [fetchDashboardData, headers]);
+
+  // ✅ Memoize helper functions to prevent re-renders
+  const getStatusColor = useCallback((status?: string) => {
     switch (status) {
       case 'success':
         return 'text-green-600 bg-green-100';
@@ -92,9 +107,9 @@ export default function DashboardPage() {
       default:
         return 'text-gray-600 bg-gray-100';
     }
-  };
+  }, []);
 
-  const getActivityIcon = (type: string) => {
+  const getActivityIcon = useCallback((type: string) => {
     switch (type) {
       case 'review_created':
         return <FileText className="w-4 h-4" />;
@@ -107,9 +122,9 @@ export default function DashboardPage() {
       default:
         return <Activity className="w-4 h-4" />;
     }
-  };
+  }, []);
 
-  const formatTimestamp = (timestamp: string) => {
+  const formatTimestamp = useCallback((timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -122,8 +137,9 @@ export default function DashboardPage() {
     if (diffHours < 24) return `${diffHours} giờ trước`;
     if (diffDays < 7) return `${diffDays} ngày trước`;
     return date.toLocaleDateString('vi-VN');
-  };
+  }, []);
 
+  // ✅ Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -135,6 +151,7 @@ export default function DashboardPage() {
     );
   }
 
+  // ✅ Error state
   if (error || !data) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -142,7 +159,7 @@ export default function DashboardPage() {
           <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
           <p className="text-red-600 mb-4">{error || 'Không thể tải dữ liệu'}</p>
           <button
-            onClick={fetchDashboardData}
+            onClick={() => fetchDashboardData(true)}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
           >
             Thử lại
@@ -184,236 +201,283 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Tổng quan về hoạt động Video Affiliate của bạn</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+            <p className="text-gray-600">Tổng quan về hoạt động Video Affiliate của bạn</p>
+          </div>
+          <button
+            onClick={() => fetchDashboardData(true)}
+            className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2"
+          >
+            <Activity className="w-4 h-4" />
+            Làm mới
+          </button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Tổng Reviews</p>
-                <p className="text-2xl font-bold text-gray-900">{data.stats.totalReviews}</p>
-                <p className="text-xs text-gray-500 mt-1">+{data.stats.reviewsToday} hôm nay</p>
-              </div>
-            </div>
-          </div>
+        {/* Stats Cards - Memoized */}
+        <StatsCards stats={data.stats} />
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Đã đăng</p>
-                <p className="text-2xl font-bold text-gray-900">{data.stats.publishedPosts}</p>
-                <p className="text-xs text-gray-500 mt-1">+{data.stats.postsToday} hôm nay</p>
-              </div>
-            </div>
-          </div>
+        {/* Charts Section - Memoized */}
+        <ChartsSection charts={data.charts} stats={data.stats} />
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Clock className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Chờ đăng</p>
-                <p className="text-2xl font-bold text-gray-900">{data.stats.pendingSchedules}</p>
-                <p className="text-xs text-gray-500 mt-1">Lịch pending</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Thất bại</p>
-                <p className="text-2xl font-bold text-gray-900">{data.stats.failedPosts}</p>
-                <p className="text-xs text-gray-500 mt-1">Cần retry</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Reviews by Day Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Reviews 7 ngày qua</h2>
-              <BarChart3 className="w-5 h-5 text-gray-400" />
-            </div>
-            <div className="space-y-3">
-              {data.charts.reviewsByDay.map((item, index) => {
-                const maxValue = Math.max(...data.charts.reviewsByDay.map(d => d.value), 1);
-                const percentage = (item.value / maxValue) * 100;
-
-                return (
-                  <div key={index}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-gray-600">{item.label}</span>
-                      <span className="font-semibold text-gray-900">{item.value}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Posts by Day Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Bài đăng 7 ngày qua</h2>
-              <BarChart3 className="w-5 h-5 text-gray-400" />
-            </div>
-            <div className="space-y-3">
-              {data.charts.postsByDay.map((item, index) => {
-                const maxValue = Math.max(...data.charts.postsByDay.map(d => d.value), 1);
-                const percentage = (item.value / maxValue) * 100;
-
-                return (
-                  <div key={index}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-gray-600">{item.label}</span>
-                      <span className="font-semibold text-gray-900">{item.value}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Platform Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Phân phối Platform</h2>
-            <div className="space-y-3">
-              {data.charts.platformStats.filter(p => p.value > 0).map((platform, index) => {
-                const total = data.charts.platformStats.reduce((sum, p) => sum + p.value, 0);
-                const percentage = total > 0 ? (platform.value / total) * 100 : 0;
-
-                return (
-                  <div key={index}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: platform.color }}
-                        ></div>
-                        <span className="text-gray-600">{platform.label}</span>
-                      </div>
-                      <span className="font-semibold text-gray-900">{platform.value} ({percentage.toFixed(0)}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${percentage}%`,
-                          backgroundColor: platform.color
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-              {data.charts.platformStats.every(p => p.value === 0) && (
-                <p className="text-gray-500 text-center py-4">Chưa có dữ liệu</p>
-              )}
-            </div>
-          </div>
-
-          {/* Status Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Trạng thái lịch đăng</h2>
-            <div className="space-y-3">
-              {data.charts.statusStats.filter(s => s.value > 0).map((status, index) => {
-                const total = data.stats.totalSchedules;
-                const percentage = total > 0 ? (status.value / total) * 100 : 0;
-
-                return (
-                  <div key={index}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: status.color }}
-                        ></div>
-                        <span className="text-gray-600">{status.label}</span>
-                      </div>
-                      <span className="font-semibold text-gray-900">{status.value} ({percentage.toFixed(0)}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${percentage}%`,
-                          backgroundColor: status.color
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-              {data.stats.totalSchedules === 0 && (
-                <p className="text-gray-500 text-center py-4">Chưa có lịch đăng nào</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Hoạt động gần đây</h2>
-          {data.activities && data.activities.length > 0 ? (
-            <div className="space-y-4">
-              {data.activities.slice(0, 10).map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3 pb-4 border-b last:border-b-0">
-                  <div className={`p-2 rounded-lg ${getStatusColor(activity.status)}`}>
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">{activity.title}</p>
-                        <p className="text-sm text-gray-600">{activity.description}</p>
-                      </div>
-                      <span className="text-xs text-gray-500 whitespace-nowrap ml-4">
-                        {formatTimestamp(activity.timestamp)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Chưa có hoạt động nào</p>
-              <p className="text-sm text-gray-400 mt-2">Tạo review đầu tiên để bắt đầu!</p>
-            </div>
-          )}
-        </div>
+        {/* Recent Activity - Memoized */}
+        <RecentActivity
+          activities={data.activities}
+          getStatusColor={getStatusColor}
+          getActivityIcon={getActivityIcon}
+          formatTimestamp={formatTimestamp}
+        />
       </main>
     </div>
   );
 }
+
+// ✅ Memoized sub-components to prevent unnecessary re-renders
+
+const StatsCards = React.memo(({ stats }: { stats: DashboardStats }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <div className="flex items-center">
+        <div className="p-2 bg-blue-100 rounded-lg">
+          <FileText className="w-6 h-6 text-blue-600" />
+        </div>
+        <div className="ml-4">
+          <p className="text-sm font-medium text-gray-600">Tổng Reviews</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.totalReviews}</p>
+          <p className="text-xs text-gray-500 mt-1">+{stats.reviewsToday} hôm nay</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <div className="flex items-center">
+        <div className="p-2 bg-green-100 rounded-lg">
+          <CheckCircle className="w-6 h-6 text-green-600" />
+        </div>
+        <div className="ml-4">
+          <p className="text-sm font-medium text-gray-600">Đã đăng</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.publishedPosts}</p>
+          <p className="text-xs text-gray-500 mt-1">+{stats.postsToday} hôm nay</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <div className="flex items-center">
+        <div className="p-2 bg-yellow-100 rounded-lg">
+          <Clock className="w-6 h-6 text-yellow-600" />
+        </div>
+        <div className="ml-4">
+          <p className="text-sm font-medium text-gray-600">Chờ đăng</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.pendingSchedules}</p>
+          <p className="text-xs text-gray-500 mt-1">Lịch pending</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <div className="flex items-center">
+        <div className="p-2 bg-red-100 rounded-lg">
+          <AlertTriangle className="w-6 h-6 text-red-600" />
+        </div>
+        <div className="ml-4">
+          <p className="text-sm font-medium text-gray-600">Thất bại</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.failedPosts}</p>
+          <p className="text-xs text-gray-500 mt-1">Cần retry</p>
+        </div>
+      </div>
+    </div>
+  </div>
+));
+
+StatsCards.displayName = 'StatsCards';
+
+// ✅ Memoized Charts Section
+const ChartsSection = React.memo(({ charts, stats }: {
+  charts: DashboardData['charts'];
+  stats: DashboardStats;
+}) => (
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <ChartCard title="Reviews 7 ngày qua" data={charts.reviewsByDay} color="bg-blue-600" />
+    <ChartCard title="Bài đăng 7 ngày qua" data={charts.postsByDay} color="bg-green-600" />
+    <PlatformChart data={charts.platformStats} />
+    <StatusChart data={charts.statusStats} totalSchedules={stats.totalSchedules} />
+  </div>
+));
+
+ChartsSection.displayName = 'ChartsSection';
+
+// ✅ Memoized Chart Card
+const ChartCard = React.memo(({
+  title,
+  data,
+  color
+}: {
+  title: string;
+  data: ChartData[];
+  color: string;
+}) => {
+  const maxValue = useMemo(() => Math.max(...data.map(d => d.value), 1), [data]);
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <BarChart3 className="w-5 h-5 text-gray-400" />
+      </div>
+      <div className="space-y-3">
+        {data.map((item, index) => {
+          const percentage = (item.value / maxValue) * 100;
+          return (
+            <div key={index}>
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="text-gray-600">{item.label}</span>
+                <span className="font-semibold text-gray-900">{item.value}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`${color} h-2 rounded-full transition-all duration-300`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+ChartCard.displayName = 'ChartCard';
+
+// ✅ Memoized Platform Chart
+const PlatformChart = React.memo(({ data }: { data: ChartData[] }) => {
+  const total = useMemo(() => data.reduce((sum, p) => sum + p.value, 0), [data]);
+  const filteredData = useMemo(() => data.filter(p => p.value > 0), [data]);
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Phân phối Platform</h2>
+      <div className="space-y-3">
+        {filteredData.map((platform, index) => {
+          const percentage = total > 0 ? (platform.value / total) * 100 : 0;
+          return (
+            <div key={index}>
+              <div className="flex items-center justify-between text-sm mb-1">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }} />
+                  <span className="text-gray-600">{platform.label}</span>
+                </div>
+                <span className="font-semibold text-gray-900">
+                  {platform.value} ({percentage.toFixed(0)}%)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${percentage}%`, backgroundColor: platform.color }}
+                />
+              </div>
+            </div>
+          );
+        })}
+        {filteredData.length === 0 && (
+          <p className="text-gray-500 text-center py-4">Chưa có dữ liệu</p>
+        )}
+      </div>
+    </div>
+  );
+});
+
+PlatformChart.displayName = 'PlatformChart';
+
+// ✅ Memoized Status Chart
+const StatusChart = React.memo(({ data, totalSchedules }: {
+  data: ChartData[];
+  totalSchedules: number;
+}) => {
+  const filteredData = useMemo(() => data.filter(s => s.value > 0), [data]);
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Trạng thái lịch đăng</h2>
+      <div className="space-y-3">
+        {filteredData.map((status, index) => {
+          const percentage = totalSchedules > 0 ? (status.value / totalSchedules) * 100 : 0;
+          return (
+            <div key={index}>
+              <div className="flex items-center justify-between text-sm mb-1">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: status.color }} />
+                  <span className="text-gray-600">{status.label}</span>
+                </div>
+                <span className="font-semibold text-gray-900">
+                  {status.value} ({percentage.toFixed(0)}%)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${percentage}%`, backgroundColor: status.color }}
+                />
+              </div>
+            </div>
+          );
+        })}
+        {totalSchedules === 0 && (
+          <p className="text-gray-500 text-center py-4">Chưa có lịch đăng nào</p>
+        )}
+      </div>
+    </div>
+  );
+});
+
+StatusChart.displayName = 'StatusChart';
+
+// ✅ Memoized Recent Activity
+const RecentActivity = React.memo(({
+  activities,
+  getStatusColor,
+  getActivityIcon,
+  formatTimestamp
+}: {
+  activities: ActivityItem[];
+  getStatusColor: (status?: string) => string;
+  getActivityIcon: (type: string) => JSX.Element;
+  formatTimestamp: (timestamp: string) => string;
+}) => (
+  <div className="bg-white p-6 rounded-lg shadow-sm border">
+    <h2 className="text-xl font-semibold text-gray-900 mb-4">Hoạt động gần đây</h2>
+    {activities && activities.length > 0 ? (
+      <div className="space-y-4">
+        {activities.slice(0, 10).map((activity) => (
+          <div key={activity.id} className="flex items-start space-x-3 pb-4 border-b last:border-b-0">
+            <div className={`p-2 rounded-lg ${getStatusColor(activity.status)}`}>
+              {getActivityIcon(activity.type)}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{activity.title}</p>
+                  <p className="text-sm text-gray-600">{activity.description}</p>
+                </div>
+                <span className="text-xs text-gray-500 whitespace-nowrap ml-4">
+                  {formatTimestamp(activity.timestamp)}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="text-center py-8">
+        <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-500">Chưa có hoạt động nào</p>
+        <p className="text-sm text-gray-400 mt-2">Tạo review đầu tiên để bắt đầu!</p>
+      </div>
+    )}
+  </div>
+));
+
+RecentActivity.displayName = 'RecentActivity';
