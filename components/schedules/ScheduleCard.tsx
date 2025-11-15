@@ -36,9 +36,10 @@ interface ScheduleCardProps {
   onDelete: (id: string) => void;
   onRetry: (id: string) => void;
   onEdit: (schedule: ScheduleWithReview) => void;
+  onView: (schedule: ScheduleWithReview) => void;
 }
 
-export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCardProps) {
+export function ScheduleCard({ schedule, onDelete, onRetry, onEdit, onView }: ScheduleCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
@@ -277,16 +278,21 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCa
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2 border-t">
-          <Button variant="outline" size="sm" className="flex-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onView(schedule)}
+          >
             <Eye className="h-4 w-4 mr-2" />
             Xem chi tiết
           </Button>
-          
+
           {schedule.facebook_post_url && (
             <Button variant="outline" size="sm" asChild>
-              <a 
-                href={schedule.facebook_post_url} 
-                target="_blank" 
+              <a
+                href={schedule.facebook_post_url}
+                target="_blank"
                 rel="noopener noreferrer"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />

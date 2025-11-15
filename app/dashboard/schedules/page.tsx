@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { ScheduleCard } from '@/components/schedules/ScheduleCard';
 import { CreateScheduleDialog } from '@/components/schedules/CreateScheduleDialog';
 import { EditScheduleDialog } from '@/components/schedules/EditScheduleDialog';
+import { ViewScheduleDialog } from '@/components/schedules/ViewScheduleDialog';
 import { ScheduleStats } from '@/components/schedules/ScheduleStats';
 // import type { Schedule } from '@/lib/db/supabase';
 
@@ -63,7 +64,9 @@ export default function SchedulesPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ScheduleWithReview | null>(null);
+  const [viewingSchedule, setViewingSchedule] = useState<ScheduleWithReview | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const { toast } = useToast();
 
@@ -304,6 +307,11 @@ export default function SchedulesPage() {
   const handleEditSchedule = (schedule: ScheduleWithReview) => {
     setEditingSchedule(schedule);
     setShowEditDialog(true);
+  };
+
+  const handleViewSchedule = (schedule: ScheduleWithReview) => {
+    setViewingSchedule(schedule);
+    setShowViewDialog(true);
   };
 
   const handleUpdateSchedule = async (scheduleId: string, newScheduledFor: string) => {
@@ -590,6 +598,7 @@ export default function SchedulesPage() {
                     onDelete={handleDeleteSchedule}
                     onRetry={handleRetrySchedule}
                     onEdit={handleEditSchedule}
+                    onView={handleViewSchedule}
                   />
                 ))
               )}
@@ -633,6 +642,16 @@ export default function SchedulesPage() {
           }}
           schedule={editingSchedule}
           onUpdate={handleUpdateSchedule}
+        />
+
+        {/* View Schedule Dialog */}
+        <ViewScheduleDialog
+          isOpen={showViewDialog}
+          onClose={() => {
+            setShowViewDialog(false);
+            setViewingSchedule(null);
+          }}
+          schedule={viewingSchedule}
         />
       </div>
     </div>
