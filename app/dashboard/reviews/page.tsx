@@ -1,77 +1,93 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
-import { supabase } from '@/lib/db/supabase';
-import { Eye, MousePointer, ExternalLink, Edit, Trash2, PlusCircle, Loader2 } from 'lucide-react';
+import { Eye, MousePointer, ExternalLink, Edit, Trash2, PlusCircle } from 'lucide-react';
 import { withUserRoute } from '@/lib/auth/middleware/route-protection';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
+import { useAuthHeaders } from '@/lib/hooks/useAuthHeaders';
+import { cachedFetch, invalidateCache } from '@/lib/utils/request-cache';
+import { SkeletonGrid, ReviewCardSkeleton } from '@/components/ui/skeleton';
 import type { Review } from '@/types';
 
 function ReviewsPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const { displayName } = useUser();
+  const headers = useAuthHeaders();
+
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 6; // Show 6 reviews per page
 
-  useEffect(() => {
-    // Only fetch reviews if user is authenticated (even if userProfile is null)
-    if (user) {
-      console.log('🔍 ReviewsPage: User authenticated, fetching reviews...');
-      fetchReviews();
-    } else {
-      console.log('🔍 ReviewsPage: No user, skipping fetch');
-      setLoading(false);
-    }
-  }, [currentPage, user]); // Use user instead of isAuthenticated
+  // ✅ FIX: Use user?.id instead of user object to prevent unnecessary re-fetches
+  const userId = user?.id;
 
-  const fetchReviews = async () => {
+  // Fetch reviews with caching
+  const fetchReviews = useCallback(async (page: number, force = false) => {
     try {
       setLoading(true);
-      
-      // Get authentication headers from Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add authentication headers if session exists
-      if (session?.user) {
-        headers['x-user-id'] = session.user.id;
-        headers['x-user-email'] = session.user.email || '';
-        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
-      }
-      
-      // Use main API with authentication - show all reviews (draft + published)
-      const response = await fetch(`/api/reviews?page=${currentPage}&limit=${itemsPerPage}`, {
-        headers
-      });
-      const data = await response.json();
-      
+
+      console.log('🔍 ReviewsPage: Fetching reviews for page', page);
+
+      // ✅ Use cachedFetch with 60 second TTL
+      const data = await cachedFetch(
+        `/api/reviews?page=${page}&limit=${itemsPerPage}`,
+        {
+          headers,
+          ttl: 60000, // 60 seconds cache
+          force, // Force refresh if specified
+        }
+      );
+
       if (data.success) {
         setReviews(data.data?.reviews || []);
         setTotalPages(data.data?.totalPages || 1);
         setTotalItems(data.data?.total || 0);
       }
     } catch (error) {
-      console.error('Error fetching reviews:', error);
+      console.error('❌ Error fetching reviews:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [headers, itemsPerPage]);
+
+  // ✅ FIX: Only depend on userId (primitive) instead of user object
+  useEffect(() => {
+    if (userId && headers['x-user-id']) {
+      console.log('🔍 ReviewsPage: User authenticated, fetching reviews...');
+      fetchReviews(currentPage);
+    } else {
+      console.log('🔍 ReviewsPage: No user or headers not ready, skipping fetch');
+      setLoading(false);
+    }
+  }, [currentPage, userId, headers, fetchReviews]);
+
+  // ✅ Prefetch next page on mount
+  useEffect(() => {
+    if (currentPage < totalPages && headers['x-user-id']) {
+      // Prefetch next page in background
+      const timer = setTimeout(() => {
+        console.log('🔮 Prefetching next page:', currentPage + 1);
+        cachedFetch(
+          `/api/reviews?page=${currentPage + 1}&limit=${itemsPerPage}`,
+          { headers, ttl: 60000 }
+        ).catch(() => {}); // Silently fail
+      }, 1000); // Delay 1 second
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentPage, totalPages, headers, itemsPerPage]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Bạn có chắc muốn xóa review này?')) return;
@@ -79,57 +95,101 @@ function ReviewsPage() {
     try {
       setDeleting(id);
 
-      // Get session for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-
-      if (session?.user) {
-        headers['x-user-id'] = session.user.id;
-        headers['x-user-email'] = session.user.email || '';
-        headers['x-user-role'] = session.user.user_metadata?.role || 'user';
-      }
-
       const response = await fetch(`/api/reviews/${id}`, {
         method: 'DELETE',
         headers,
       });
 
       if (response.ok) {
-        // ✅ FIX: Refetch data from server instead of just filtering local state
-        console.log('✅ Review deleted successfully, refetching data...');
+        console.log('✅ Review deleted successfully');
+
+        // ✅ Invalidate cache for reviews
+        invalidateCache(/\/api\/reviews/);
 
         // Check if we need to go back a page (if this was the last item on current page)
         const remainingItems = reviews.length - 1;
         if (remainingItems === 0 && currentPage > 1) {
-          // Go back one page if current page becomes empty
           setCurrentPage(currentPage - 1);
         } else {
-          // Refetch current page
-          await fetchReviews();
+          // Force refetch current page
+          await fetchReviews(currentPage, true);
         }
       } else {
         const errorData = await response.json();
         alert(errorData.error || 'Không thể xóa review');
       }
     } catch (error) {
-      console.error('Error deleting review:', error);
+      console.error('❌ Error deleting review:', error);
       alert('Lỗi khi xóa review');
     } finally {
       setDeleting(null);
     }
   };
 
-  // Show loading if still loading or if no user (waiting for auth)
-  if (loading || !user) {
+  // ✅ Prefetch next page on hover
+  const prefetchNextPage = useCallback(() => {
+    if (currentPage < totalPages && headers['x-user-id']) {
+      cachedFetch(
+        `/api/reviews?page=${currentPage + 1}&limit=${itemsPerPage}`,
+        { headers, ttl: 60000 }
+      ).catch(() => {});
+    }
+  }, [currentPage, totalPages, headers, itemsPerPage]);
+
+  // ✅ Show skeleton loading instead of spinner
+  if (loading && reviews.length === 0) {
+    return (
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Reviews</h1>
+            <p className="text-gray-600 mt-1">
+              Quản lý tất cả landing pages đã tạo
+            </p>
+          </div>
+          <Link href="/dashboard/create">
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Tạo Mới
+            </Button>
+          </Link>
+        </div>
+
+        {/* Skeleton Grid */}
+        <div className="grid gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="flex gap-4">
+                  <div className="w-40 h-24 bg-gray-200 rounded" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-6 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    <div className="h-4 bg-gray-200 rounded w-full" />
+                    <div className="flex gap-2">
+                      <div className="h-8 bg-gray-200 rounded w-20" />
+                      <div className="h-8 bg-gray-200 rounded w-20" />
+                      <div className="h-8 bg-gray-200 rounded w-20" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth loading
+  if (!userId) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">
-          {!user ? 'Đang xác thực...' : 'Đang tải reviews...'}
-        </span>
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent mb-4" />
+          <p className="text-gray-600">Đang xác thực...</p>
+        </div>
       </div>
     );
   }
@@ -141,7 +201,7 @@ function ReviewsPage() {
         <div>
           <h1 className="text-3xl font-bold">Reviews</h1>
           <p className="text-gray-600 mt-1">
-            Quản lý tất cả landing pages đã tạo
+            Quản lý tất cả landing pages đã tạo ({totalItems} reviews)
           </p>
         </div>
         <Link href="/dashboard/create">
@@ -179,6 +239,7 @@ function ReviewsPage() {
                     src={review.video_thumbnail}
                     alt={review.video_title}
                     className="w-40 h-24 object-cover rounded"
+                    loading="lazy"
                   />
 
                   {/* Info */}
@@ -230,14 +291,14 @@ function ReviewsPage() {
                           Sửa
                         </Button>
                       </Link>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => handleDelete(review.id)}
                         disabled={deleting === review.id}
                       >
                         {deleting === review.id ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
                         ) : (
                           <Trash2 className="h-4 w-4 mr-2" />
                         )}
@@ -263,6 +324,15 @@ function ReviewsPage() {
             totalItems={totalItems}
             showInfo={true}
           />
+
+          {/* ✅ Prefetch button (hidden, triggers on hover) */}
+          {currentPage < totalPages && (
+            <div
+              className="hidden"
+              onMouseEnter={prefetchNextPage}
+              aria-hidden="true"
+            />
+          )}
         </div>
       )}
     </div>

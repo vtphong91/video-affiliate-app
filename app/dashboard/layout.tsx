@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useRoles } from '@/lib/auth/hooks/useRoles';
 import { withDashboardRoute } from '@/lib/auth/middleware/route-protection';
 import { ClientProviders } from '@/components/providers/ClientProviders';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 function DashboardLayoutContent({
   children,
@@ -158,7 +159,11 @@ function DashboardLayoutContent({
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1">{children}</main>
+          <main className="flex-1">
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </main>
         </div>
       </div>
       </div>
