@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import { SupabaseAuthProvider } from '@/lib/auth/SupabaseAuthProvider';
+import { SettingsProvider } from '@/lib/contexts/settings-context';
 
 interface ClientProvidersProps {
   children: ReactNode;
@@ -10,7 +11,9 @@ interface ClientProvidersProps {
 export function ClientProviders({ children }: ClientProvidersProps) {
   return (
     <SupabaseAuthProvider>
-      {children}
+      <SettingsProvider>
+        {children}
+      </SettingsProvider>
     </SupabaseAuthProvider>
   );
 }
