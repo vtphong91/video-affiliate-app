@@ -362,7 +362,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
-    isAuthenticated: !!user && !!userProfile,
+    isAuthenticated: !!user, // User is authenticated if user exists, profile can load later
     // Enhanced permission and role checking
     hasPermission,
     hasAnyPermission,
