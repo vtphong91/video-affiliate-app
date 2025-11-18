@@ -36,9 +36,10 @@ interface ScheduleCardProps {
   onDelete: (id: string) => void;
   onRetry: (id: string) => void;
   onEdit: (schedule: ScheduleWithReview) => void;
+  onViewDetails?: (scheduleId: string) => void;
 }
 
-export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCardProps) {
+export function ScheduleCard({ schedule, onDelete, onRetry, onEdit, onViewDetails }: ScheduleCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
@@ -277,7 +278,12 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit }: ScheduleCa
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2 border-t">
-          <Button variant="outline" size="sm" className="flex-1">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onViewDetails?.(schedule.id)}
+          >
             <Eye className="h-4 w-4 mr-2" />
             Xem chi tiết
           </Button>

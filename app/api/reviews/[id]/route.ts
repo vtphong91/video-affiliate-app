@@ -8,10 +8,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const review = await db.getReview(params.id);
+    const { id } = await params;
+    const review = await db.getReview(id);
     
     return NextResponse.json({
       success: true,
@@ -29,15 +30,16 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const userId = await getUserIdFromRequest(request);
 
-    console.log('🗑️ Deleting review:', params.id);
+    console.log('🗑️ Deleting review:', id);
 
     // Get review details before deleting
-    const review = await db.getReview(params.id);
+    const review = await db.getReview(id);
 
     if (!review) {
       return NextResponse.json(
@@ -52,13 +54,13 @@ export async function DELETE(
     const reviewTitle = review.video_title || 'Unknown';
 
     // Delete the review
-    await db.deleteReview(params.id);
+    await db.deleteReview(id);
 
-    console.log('✅ Review deleted successfully:', params.id);
+    console.log('✅ Review deleted successfully:', id);
 
     // Log activity
     if (userId) {
-      await ActivityLogger.reviewDeleted(userId, reviewTitle, params.id);
+      await ActivityLogger.reviewDeleted(userId, reviewTitle, id);
     }
 
     // Return success with cache-control headers
@@ -91,14 +93,25 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const userId = await getUserIdFromRequest(request);
     const updates = await request.json();
-    console.log('📝 Updating review:', params.id, 'with data:', updates);
+    console.log('📝 Updating review:', id, 'with data:', updates);
 
-    const review = await db.updateReview(params.id, updates);
+    const review = await db.updateReview(id, updates);
+
+    if (!review) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Review not found or update failed',
+        },
+        { status: 404 }
+      );
+    }
 
     console.log('✅ Review updated successfully:', review.id);
 

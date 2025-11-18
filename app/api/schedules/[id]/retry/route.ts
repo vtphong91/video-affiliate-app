@@ -6,11 +6,13 @@ export const dynamic = 'force-dynamic';
 // POST /api/schedules/[id]/retry - Retry failed schedule
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get the schedule
-    const schedule = await db.getSchedule(params.id);
+    const schedule = await db.getSchedule(id);
     
     if (schedule.status !== 'failed') {
       return NextResponse.json(
@@ -40,7 +42,7 @@ export async function POST(
       next_retry_at: null,
     };
 
-    const updatedSchedule = await db.updateSchedule(params.id, updateData);
+    const updatedSchedule = await db.updateSchedule(id, updateData);
 
     return NextResponse.json({
       success: true,

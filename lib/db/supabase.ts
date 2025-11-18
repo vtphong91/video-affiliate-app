@@ -204,7 +204,7 @@ export const db = {
 
   async updateReview(id: string, updates: Partial<Review>) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('reviews')
         .update(updates)
         .eq('id', id)
@@ -225,7 +225,7 @@ export const db = {
 
   async deleteReview(id: string) {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('reviews')
         .delete()
         .eq('id', id);
@@ -326,14 +326,13 @@ export const db = {
   // Schedules
   async getSchedules(userId?: string, status?: string, limit = 10, offset = 0) {
     try {
+      // Get all schedules first (without limit) to sort properly
       let query = supabaseAdmin
         .from('schedules')
         .select(`
           *,
           affiliate_links
-        `)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+        `);
 
       if (userId) {
         query = query.eq('user_id', userId);
@@ -349,9 +348,44 @@ export const db = {
         console.error('Error fetching schedules:', error);
         return [];
       }
+
+      // Sort schedules: pending/processing first, then by scheduled_for
+      const sortedData = (data || []).sort((a: any, b: any) => {
+        // Priority order: pending > processing > posted > failed > cancelled
+        const statusPriority: { [key: string]: number } = {
+          'pending': 1,
+          'processing': 2,
+          'posted': 3,
+          'failed': 4,
+          'cancelled': 5,
+        };
+
+        const aPriority = statusPriority[a.status] || 99;
+        const bPriority = statusPriority[b.status] || 99;
+
+        // First sort by status priority
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority;
+        }
+
+        // Within same status, sort by scheduled_for
+        // For pending/processing: ascending (earliest first)
+        // For posted/failed/cancelled: descending (latest first)
+        const aTime = new Date(a.scheduled_for).getTime();
+        const bTime = new Date(b.scheduled_for).getTime();
+
+        if (a.status === 'pending' || a.status === 'processing') {
+          return aTime - bTime; // Ascending: earliest first
+        } else {
+          return bTime - aTime; // Descending: latest first
+        }
+      });
+
+      // Apply pagination after sorting
+      const paginatedData = sortedData.slice(offset, offset + limit);
       
-      console.log(`📋 getSchedules: Found ${data?.length || 0} schedules for user ${userId}, status: ${status}`);
-      return data || [];
+      console.log(`📋 getSchedules: Found ${data?.length || 0} schedules (showing ${paginatedData.length}) for user ${userId}, status: ${status}`);
+      return paginatedData;
     } catch (error) {
       console.error('Exception in getSchedules:', error);
       return [];

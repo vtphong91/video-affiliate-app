@@ -14,3 +14,4 @@ try {
     Write-Host "Status Code: $($_.Exception.Response.StatusCode)"
     Write-Host "Response: $($_.Exception.Response)"
 }
+

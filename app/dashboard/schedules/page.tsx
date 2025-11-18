@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { ScheduleCard } from '@/components/schedules/ScheduleCard';
 import { CreateScheduleDialog } from '@/components/schedules/CreateScheduleDialog';
 import { EditScheduleDialog } from '@/components/schedules/EditScheduleDialog';
+import { ScheduleDetailDialog } from '@/components/schedules/ScheduleDetailDialog';
 import { ScheduleStats } from '@/components/schedules/ScheduleStats';
 // import type { Schedule } from '@/lib/db/supabase';
 
@@ -63,7 +64,9 @@ export default function SchedulesPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ScheduleWithReview | null>(null);
+  const [viewingScheduleId, setViewingScheduleId] = useState<string | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const { toast } = useToast();
 
@@ -164,7 +167,14 @@ export default function SchedulesPage() {
         setSchedules(result.data.schedules);
         setTotalPages(result.data.totalPages || 1);
         setTotalItems(result.data.total || 0);
-        calculateStats(result.data.schedules);
+        
+        // Use stats from API if available, otherwise calculate from current page
+        if (result.data.stats) {
+          setStats(result.data.stats);
+        } else {
+          calculateStats(result.data.schedules);
+        }
+        
         setError(null);
       } else {
         setError(result.error || 'Failed to fetch schedules');
@@ -282,6 +292,11 @@ export default function SchedulesPage() {
   const handleEditSchedule = (schedule: ScheduleWithReview) => {
     setEditingSchedule(schedule);
     setShowEditDialog(true);
+  };
+
+  const handleViewDetails = (scheduleId: string) => {
+    setViewingScheduleId(scheduleId);
+    setShowDetailDialog(true);
   };
 
   const handleUpdateSchedule = async (scheduleId: string, newScheduledFor: string) => {
@@ -568,6 +583,7 @@ export default function SchedulesPage() {
                     onDelete={handleDeleteSchedule}
                     onRetry={handleRetrySchedule}
                     onEdit={handleEditSchedule}
+                    onViewDetails={handleViewDetails}
                   />
                 ))
               )}
@@ -611,6 +627,16 @@ export default function SchedulesPage() {
           }}
           schedule={editingSchedule}
           onUpdate={handleUpdateSchedule}
+        />
+
+        {/* Schedule Detail Dialog */}
+        <ScheduleDetailDialog
+          isOpen={showDetailDialog}
+          onClose={() => {
+            setShowDetailDialog(false);
+            setViewingScheduleId(null);
+          }}
+          scheduleId={viewingScheduleId}
         />
       </div>
     </div>

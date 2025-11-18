@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
+import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,22 +38,36 @@ interface ActivityItem {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get basic stats
-    const reviews = await db.getReviews();
-    const schedules = await db.getSchedules?.() || [];
+    // Get user ID for filtering
+    const userId = await getUserIdFromRequest(request);
+    
+    // Get ALL reviews and schedules (no pagination limit for stats)
+    // Use large limit to get all data, or use count functions for totals
+    const reviews = await db.getReviews({ 
+      userId, 
+      limit: 10000, 
+      offset: 0 
+    });
+    
+    // Get all schedules without pagination
+    const allSchedules = await db.getSchedules(userId, undefined, 10000, 0);
+    
+    // Also get counts for accurate totals
+    const totalReviewsCount = await db.getReviewsCount({ userId });
+    const totalSchedulesCount = await db.getSchedulesCount(userId);
     
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const stats: DashboardStats = {
-      totalReviews: reviews.length,
-      totalSchedules: schedules.length,
-      publishedPosts: schedules.filter(s => s.status === 'posted').length,
-      pendingSchedules: schedules.filter(s => s.status === 'pending').length,
-      failedPosts: schedules.filter(s => s.status === 'failed').length,
+      totalReviews: totalReviewsCount, // Use count for accurate total
+      totalSchedules: totalSchedulesCount, // Use count for accurate total
+      publishedPosts: allSchedules.filter(s => s.status === 'posted').length,
+      pendingSchedules: allSchedules.filter(s => s.status === 'pending').length,
+      failedPosts: allSchedules.filter(s => s.status === 'failed').length,
       reviewsToday: reviews.filter(r => new Date(r.created_at) >= today).length,
-      postsToday: schedules.filter(s => 
+      postsToday: allSchedules.filter(s => 
         s.status === 'posted' && new Date(s.posted_at || s.created_at) >= today
       ).length,
       averageResponseTime: 245, // Mock data
@@ -78,7 +93,7 @@ export async function GET(request: NextRequest) {
         return reviewDate >= dayStart && reviewDate <= dayEnd;
       }).length;
       
-      const postsCount = schedules.filter(s => {
+      const postsCount = allSchedules.filter(s => {
         const postDate = new Date(s.posted_at || s.created_at);
         return s.status === 'posted' && postDate >= dayStart && postDate <= dayEnd;
       }).length;
@@ -96,16 +111,50 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Platform distribution
+    // Platform distribution - use video_platform field if available, otherwise check video_url
     const platformStats: ChartData[] = [
-      { label: 'YouTube', value: reviews.filter(r => r.video_url?.includes('youtube')).length, color: '#FF0000' },
-      { label: 'TikTok', value: reviews.filter(r => r.video_url?.includes('tiktok')).length, color: '#000000' },
-      { label: 'Facebook', value: reviews.filter(r => r.video_url?.includes('facebook')).length, color: '#1877F2' },
-      { label: 'Khác', value: reviews.filter(r => 
-        !r.video_url?.includes('youtube') && 
-        !r.video_url?.includes('tiktok') && 
-        !r.video_url?.includes('facebook')
-      ).length, color: '#6B7280' },
+      { 
+        label: 'YouTube', 
+        value: reviews.filter(r => 
+          r.video_platform === 'youtube' || 
+          r.video_url?.toLowerCase().includes('youtube') ||
+          r.video_url?.toLowerCase().includes('youtu.be')
+        ).length, 
+        color: '#FF0000' 
+      },
+      { 
+        label: 'TikTok', 
+        value: reviews.filter(r => 
+          r.video_platform === 'tiktok' || 
+          r.video_url?.toLowerCase().includes('tiktok')
+        ).length, 
+        color: '#000000' 
+      },
+      { 
+        label: 'Facebook', 
+        value: reviews.filter(r => 
+          r.video_platform === 'facebook' || 
+          r.video_url?.toLowerCase().includes('facebook')
+        ).length, 
+        color: '#1877F2' 
+      },
+      { 
+        label: 'Khác', 
+        value: reviews.filter(r => {
+          const platform = r.video_platform?.toLowerCase();
+          const url = r.video_url?.toLowerCase() || '';
+          return (
+            platform !== 'youtube' && 
+            platform !== 'tiktok' && 
+            platform !== 'facebook' &&
+            !url.includes('youtube') && 
+            !url.includes('youtu.be') &&
+            !url.includes('tiktok') && 
+            !url.includes('facebook')
+          );
+        }).length, 
+        color: '#6B7280' 
+      },
     ];
 
     // Status distribution
@@ -113,7 +162,7 @@ export async function GET(request: NextRequest) {
       { label: 'Đã đăng', value: stats.publishedPosts, color: '#10B981' },
       { label: 'Chờ lịch', value: stats.pendingSchedules, color: '#F59E0B' },
       { label: 'Thất bại', value: stats.failedPosts, color: '#EF4444' },
-      { label: 'Đang xử lý', value: schedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
+      { label: 'Đang xử lý', value: allSchedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
     ];
 
     // Get real activity logs

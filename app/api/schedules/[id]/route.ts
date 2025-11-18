@@ -15,9 +15,11 @@ const updateScheduleSchema = z.object({
 // GET /api/schedules/[id] - Get single schedule
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get authenticated user ID
     const userId = await getUserIdFromRequest(request);
     if (!userId) {
@@ -32,7 +34,7 @@ export async function GET(
 
     console.log('👤 Authenticated user ID:', userId);
 
-    const schedule = await db.getSchedule(params.id);
+    const schedule = await db.getSchedule(id);
 
     // Verify user owns this schedule
     if (schedule.user_id !== userId) {
@@ -65,9 +67,11 @@ export async function GET(
 // PUT /api/schedules/[id] - Update schedule
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get authenticated user ID
     const userId = await getUserIdFromRequest(request);
     if (!userId) {
@@ -83,7 +87,7 @@ export async function PUT(
     console.log('👤 Authenticated user ID:', userId);
 
     // Check if schedule exists and user owns it
-    const existingSchedule = await db.getSchedule(params.id);
+    const existingSchedule = await db.getSchedule(id);
     if (existingSchedule.user_id !== userId) {
       return NextResponse.json(
         {
@@ -130,7 +134,7 @@ export async function PUT(
       );
     }
 
-    const schedule = await db.updateSchedule(params.id, updateData);
+    const schedule = await db.updateSchedule(id, updateData);
 
     // Log activity
     await ActivityLogger.scheduleUpdated(userId, schedule.id, schedule.scheduled_for);
@@ -168,9 +172,11 @@ export async function PUT(
 // DELETE /api/schedules/[id] - Delete schedule
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Get authenticated user ID
     const userId = await getUserIdFromRequest(request);
     if (!userId) {
@@ -186,7 +192,7 @@ export async function DELETE(
     console.log('👤 Authenticated user ID:', userId);
 
     // Check if schedule exists and user owns it
-    const existingSchedule = await db.getSchedule(params.id);
+    const existingSchedule = await db.getSchedule(id);
     if (!existingSchedule) {
       return NextResponse.json(
         {
@@ -207,10 +213,10 @@ export async function DELETE(
       );
     }
 
-    await db.deleteSchedule(params.id);
+    await db.deleteSchedule(id);
 
     // Log activity
-    await ActivityLogger.scheduleDeleted(userId, params.id);
+    await ActivityLogger.scheduleDeleted(userId, id);
 
     return NextResponse.json({
       success: true,
