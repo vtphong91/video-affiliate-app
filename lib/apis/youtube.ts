@@ -40,12 +40,19 @@ interface YouTubeCaptionListResponse {
 
 /**
  * Extract video ID from YouTube URL
+ * Supports:
+ * - youtube.com/watch?v=VIDEO_ID
+ * - youtu.be/VIDEO_ID
+ * - youtube.com/embed/VIDEO_ID
+ * - youtube.com/v/VIDEO_ID
+ * - youtube.com/shorts/VIDEO_ID (YouTube Shorts)
  */
 export function extractYouTubeVideoId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
     /youtube\.com\/embed\/([^&\n?#]+)/,
     /youtube\.com\/v\/([^&\n?#]+)/,
+    /youtube\.com\/shorts\/([^&\n?#]+)/, // YouTube Shorts format
   ];
 
   for (const pattern of patterns) {
