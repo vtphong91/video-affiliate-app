@@ -25,12 +25,13 @@ export async function POST(request: NextRequest) {
 
     // Create a simple test video info
     const testVideoInfo: VideoInfo = {
+      platform: 'youtube',
       videoId: 'test-video-id',
-      url: 'https://youtube.com/watch?v=test',
       title: 'Test Product Review',
+      thumbnail: 'https://i.ytimg.com/vi/test/maxresdefault.jpg',
+      duration: '10:30',
       description: 'This is a test product that helps users solve problems.',
       channelName: 'Test Channel',
-      platform: 'youtube',
       transcript: `
         Hello everyone, today I'm reviewing this amazing test product.
         This product has three main benefits: it's fast, reliable, and affordable.
