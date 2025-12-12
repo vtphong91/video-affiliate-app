@@ -20,10 +20,19 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
-# AI API Keys
-OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
-GOOGLE_AI_API_KEY=your_google_ai_api_key
+# AI API Keys (Multiple providers with automatic fallback)
+# FREE providers (recommended)
+GOOGLE_AI_API_KEY=your_google_gemini_api_key  # FREE 1500/day
+GROQ_API_KEY=your_groq_api_key                # FREE, super fast (300-800 tokens/sec)
+
+# CHEAP providers (cost-effective)
+MISTRAL_API_KEY=your_mistral_api_key          # ~$2/1M tokens
+
+# PAID providers (fallback)
+OPENAI_API_KEY=your_openai_api_key            # ~$10/1M tokens
+ANTHROPIC_API_KEY=your_anthropic_api_key      # ~$3/1M tokens
+
+# See AI_PROVIDERS.md for detailed documentation
 
 # Social Media API Keys
 FACEBOOK_ACCESS_TOKEN=your_facebook_access_token
@@ -42,8 +51,14 @@ NODE_ENV=production
 ### Features
 - ✅ Schedule Creation & Management
 - ✅ Automated Facebook Posting
-- ✅ AI Content Generation
-- ✅ Video Analysis
+- ✅ AI Content Generation with 5 Providers
+  - Google Gemini (FREE, 1500/day)
+  - Groq AI (FREE, ultra-fast 300-800 tokens/sec)
+  - Mistral AI (CHEAP, $2/1M tokens)
+  - OpenAI GPT-4 (PAID, high quality)
+  - Anthropic Claude (PAID, high quality)
+- ✅ Automatic Fallback System (99.9% uptime)
+- ✅ Video Analysis (YouTube, TikTok)
 - ✅ Admin Panel with RBAC
 - ✅ Real-time Status Updates
 - ✅ Cron Job Automation
