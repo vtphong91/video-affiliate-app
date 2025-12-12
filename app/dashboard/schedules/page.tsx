@@ -537,8 +537,11 @@ export default function SchedulesPage() {
                 <RefreshCw className={`h-4 w-4 ${(loading || isAutoRefreshing) ? 'animate-spin' : ''}`} />
                 {loading ? 'Đang tải...' : isAutoRefreshing ? 'Đang cập nhật...' : 'Làm mới'}
               </Button>
-              <Button 
-                onClick={() => setShowCreateDialog(true)}
+              <Button
+                onClick={() => {
+                  console.log('🔍 Button clicked: Opening create dialog');
+                  setShowCreateDialog(true);
+                }}
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />

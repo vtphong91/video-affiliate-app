@@ -22,7 +22,8 @@ interface CreateScheduleDialogProps {
 
 export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateScheduleDialogProps) {
   console.log('🔍 CreateScheduleDialog: Component rendered with open:', open);
-  
+  console.log('🔍 CreateScheduleDialog: Props:', { open, hasOnOpenChange: !!onOpenChange, hasOnSubmit: !!onSubmit });
+
   const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
@@ -347,10 +348,17 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
             {/* Select Review */}
             <div className="space-y-2">
               <Label htmlFor="review">Chọn Review *</Label>
-              <select 
+              <div className="text-xs text-gray-500 mb-1">
+                {reviewsLoading && '🔄 Đang tải...'}
+                {!reviewsLoading && `📊 Có ${reviews.length} reviews`}
+              </div>
+              <select
                 id="review"
-                value={formData.reviewId} 
-                onChange={(e) => handleReviewChange(e.target.value)}
+                value={formData.reviewId}
+                onChange={(e) => {
+                  console.log('🔍 Review selected:', e.target.value);
+                  handleReviewChange(e.target.value);
+                }}
                 disabled={reviewsLoading}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               >
