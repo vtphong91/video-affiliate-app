@@ -62,11 +62,16 @@ export async function analyzeVideoWithMistral(videoInfo: VideoInfo): Promise<AIA
     console.log(`🌫️ Mistral - API call completed in ${duration}ms`);
     console.log('🌫️ Mistral - Response usage:', chatResponse.usage);
 
-    const responseText = chatResponse.choices?.[0]?.message?.content;
+    const responseContent = chatResponse.choices?.[0]?.message?.content;
 
-    if (!responseText) {
+    if (!responseContent) {
       throw new Error('Empty response from Mistral API');
     }
+
+    // Handle both string and ContentChunk[] types
+    const responseText = typeof responseContent === 'string'
+      ? responseContent
+      : JSON.stringify(responseContent);
 
     console.log('🌫️ Mistral - Response length:', responseText.length, 'characters');
     console.log('🌫️ Mistral - Response preview:', responseText.substring(0, 200));
@@ -167,10 +172,15 @@ export async function analyzeVideoWithMistralSmall(videoInfo: VideoInfo): Promis
       }
     });
 
-    const responseText = chatResponse.choices?.[0]?.message?.content;
-    if (!responseText) {
+    const responseContent = chatResponse.choices?.[0]?.message?.content;
+    if (!responseContent) {
       throw new Error('Empty response from Mistral API');
     }
+
+    // Handle both string and ContentChunk[] types
+    const responseText = typeof responseContent === 'string'
+      ? responseContent
+      : JSON.stringify(responseContent);
 
     const parsedData = JSON.parse(responseText);
 
@@ -226,11 +236,16 @@ export async function generateContentWithMistral(prompt: string): Promise<string
       maxTokens: 8000,
     });
 
-    const content = chatResponse.choices?.[0]?.message?.content;
+    const responseContent = chatResponse.choices?.[0]?.message?.content;
 
-    if (!content) {
+    if (!responseContent) {
       throw new Error('Empty response from Mistral API');
     }
+
+    // Handle both string and ContentChunk[] types
+    const content = typeof responseContent === 'string'
+      ? responseContent
+      : JSON.stringify(responseContent);
 
     console.log('✅ Mistral - Content generated:', content.length, 'characters');
     return content;
