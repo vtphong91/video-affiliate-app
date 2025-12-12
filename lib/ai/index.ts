@@ -27,23 +27,39 @@ export async function analyzeVideo(
   videoInfo: VideoInfo,
   provider?: AIProvider
 ): Promise<AIAnalysis> {
+  console.log('🎯 analyzeVideo - FUNCTION CALLED with:', {
+    title: videoInfo.title?.substring(0, 50),
+    platform: videoInfo.platform,
+    videoId: videoInfo.videoId,
+    hasTranscript: !!videoInfo.transcript,
+    requestedProvider: provider
+  });
+
   // Auto-detect provider if not specified
   if (!provider) {
+    console.log('🎯 analyzeVideo - Auto-detecting provider...');
     if (process.env.GOOGLE_AI_API_KEY) {
       provider = 'gemini'; // FREE & RECOMMENDED
+      console.log('🎯 analyzeVideo - Selected provider: gemini (FREE)');
     } else if (process.env.OPENAI_API_KEY) {
       provider = 'openai';
+      console.log('🎯 analyzeVideo - Selected provider: openai');
     } else if (process.env.ANTHROPIC_API_KEY) {
       provider = 'claude';
+      console.log('🎯 analyzeVideo - Selected provider: claude');
     } else {
+      console.error('🎯 analyzeVideo - ERROR: No API key configured');
       throw new Error(
         'No AI API key configured. Please set GOOGLE_AI_API_KEY (free), OPENAI_API_KEY, or ANTHROPIC_API_KEY'
       );
     }
   }
 
+  console.log('🎯 analyzeVideo - Using provider:', provider);
+
   switch (provider) {
     case 'gemini':
+      console.log('🎯 analyzeVideo - Calling analyzeVideoWithGemini...');
       return analyzeVideoWithGemini(videoInfo);
     case 'gemini-pro':
       return analyzeVideoWithGeminiPro(videoInfo);

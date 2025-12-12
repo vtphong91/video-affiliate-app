@@ -49,23 +49,38 @@ export function extractVideoId(url: string): string | null {
  * Get video info from URL
  */
 export async function getVideoInfoFromUrl(url: string): Promise<VideoInfo> {
+  console.log('📹 getVideoInfoFromUrl - CALLED with URL:', url);
+
   const platform = detectVideoPlatform(url);
+  console.log('📹 getVideoInfoFromUrl - Detected platform:', platform);
+
   if (!platform) {
+    console.error('📹 getVideoInfoFromUrl - ERROR: Invalid platform');
     throw new Error('Invalid video URL. Only YouTube and TikTok are supported.');
   }
 
   const videoId = extractVideoId(url);
+  console.log('📹 getVideoInfoFromUrl - Extracted video ID:', videoId);
+
   if (!videoId) {
+    console.error('📹 getVideoInfoFromUrl - ERROR: Could not extract video ID');
     throw new Error('Could not extract video ID from URL');
   }
 
   if (platform === 'youtube') {
-    return await getYouTubeVideoInfo(videoId);
+    console.log('📹 getVideoInfoFromUrl - Calling getYouTubeVideoInfo...');
+    const result = await getYouTubeVideoInfo(videoId);
+    console.log('📹 getVideoInfoFromUrl - YouTube info fetched successfully');
+    return result;
   }
   if (platform === 'tiktok') {
-    return await getTikTokVideoInfo(videoId);
+    console.log('📹 getVideoInfoFromUrl - Calling getTikTokVideoInfo...');
+    const result = await getTikTokVideoInfo(videoId);
+    console.log('📹 getVideoInfoFromUrl - TikTok info fetched successfully');
+    return result;
   }
 
+  console.error('📹 getVideoInfoFromUrl - ERROR: Unsupported platform');
   throw new Error('Unsupported platform');
 }
 

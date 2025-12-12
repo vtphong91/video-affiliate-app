@@ -29,7 +29,15 @@
       "Bash(if exist F:VSCODEAUTOPOSTFACEBOOKvideo-affiliate-app.nextcache rd /s /q F:VSCODEAUTOPOSTFACEBOOKvideo-affiliate-app.nextcache)",
       "Bash(findstr:*)",
       "Bash(cat:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm view:*)",
+      "Bash(node test-gemini-api.js:*)",
+      "Bash(node test-youtube-api.js:*)",
+      "Bash(taskkill:*)",
+      "Bash(pkill:*)",
+      "Bash(killall:*)",
+      "Bash(timeout 15 bash:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File kill-all-node.ps1)"
     ],
     "deny": [],
     "ask": []

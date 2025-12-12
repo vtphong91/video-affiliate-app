@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Menu, X, Home, FileText, Phone, ArrowRight, Users, Zap } from 'lucide-react';
-import { ClientProviders } from '@/components/providers/ClientProviders';
 import { AuthButton } from '@/components/auth/ui/AuthButton';
 
 export default function HomePage() {
@@ -14,8 +13,7 @@ export default function HomePage() {
   };
 
   return (
-    <ClientProviders>
-      <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white">
       {/* Header với Navigation */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -271,7 +269,6 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-      </div>
-    </ClientProviders>
+    </div>
   );
 }

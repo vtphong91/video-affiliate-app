@@ -88,11 +88,16 @@ function parseDuration(duration: string): string {
 export async function getYouTubeVideoInfo(
   videoId: string
 ): Promise<VideoInfo> {
+  console.log('📺 YouTube - Fetching video info for:', videoId);
+
   if (!YOUTUBE_API_KEY) {
+    console.error('❌ YouTube - API key not configured');
     throw new Error('YouTube API key not configured');
   }
 
   try {
+    console.log('📺 YouTube - Fetching metadata and transcript...');
+
     // Fetch video metadata and transcript in parallel
     const [videoResponse, transcript] = await Promise.all([
       axios.get<YouTubeVideoResponse>(
@@ -107,6 +112,8 @@ export async function getYouTubeVideoInfo(
       ),
       getYouTubeTranscript(videoId), // Fetch transcript in parallel
     ]);
+
+    console.log('📺 YouTube - Metadata fetched successfully');
 
     console.log('📺 YouTube API - Transcript result:', {
       videoId,
@@ -145,10 +152,15 @@ export async function getYouTubeVideoInfo(
       transcriptLength: videoInfo.transcript?.length
     });
 
+    console.log('✅ YouTube - Video info fetched successfully');
     return videoInfo;
   } catch (error) {
-    console.error('Error fetching YouTube video info:', error);
-    throw new Error('Failed to fetch video information');
+    console.error('❌ YouTube - Error fetching video info:', error);
+    if (error instanceof Error) {
+      console.error('❌ YouTube - Error message:', error.message);
+      console.error('❌ YouTube - Error stack:', error.stack);
+    }
+    throw error instanceof Error ? error : new Error('Failed to fetch video information');
   }
 }
 

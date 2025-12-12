@@ -106,11 +106,22 @@ export async function POST(request: NextRequest) {
     }
 
     // REAL MODE: Use actual APIs
+    console.log('🔍 API Route - Starting video analysis for URL:', videoUrl);
+
     // Step 1: Get video info from URL
+    console.log('🔍 API Route - Step 1: Fetching video info...');
     const videoInfo = await getVideoInfoFromUrl(videoUrl);
+    console.log('🔍 API Route - Step 1 COMPLETED - Video info:', {
+      title: videoInfo.title?.substring(0, 50),
+      platform: videoInfo.platform,
+      videoId: videoInfo.videoId,
+      hasTranscript: !!videoInfo.transcript
+    });
 
     // Step 2: Analyze video with AI
+    console.log('🔍 API Route - Step 2: Analyzing video with AI...');
     const analysis = await analyzeVideo(videoInfo);
+    console.log('🔍 API Route - Step 2 COMPLETED - Analysis received');
 
     // Step 3: Return combined response
     const response: AnalyzeVideoResponse = {
@@ -120,13 +131,22 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error analyzing video:', error);
+    console.error('❌ Error analyzing video:', error);
+
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
 
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to analyze video';
 
     return NextResponse.json(
-      { error: errorMessage },
+      {
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
