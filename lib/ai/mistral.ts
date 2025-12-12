@@ -93,10 +93,11 @@ export async function analyzeVideoWithMistral(videoInfo: VideoInfo): Promise<AIA
             content: kp.content || kp.text || String(kp),
           }))
         : [],
+      comparisonTable: parsedData.comparison_table || parsedData.comparisonTable || { headers: [], rows: [] },
       targetAudience: Array.isArray(parsedData.target_audience)
         ? parsedData.target_audience
         : [],
-      callToAction: parsedData.call_to_action || parsedData.cta || '',
+      cta: parsedData.call_to_action || parsedData.cta || '',
       seoKeywords: Array.isArray(parsedData.seo_keywords) ? parsedData.seo_keywords : [],
     };
 
@@ -183,8 +184,9 @@ export async function analyzeVideoWithMistralSmall(videoInfo: VideoInfo): Promis
             content: kp.content || String(kp),
           }))
         : [],
+      comparisonTable: parsedData.comparison_table || parsedData.comparisonTable || { headers: [], rows: [] },
       targetAudience: Array.isArray(parsedData.target_audience) ? parsedData.target_audience : [],
-      callToAction: parsedData.call_to_action || '',
+      cta: parsedData.call_to_action || parsedData.cta || '',
       seoKeywords: Array.isArray(parsedData.seo_keywords) ? parsedData.seo_keywords : [],
     };
 
