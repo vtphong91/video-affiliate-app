@@ -2,9 +2,17 @@ import Groq from 'groq-sdk';
 import type { VideoInfo, AIAnalysis } from '@/types';
 import { generateAnalysisPrompt } from './prompts';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+// Lazy initialization to avoid build-time errors when API key is not set
+let groqInstance: Groq | null = null;
+
+function getGroqClient(): Groq {
+  if (!groqInstance) {
+    groqInstance = new Groq({
+      apiKey: process.env.GROQ_API_KEY || '',
+    });
+  }
+  return groqInstance;
+}
 
 /**
  * Analyze video using Groq LLaMA 3.3 70B
@@ -38,7 +46,7 @@ export async function analyzeVideoWithGroq(videoInfo: VideoInfo): Promise<AIAnal
     console.log('🦙 Groq - Sending request to LLaMA 3.3 70B...');
 
     // Use Groq's chat completions API with JSON mode
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroqClient().chat.completions.create({
       messages: [
         {
           role: 'system',
@@ -149,7 +157,7 @@ export async function analyzeVideoWithGroqMixtral(videoInfo: VideoInfo): Promise
   try {
     const prompt = generateAnalysisPrompt(videoInfo);
 
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroqClient().chat.completions.create({
       messages: [
         {
           role: 'system',
@@ -209,7 +217,7 @@ export async function generateContentWithGroq(prompt: string): Promise<string> {
   }
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroqClient().chat.completions.create({
       messages: [
         {
           role: 'system',

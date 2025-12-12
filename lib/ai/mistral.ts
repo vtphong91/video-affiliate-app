@@ -2,9 +2,17 @@ import { Mistral } from '@mistralai/mistralai';
 import type { VideoInfo, AIAnalysis } from '@/types';
 import { generateAnalysisPrompt } from './prompts';
 
-const mistral = new Mistral({
-  apiKey: process.env.MISTRAL_API_KEY || '',
-});
+// Lazy initialization to avoid build-time errors when API key is not set
+let mistralInstance: Mistral | null = null;
+
+function getMistralClient(): Mistral {
+  if (!mistralInstance) {
+    mistralInstance = new Mistral({
+      apiKey: process.env.MISTRAL_API_KEY || '',
+    });
+  }
+  return mistralInstance;
+}
 
 /**
  * Analyze video using Mistral Large 2
@@ -37,7 +45,7 @@ export async function analyzeVideoWithMistral(videoInfo: VideoInfo): Promise<AIA
     console.log('🌫️ Mistral - Prompt length:', prompt.length, 'characters');
     console.log('🌫️ Mistral - Sending request to Mistral Large...');
 
-    const chatResponse = await mistral.chat.complete({
+    const chatResponse = await getMistralClient().chat.complete({
       model: 'mistral-large-latest',
       messages: [
         {
@@ -153,7 +161,7 @@ export async function analyzeVideoWithMistralSmall(videoInfo: VideoInfo): Promis
   try {
     const prompt = generateAnalysisPrompt(videoInfo);
 
-    const chatResponse = await mistral.chat.complete({
+    const chatResponse = await getMistralClient().chat.complete({
       model: 'mistral-small-latest',
       messages: [
         {
@@ -220,7 +228,7 @@ export async function generateContentWithMistral(prompt: string): Promise<string
   }
 
   try {
-    const chatResponse = await mistral.chat.complete({
+    const chatResponse = await getMistralClient().chat.complete({
       model: 'mistral-large-latest',
       messages: [
         {
