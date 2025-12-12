@@ -119,6 +119,7 @@ export async function PUT(request: NextRequest) {
 function checkApiKeyConfigured(providerName: string): boolean {
   const keyMap: Record<string, string> = {
     'gemini': 'GOOGLE_AI_API_KEY',
+    'deepseek': 'DEEPSEEK_API_KEY',
     'groq': 'GROQ_API_KEY',
     'mistral': 'MISTRAL_API_KEY',
     'openai': 'OPENAI_API_KEY',

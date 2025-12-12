@@ -4,6 +4,7 @@ import { analyzeVideoWithClaude, analyzeVideoWithClaudeHaiku, generateContentWit
 import { analyzeVideoWithGemini, analyzeVideoWithGeminiPro, generateContentWithGemini } from './gemini';
 import { analyzeVideoWithGroq, analyzeVideoWithGroqMixtral, generateContentWithGroq } from './groq';
 import { analyzeVideoWithMistral, analyzeVideoWithMistralSmall, generateContentWithMistral } from './mistral';
+import { analyzeVideoWithDeepSeek, generateContentWithDeepSeek } from './deepseek';
 import { db } from '@/lib/db/supabase';
 import {
   replacePromptVariables,
@@ -14,6 +15,7 @@ import { removeUrlsFromContent } from '@/lib/utils/content-helpers';
 type AIProvider =
   | 'gemini'          // FREE: 1500 req/day ⭐ RECOMMENDED
   | 'gemini-pro'      // FREE: 50 req/day
+  | 'deepseek'        // FREE: Generous limits, excellent quality 💎 POWERFUL
   | 'groq'            // FREE: Generous limits, 300-800 tokens/sec ⚡ SUPER FAST
   | 'groq-mixtral'    // FREE: Ultra fast
   | 'mistral'         // CHEAP: ~$2/1M tokens 💰 COST-EFFECTIVE
@@ -44,9 +46,10 @@ export async function analyzeVideo(
   });
 
   // Build list of available providers in priority order
-  // Priority: FREE (Gemini, Groq) > CHEAP (Mistral) > PAID (OpenAI, Claude)
+  // Priority: FREE (Gemini, DeepSeek, Groq) > CHEAP (Mistral) > PAID (OpenAI, Claude)
   const availableProviders: AIProvider[] = [];
   if (process.env.GOOGLE_AI_API_KEY) availableProviders.push('gemini');
+  if (process.env.DEEPSEEK_API_KEY) availableProviders.push('deepseek');
   if (process.env.GROQ_API_KEY) availableProviders.push('groq');
   if (process.env.MISTRAL_API_KEY) availableProviders.push('mistral');
   if (process.env.OPENAI_API_KEY) availableProviders.push('openai');
@@ -81,6 +84,9 @@ export async function analyzeVideo(
           break;
         case 'gemini-pro':
           result = await analyzeVideoWithGeminiPro(videoInfo);
+          break;
+        case 'deepseek':
+          result = await analyzeVideoWithDeepSeek(videoInfo);
           break;
         case 'groq':
           result = await analyzeVideoWithGroq(videoInfo);
@@ -134,6 +140,7 @@ export async function analyzeVideo(
 export * from './openai';
 export * from './claude';
 export * from './gemini';
+export * from './deepseek';
 export * from './groq';
 export * from './mistral';
 export * from './prompts';
