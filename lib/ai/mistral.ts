@@ -33,8 +33,9 @@ export async function analyzeVideoWithMistral(videoInfo: VideoInfo): Promise<AIA
     throw new Error('MISTRAL_API_KEY is not configured. Get your key at: https://console.mistral.ai');
   }
 
-  if (!videoInfo.transcript) {
-    throw new Error('Transcript is required for Mistral analysis');
+  // Transcript is preferred but not required - can analyze from title/description
+  if (!videoInfo.transcript && !videoInfo.title && !videoInfo.description) {
+    throw new Error('Video must have at least title, description, or transcript for analysis');
   }
 
   try {
@@ -154,8 +155,9 @@ export async function analyzeVideoWithMistralSmall(videoInfo: VideoInfo): Promis
     throw new Error('MISTRAL_API_KEY is not configured');
   }
 
-  if (!videoInfo.transcript) {
-    throw new Error('Transcript is required for Mistral analysis');
+  // Transcript is preferred but not required - can analyze from title/description
+  if (!videoInfo.transcript && !videoInfo.title && !videoInfo.description) {
+    throw new Error('Video must have at least title, description, or transcript for analysis');
   }
 
   try {

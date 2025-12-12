@@ -33,8 +33,9 @@ export async function analyzeVideoWithGroq(videoInfo: VideoInfo): Promise<AIAnal
     throw new Error('GROQ_API_KEY is not configured. Get your free key at: https://console.groq.com');
   }
 
-  if (!videoInfo.transcript) {
-    throw new Error('Transcript is required for Groq analysis');
+  // Transcript is preferred but not required - can analyze from title/description
+  if (!videoInfo.transcript && !videoInfo.title && !videoInfo.description) {
+    throw new Error('Video must have at least title, description, or transcript for analysis');
   }
 
   try {
@@ -150,8 +151,9 @@ export async function analyzeVideoWithGroqMixtral(videoInfo: VideoInfo): Promise
     throw new Error('GROQ_API_KEY is not configured');
   }
 
-  if (!videoInfo.transcript) {
-    throw new Error('Transcript is required for Groq analysis');
+  // Transcript is preferred but not required - can analyze from title/description
+  if (!videoInfo.transcript && !videoInfo.title && !videoInfo.description) {
+    throw new Error('Video must have at least title, description, or transcript for analysis');
   }
 
   try {
