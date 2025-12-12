@@ -1,6 +1,6 @@
 import { Mistral } from '@mistralai/mistralai';
 import type { VideoInfo, AIAnalysis } from '@/types';
-import { videoAnalysisPrompt } from './prompts';
+import { generateAnalysisPrompt } from './prompts';
 
 const mistral = new Mistral({
   apiKey: process.env.MISTRAL_API_KEY || '',
@@ -32,11 +32,7 @@ export async function analyzeVideoWithMistral(videoInfo: VideoInfo): Promise<AIA
   try {
     const startTime = Date.now();
 
-    const prompt = videoAnalysisPrompt(
-      videoInfo.title || 'Unknown Video',
-      videoInfo.description || '',
-      videoInfo.transcript
-    );
+    const prompt = generateAnalysisPrompt(videoInfo);
 
     console.log('🌫️ Mistral - Prompt length:', prompt.length, 'characters');
     console.log('🌫️ Mistral - Sending request to Mistral Large...');
@@ -149,11 +145,7 @@ export async function analyzeVideoWithMistralSmall(videoInfo: VideoInfo): Promis
   }
 
   try {
-    const prompt = videoAnalysisPrompt(
-      videoInfo.title || 'Unknown Video',
-      videoInfo.description || '',
-      videoInfo.transcript
-    );
+    const prompt = generateAnalysisPrompt(videoInfo);
 
     const chatResponse = await mistral.chat.complete({
       model: 'mistral-small-latest',

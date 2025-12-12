@@ -30,9 +30,9 @@ export async function analyzeVideoWithGemini(
     const prompt = generateAnalysisPrompt(videoInfo);
     console.log('🤖 Gemini - Prompt length:', prompt.length);
 
-    // Use Gemini 2.5 Flash (latest stable model)
+    // Use Gemini 1.5 Flash (stable and available)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash', // Changed from gemini-2.5-flash to stable version
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 8000, // Increased from 2000 to prevent truncated JSON

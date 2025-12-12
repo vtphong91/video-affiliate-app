@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
 import type { VideoInfo, AIAnalysis } from '@/types';
-import { videoAnalysisPrompt } from './prompts';
+import { generateAnalysisPrompt } from './prompts';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -32,11 +32,7 @@ export async function analyzeVideoWithGroq(videoInfo: VideoInfo): Promise<AIAnal
   try {
     const startTime = Date.now();
 
-    const prompt = videoAnalysisPrompt(
-      videoInfo.title || 'Unknown Video',
-      videoInfo.description || '',
-      videoInfo.transcript
-    );
+    const prompt = generateAnalysisPrompt(videoInfo);
 
     console.log('🦙 Groq - Prompt length:', prompt.length, 'characters');
     console.log('🦙 Groq - Sending request to LLaMA 3.3 70B...');
@@ -150,11 +146,7 @@ export async function analyzeVideoWithGroqMixtral(videoInfo: VideoInfo): Promise
   }
 
   try {
-    const prompt = videoAnalysisPrompt(
-      videoInfo.title || 'Unknown Video',
-      videoInfo.description || '',
-      videoInfo.transcript
-    );
+    const prompt = generateAnalysisPrompt(videoInfo);
 
     const completion = await groq.chat.completions.create({
       messages: [
