@@ -292,6 +292,90 @@ export default function SystemSettings() {
     }
   };
 
+  const handleEditProvider = (provider: AIProvider) => {
+    setEditingProvider(provider);
+    setNewProvider({
+      provider_name: provider.provider_name,
+      display_name: provider.display_name,
+      provider_type: provider.provider_type,
+      priority_order: provider.priority_order,
+      cost_per_million_tokens: provider.cost_per_million_tokens || 0,
+      tokens_per_second: provider.tokens_per_second || 0,
+      free_tier_limit: provider.free_tier_limit || 0,
+      context_window: provider.context_window || 0,
+      base_url: provider.base_url || '',
+      model_name: provider.model_name || '',
+      api_key_env_var: provider.api_key_env_var || ''
+    });
+    setShowAddProviderModal(true);
+  };
+
+  const handleUpdateProvider = async () => {
+    try {
+      if (!editingProvider || !newProvider.provider_name || !newProvider.display_name) {
+        alert('Vui lòng điền đầy đủ thông tin bắt buộc');
+        return;
+      }
+
+      const response = await fetch('/api/admin/settings/ai-providers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider_name: editingProvider.provider_name,
+          updates: {
+            display_name: newProvider.display_name,
+            provider_type: newProvider.provider_type,
+            priority_order: newProvider.priority_order,
+            cost_per_million_tokens: newProvider.cost_per_million_tokens,
+            tokens_per_second: newProvider.tokens_per_second,
+            free_tier_limit: newProvider.free_tier_limit,
+            context_window: newProvider.context_window
+          },
+          metadata: {
+            base_url: newProvider.base_url,
+            model_name: newProvider.model_name,
+            api_key_env_var: newProvider.api_key_env_var
+          }
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Cập nhật AI provider thành công!');
+        setShowAddProviderModal(false);
+        setEditingProvider(null);
+        setNewProvider({
+          provider_type: 'free',
+          priority_order: 999,
+          cost_per_million_tokens: 0,
+          tokens_per_second: 0,
+          free_tier_limit: 0,
+          context_window: 0
+        });
+        fetchAIProviders();
+      } else {
+        alert(`Lỗi: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating provider:', error);
+      alert('Có lỗi xảy ra khi cập nhật provider');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowAddProviderModal(false);
+    setEditingProvider(null);
+    setNewProvider({
+      provider_type: 'free',
+      priority_order: 999,
+      cost_per_million_tokens: 0,
+      tokens_per_second: 0,
+      free_tier_limit: 0,
+      context_window: 0
+    });
+  };
+
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
@@ -461,6 +545,15 @@ export default function SystemSettings() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handleEditProvider(provider)}
+                        title="Chỉnh sửa"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleToggleProvider(provider.provider_name, provider.is_enabled)}
                         title={provider.is_enabled ? 'Tắt' : 'Bật'}
                       >
@@ -545,10 +638,12 @@ export default function SystemSettings() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Thêm AI Provider Mới</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingProvider ? 'Chỉnh sửa AI Provider' : 'Thêm AI Provider Mới'}
+              </h2>
               <Button
                 variant="ghost"
-                onClick={() => setShowAddProviderModal(false)}
+                onClick={handleCancelEdit}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕
@@ -567,7 +662,14 @@ export default function SystemSettings() {
                       setNewProvider({ ...newProvider, provider_name: e.target.value })
                     }
                     placeholder="deepseek"
+                    disabled={!!editingProvider}
+                    className={editingProvider ? 'bg-gray-100 cursor-not-allowed' : ''}
                   />
+                  {editingProvider && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Provider name không thể thay đổi
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -731,16 +833,25 @@ export default function SystemSettings() {
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button
                   variant="outline"
-                  onClick={() => setShowAddProviderModal(false)}
+                  onClick={handleCancelEdit}
                 >
                   Hủy
                 </Button>
                 <Button
-                  onClick={handleAddProvider}
+                  onClick={editingProvider ? handleUpdateProvider : handleAddProvider}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Thêm Provider
+                  {editingProvider ? (
+                    <>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Cập nhật Provider
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Thêm Provider
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

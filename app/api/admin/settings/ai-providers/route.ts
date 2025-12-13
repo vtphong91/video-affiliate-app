@@ -9,16 +9,39 @@ const supabaseAdmin = createClient(
 // GET - Lấy danh sách tất cả AI providers từ database
 export async function GET(request: NextRequest) {
   try {
+    // Fetch providers with metadata joined
     const { data: providers, error } = await supabaseAdmin
       .from('ai_provider_settings')
-      .select('*')
+      .select(`
+        *,
+        ai_provider_metadata (
+          base_url,
+          model_name,
+          api_key_env_var
+        )
+      `)
       .order('priority_order', { ascending: true });
 
     if (error) throw error;
 
+    // Flatten metadata into provider object
+    const flattenedProviders = providers?.map(provider => {
+      const metadata = Array.isArray(provider.ai_provider_metadata)
+        ? provider.ai_provider_metadata[0]
+        : provider.ai_provider_metadata;
+
+      return {
+        ...provider,
+        base_url: metadata?.base_url || '',
+        model_name: metadata?.model_name || '',
+        api_key_env_var: metadata?.api_key_env_var || '',
+        ai_provider_metadata: undefined // Remove nested object
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      providers: providers || []
+      providers: flattenedProviders || []
     });
   } catch (error: any) {
     console.error('Error fetching AI providers:', error);
@@ -127,7 +150,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { provider_name, updates } = body;
+    const { provider_name, updates, metadata } = body;
 
     if (!provider_name) {
       return NextResponse.json(
@@ -136,6 +159,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Update main provider settings
     const { data: updatedProvider, error } = await supabaseAdmin
       .from('ai_provider_settings')
       .update({
@@ -147,6 +171,24 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Update metadata if provided
+    if (metadata) {
+      const { error: metadataError } = await supabaseAdmin
+        .from('ai_provider_metadata')
+        .update({
+          base_url: metadata.base_url,
+          model_name: metadata.model_name,
+          api_key_env_var: metadata.api_key_env_var,
+          updated_at: new Date().toISOString()
+        })
+        .eq('provider_name', provider_name);
+
+      if (metadataError) {
+        console.error('Error updating metadata:', metadataError);
+        // Don't fail the entire operation if metadata update fails
+      }
+    }
 
     return NextResponse.json({
       success: true,
