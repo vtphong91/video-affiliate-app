@@ -37,7 +37,8 @@
       "Bash(pkill:*)",
       "Bash(killall:*)",
       "Bash(timeout 15 bash:*)",
-      "Bash(powershell -ExecutionPolicy Bypass -File kill-all-node.ps1)"
+      "Bash(powershell -ExecutionPolicy Bypass -File kill-all-node.ps1)",
+      "Bash(timeout 10 bash:*)"
     ],
     "deny": [],
     "ask": []
