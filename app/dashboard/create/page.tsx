@@ -62,12 +62,21 @@ function CreateReviewPage() {
       const response = await fetch('/api/categories');
       const data = await response.json();
 
-      if (data.success) {
-        const categoriesData = (data.data?.topics || data.topics || data.categories || []).map((topic: any) => ({
-          ...topic,
-          icon: topic.icon || '📁'
-        }));
-        setCategories(categoriesData);
+      if (data.success && data.data) {
+        // API returns { success: true, data: { topics: [...] } }
+        const topicsArray = data.data.topics || [];
+
+        // Ensure it's an array before mapping
+        if (Array.isArray(topicsArray)) {
+          const categoriesData = topicsArray.map((topic: any) => ({
+            ...topic,
+            icon: topic.icon || '📁'
+          }));
+          setCategories(categoriesData);
+        } else {
+          console.error('Topics is not an array:', topicsArray);
+          setCategories([]);
+        }
       } else {
         setCategories([]);
       }
