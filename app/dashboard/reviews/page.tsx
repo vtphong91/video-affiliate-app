@@ -62,16 +62,21 @@ function ReviewsPage() {
     }
   }, [headers, itemsPerPage]);
 
-  // ✅ FIX: Simplified dependency - only need userId and currentPage
+  // ✅ FIX: Wait for both userId AND headers to be ready
   useEffect(() => {
-    if (userId) {
-      console.log('🔍 ReviewsPage: User ID available, fetching reviews for page:', currentPage);
+    // Check if headers contain user ID (means auth is ready)
+    const hasAuthHeaders = headers['x-user-id'] !== undefined;
+
+    if (userId && hasAuthHeaders) {
+      console.log('🔍 ReviewsPage: User ID and headers ready, fetching reviews for page:', currentPage);
       fetchReviews(currentPage);
     } else {
-      console.log('🔍 ReviewsPage: No user ID, skipping fetch');
-      setLoading(false);
+      console.log('🔍 ReviewsPage: Waiting for auth...', { userId, hasAuthHeaders });
+      if (!userId) {
+        setLoading(false);
+      }
     }
-  }, [currentPage, userId, fetchReviews]);
+  }, [currentPage, userId, headers, fetchReviews]);
 
   // ✅ Prefetch next page on mount
   useEffect(() => {
