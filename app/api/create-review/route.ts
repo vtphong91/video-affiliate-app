@@ -76,9 +76,15 @@ export async function POST(request: NextRequest) {
       };
     } else {
       // Save to database
-      console.log('💾 Saving review to database...');
+      console.log('💾 Saving review to database for user:', userId);
       review = await db.createReview(reviewData);
-      console.log('✅ Review saved successfully:', review.id);
+      console.log('✅ Review saved successfully:', {
+        id: review.id,
+        user_id: review.user_id,
+        title: review.video_title?.substring(0, 50),
+        status: review.status,
+        created_at: review.created_at
+      });
 
       // Log activity
       await ActivityLogger.reviewCreated(

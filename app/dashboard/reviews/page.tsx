@@ -62,16 +62,16 @@ function ReviewsPage() {
     }
   }, [headers, itemsPerPage]);
 
-  // ✅ FIX: Only depend on userId (primitive) instead of user object
+  // ✅ FIX: Simplified dependency - only need userId and currentPage
   useEffect(() => {
-    if (userId && headers['x-user-id']) {
-      console.log('🔍 ReviewsPage: User authenticated, fetching reviews...');
+    if (userId) {
+      console.log('🔍 ReviewsPage: User ID available, fetching reviews for page:', currentPage);
       fetchReviews(currentPage);
     } else {
-      console.log('🔍 ReviewsPage: No user or headers not ready, skipping fetch');
+      console.log('🔍 ReviewsPage: No user ID, skipping fetch');
       setLoading(false);
     }
-  }, [currentPage, userId, headers, fetchReviews]);
+  }, [currentPage, userId, fetchReviews]);
 
   // ✅ Prefetch next page on mount
   useEffect(() => {

@@ -33,10 +33,10 @@ export const AuthButton: React.FC<AuthButtonProps> = ({
   useEffect(() => {
     setMounted(true);
   }, []);
-  
-  // Debug logging
-  console.log('AuthButton - user:', user, 'loading:', loading, 'mounted:', mounted);
-  
+
+  // Debug logging (disabled for production)
+  // console.log('AuthButton - user:', user, 'loading:', loading, 'mounted:', mounted);
+
   // Don't render until mounted to prevent hydration mismatch
   if (!mounted) {
     return (

@@ -18,11 +18,11 @@ function DashboardLayoutContent({
   const { user, userProfile, loading } = useAuth();
   const { canAccessAdmin, currentRole } = useRoles();
   
-  // Debug logging
-  console.log('DashboardLayout - user:', user, 'userProfile:', userProfile, 'loading:', loading);
-  console.log('DashboardLayout - currentRole:', currentRole, 'canAccessAdmin:', canAccessAdmin());
-  console.log('DashboardLayout - user type:', typeof user, 'user exists:', !!user);
-  console.log('DashboardLayout - userProfile type:', typeof userProfile, 'userProfile exists:', !!userProfile);
+  // Debug logging (disabled for production)
+  // console.log('DashboardLayout - user:', user, 'userProfile:', userProfile, 'loading:', loading);
+  // console.log('DashboardLayout - currentRole:', currentRole, 'canAccessAdmin:', canAccessAdmin());
+  // console.log('DashboardLayout - user type:', typeof user, 'user exists:', !!user);
+  // console.log('DashboardLayout - userProfile type:', typeof userProfile, 'userProfile exists:', !!userProfile);
 
   // Show loading state while checking authentication
   if (loading) {
@@ -66,7 +66,7 @@ function DashboardLayoutContent({
               {user && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600 hidden sm:inline">
-                    {userProfile?.full_name || user.email || 'User'}
+                    {loading ? 'Đang tải...' : (userProfile?.full_name || userProfile?.email || user.email || 'User')}
                   </span>
                   {currentRole && (
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
