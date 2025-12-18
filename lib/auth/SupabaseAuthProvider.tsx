@@ -6,6 +6,7 @@ import { supabase, supabaseAdmin } from '@/lib/db/supabase';
 
 interface UserProfile {
   id: string;
+  email?: string;
   full_name: string;
   role: string;
   permissions?: string[];
