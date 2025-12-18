@@ -5,6 +5,7 @@ import { generateReviewWithTemplate } from '@/lib/ai';
 import { parseGeneratedContent } from '@/lib/ai/content-parser';
 import { getVideoInfoFromUrl } from '@/lib/utils';
 import { extractSmartSummary } from '@/lib/utils/content-helpers';
+import { cleanContentPreserveStructure } from '@/lib/utils/content-cleaner';
 import type { CreateReviewWithTemplateRequest } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -94,12 +95,21 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Generate content using template với AI analysis
     console.log('3️⃣ Generating review content with AI...');
-    const generatedContent = await generateReviewWithTemplate(
+    const rawGeneratedContent = await generateReviewWithTemplate(
       videoInfo,
       body.template_id,
       body.variables,
       body.ai_analysis // ✅ Truyền AI analysis vào
     );
+
+    // ✅ CLEAN CONTENT: Remove emojis, markdown, and special characters
+    console.log('🧹 Cleaning generated content...');
+    const generatedContent = cleanContentPreserveStructure(rawGeneratedContent);
+    console.log('✅ Content cleaned:', {
+      raw_length: rawGeneratedContent.length,
+      cleaned_length: generatedContent.length,
+      preview: generatedContent.substring(0, 100)
+    });
 
     // Step 4: Create review in database using supabaseAdmin
     console.log('4️⃣ Creating review in database...');
