@@ -126,13 +126,12 @@ export async function GET(request: NextRequest) {
         ).length, 
         color: '#000000' 
       },
-      { 
-        label: 'Facebook', 
-        value: reviews.filter(r => 
-          r.video_platform === 'facebook' || 
+      {
+        label: 'Facebook',
+        value: reviews.filter(r =>
           r.video_url?.toLowerCase().includes('facebook')
-        ).length, 
-        color: '#1877F2' 
+        ).length,
+        color: '#1877F2'
       },
       { 
         label: 'Khác', 

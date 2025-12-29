@@ -53,7 +53,17 @@
       "Bash(powershell -Command \"Get-Process node | Stop-Process -Force\")",
       "Bash(echo:*)",
       "Bash(if exist nul del nul)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(if exist \"app\\\\api\\\\test-rpc-direct\" rd /s /q \"app\\\\api\\\\test-rpc-direct\")",
+      "Bash(powershell -Command \"if \\(Test-Path .next\\) { Remove-Item -Recurse -Force .next }\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Users\\\\Z420\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\f--VSCODE-AUTOPOSTFACEBOOK-video-affiliate-app\\\\tasks\\\\b07553c.output'' | Select-Object -Last 50\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Users\\\\Z420\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\f--VSCODE-AUTOPOSTFACEBOOK-video-affiliate-app\\\\tasks\\\\b07553c.output'' | Select-String ''Review saved successfully'' | Select-Object -Last 3\")",
+      "Bash(powershell -Command:*)",
+      "Bash(timeout 25 bash:*)",
+      "Bash(timeout 3 bash:*)",
+      "Bash(node debug-missing-review.js:*)",
+      "Bash(node check-schedule.js:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

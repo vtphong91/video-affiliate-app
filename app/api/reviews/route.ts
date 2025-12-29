@@ -65,6 +65,19 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Returning ${finalReviews.length} reviews (total: ${result.total})`);
 
+    // ✅ LOG DETAILED REVIEW STATUS for debugging
+    console.log('📊 [REVIEWS API] Status breakdown:');
+    const draftCount = finalReviews.filter(r => r.status === 'draft').length;
+    const publishedCount = finalReviews.filter(r => r.status === 'published').length;
+    console.log(`   - Draft: ${draftCount}`);
+    console.log(`   - Published: ${publishedCount}`);
+    if (draftCount > 0) {
+      console.log('📝 [DRAFT REVIEWS]:');
+      finalReviews.filter(r => r.status === 'draft').forEach(r => {
+        console.log(`   - ${r.id.substring(0, 8)}: ${r.video_title?.substring(0, 50)} (${r.status})`);
+      });
+    }
+
     // ✅ Add aggressive cache-control headers to prevent any caching
     const response = NextResponse.json(
       createSuccessResponse({

@@ -36,6 +36,7 @@ export default function EditReviewPage() {
   const [review, setReview] = useState<Review | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false); // ✅ Track status update
   const [saveStatus, setSaveStatus] = useState<{
     type: 'success' | 'error' | null;
     message: string;
@@ -111,8 +112,18 @@ export default function EditReviewPage() {
   const fetchReview = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/reviews/${reviewId}`);
+      // ✅ Add timestamp to prevent caching
+      const timestamp = Date.now();
+      const response = await fetch(`/api/reviews/${reviewId}?_t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
       const data = await response.json();
+
+      console.log('🔄 [FETCH REVIEW] Status from database:', data.review?.status);
 
       if (data.success) {
         const rev = data.review;
@@ -136,18 +147,67 @@ export default function EditReviewPage() {
     }
   };
 
-  const handleSave = async () => {
+  // ✅ Hàm riêng để update CHỈ status - chuẩn nhất!
+  const updateStatus = async (newStatus: 'draft' | 'published') => {
+    console.log('🟢 [UPDATE STATUS] Called with:', newStatus);
     try {
-      setSaving(true);
-      setSaveStatus({ type: null, message: '' }); // Clear previous status
+      setUpdatingStatus(true);
 
       const response = await fetch(`/api/reviews/${reviewId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      console.log('🟢 [UPDATE STATUS] Response status:', response.status);
+      const data = await response.json();
+      console.log('🟢 [UPDATE STATUS] Response data:', data);
+
+      if (data.success) {
+        toast({
+          title: '✅ Cập nhật thành công!',
+          description: `Trạng thái đã được chuyển sang ${newStatus === 'published' ? 'Xuất bản' : 'Nháp'}. Đang chuyển về trang danh sách...`,
+        });
+
+        // ✅ Redirect về trang Reviews với refresh parameter để force reload
+        setTimeout(() => {
+          router.push('/dashboard/reviews?refresh=' + Date.now());
+        }, 1000);
+      } else {
+        throw new Error(data.error || 'Không thể cập nhật status');
+      }
+    } catch (error) {
+      console.error('❌ [UPDATE STATUS] Error:', error);
+      toast({
+        title: '❌ Cập nhật thất bại!',
+        description: error instanceof Error ? error.message : 'Không thể cập nhật status',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleSave = async () => {
+    console.log('🔵 handleSave called!');
+    try {
+      setSaving(true);
+      setSaveStatus({ type: null, message: '' });
+      console.log('🔵 Sending PATCH request...', { reviewId, status });
+
+      const response = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           custom_title: customTitle,
           summary,
-          custom_content: customContent, // ✅ NEW: Include custom content in update
+          custom_content: customContent,
           status,
           ...(selectedCategoryId && { category_id: selectedCategoryId }),
           pros,
@@ -159,24 +219,29 @@ export default function EditReviewPage() {
         }),
       });
 
+      console.log('🔵 Response status:', response.status);
       const data = await response.json();
+      console.log('🔵 Response data:', data);
 
-      if (response.ok) {
+      if (data.success) {
         // Set success status message
         setSaveStatus({
           type: 'success',
           message: '✅ Lưu thành công! Review đã được cập nhật.'
         });
-        
+
         // Also show toast for consistency
         toast({
           title: '✅ Lưu thành công!',
           description: 'Review đã được cập nhật thành công.',
         });
-        
+
         // Reload review data to show updated information
         await fetchReview();
-        
+
+        // Force router refresh to clear any Next.js cache
+        router.refresh();
+
         // Clear status message after 3 seconds
         setTimeout(() => {
           setSaveStatus({ type: null, message: '' });
@@ -535,18 +600,34 @@ export default function EditReviewPage() {
                   <Button
                     type="button"
                     variant={status === 'draft' ? 'default' : 'outline'}
-                    onClick={() => setStatus('draft')}
+                    onClick={() => updateStatus('draft')}
                     className="flex-1"
+                    disabled={updatingStatus}
                   >
-                    📝 Nháp (Draft)
+                    {updatingStatus && status !== 'draft' ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang cập nhật...
+                      </>
+                    ) : (
+                      '📝 Nháp (Draft)'
+                    )}
                   </Button>
                   <Button
                     type="button"
                     variant={status === 'published' ? 'default' : 'outline'}
-                    onClick={() => setStatus('published')}
+                    onClick={() => updateStatus('published')}
                     className="flex-1"
+                    disabled={updatingStatus}
                   >
-                    ✅ Xuất bản (Published)
+                    {updatingStatus && status !== 'published' ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang cập nhật...
+                      </>
+                    ) : (
+                      '✅ Xuất bản (Published)'
+                    )}
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">

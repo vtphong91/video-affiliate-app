@@ -99,11 +99,13 @@ export async function PATCH(
     const { id } = await params;
     const userId = await getUserIdFromRequest(request);
     const updates = await request.json();
-    console.log('📝 Updating review:', id, 'with data:', updates);
+    console.log('📝 [UPDATE] Review ID:', id);
+    console.log('📝 [UPDATE] Updates:', JSON.stringify(updates, null, 2));
 
     const review = await db.updateReview(id, updates);
 
     if (!review) {
+      console.error('❌ [UPDATE] Review not found or update failed');
       return NextResponse.json(
         {
           success: false,
@@ -113,7 +115,13 @@ export async function PATCH(
       );
     }
 
-    console.log('✅ Review updated successfully:', review.id);
+    console.log('✅ [UPDATE] Review updated successfully!');
+    console.log('✅ [UPDATE] New status:', review.status);
+    console.log('✅ [UPDATE] Review data:', JSON.stringify({
+      id: review.id,
+      status: review.status,
+      custom_title: review.custom_title?.substring(0, 50)
+    }, null, 2));
 
     // Log activity
     if (userId) {

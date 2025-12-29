@@ -33,97 +33,41 @@ interface ReviewWithCategory extends Review {
 export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCategory[]> {
   console.log(`📥 Fetching ALL reviews for user: ${userId}`);
 
-  // ✅ Create fresh admin client
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const freshAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-
-  // ✅ Use RPC function - it returns 74 reviews correctly!
-  const { data: reviews, error } = await freshAdmin
-    .rpc('get_user_reviews', { p_user_id: userId });
-
-  if (error) {
-    console.error('❌ [RPC] Error fetching reviews:', error);
-    throw new Error(`Failed to fetch reviews: ${error.message}`);
-  }
-
-  if (!reviews || reviews.length === 0) {
-    console.log('📭 [RPC] No reviews found for user');
-    return [];
-  }
-
-  console.log(`✅ [RPC] Returned ${reviews.length} reviews (already sorted by DB)`);
-  console.log(`📋 [RPC] First 5 IDs:`, reviews.slice(0, 5).map((r: any) => r.id));
-
-  // Fetch categories separately
-  const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
-  let categoriesMap = new Map();
-
-  if (categoryIds.length > 0) {
-    const { data: categories } = await freshAdmin
-      .from('categories')
-      .select('id, name, slug')
-      .in('id', categoryIds);
-
-    if (categories) {
-      categories.forEach(cat => categoriesMap.set(cat.id, cat));
-    }
-  }
-
-  // Map categories to reviews
-  const reviewsWithCategories = reviews.map(review => ({
-    ...review,
-    categories: review.category_id ? categoriesMap.get(review.category_id) : null
-  }));
-
-  console.log(`📤 Returning ${reviewsWithCategories.length} reviews after category mapping`);
-
-  // Debug: Check if any reviews were lost
-  if (reviewsWithCategories.length !== reviews.length) {
-    console.error(`❌ BUG: Lost ${reviews.length - reviewsWithCategories.length} reviews during mapping!`);
-  }
-
-  return reviewsWithCategories;
-}
-
-/**
- * Fetch reviews with status filter
- */
-export async function getReviewsByStatus(
-  userId: string,
-  status: 'draft' | 'published'
-): Promise<ReviewWithCategory[]> {
-  console.log(`📥 Fetching ${status} reviews for user: ${userId}`);
-
-  // ✅ Use fresh admin client
   const supabaseAdmin = getFreshAdminClient();
 
-  // ✅ Use RPC function
+  // ✅ USE RPC FUNCTION to bypass Supabase JS SDK limits
+  console.log('🔄 Using RPC function get_user_reviews...');
+
   const { data: reviews, error } = await supabaseAdmin
-    .rpc('get_user_reviews_by_status', {
-      p_user_id: userId,
-      p_status: status
-    });
+    .rpc('get_user_reviews', { p_user_id: userId });
+
+  console.log(`📥 [RPC QUERY] Returned ${reviews?.length || 0} reviews`);
 
   if (error) {
-    console.error('❌ [RPC] Error fetching reviews by status:', error);
-    throw new Error(`Failed to fetch ${status} reviews: ${error.message}`);
+    console.error('❌ Error from RPC:', error);
+    throw new Error(`Failed to fetch reviews via RPC: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
-    console.log(`📭 [RPC] No ${status} reviews found`);
+    console.log('📭 No reviews found for user');
     return [];
   }
 
-  console.log(`✅ [RPC] Found ${reviews.length} ${status} reviews (already sorted by DB)`);
+  // Sort by created_at
+  const sortedReviews = reviews.sort((a: any, b: any) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
-  // Fetch categories
-  const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
+  // 📊 STATISTICS: Count by status
+  const draftCount = sortedReviews.filter((r: any) => r.status === 'draft').length;
+  const publishedCount = sortedReviews.filter((r: any) => r.status === 'published').length;
+
+  console.log(`✅ [ALL REVIEWS via RPC] Total: ${sortedReviews.length} reviews`);
+  console.log(`📊 [RPC STATISTICS] Draft: ${draftCount}, Published: ${publishedCount}`);
+  console.log(`📋 [FIRST 3] IDs:`, sortedReviews.slice(0, 3).map((r: any) => `${r.id.substring(0, 8)}... (${r.status})`));
+
+  // Fetch categories separately
+  const categoryIds = [...new Set(sortedReviews.map((r: any) => r.category_id).filter(Boolean))];
   let categoriesMap = new Map();
 
   if (categoryIds.length > 0) {
@@ -137,7 +81,68 @@ export async function getReviewsByStatus(
     }
   }
 
-  return reviews.map(review => ({
+  // Map categories to reviews
+  const reviewsWithCategories = sortedReviews.map((review: any) => ({
+    ...review,
+    categories: review.category_id ? categoriesMap.get(review.category_id) : null
+  }));
+
+  console.log(`📤 Returning ${reviewsWithCategories.length} reviews after category mapping`);
+
+  return reviewsWithCategories;
+}
+
+/**
+ * Fetch reviews with status filter
+ */
+export async function getReviewsByStatus(
+  userId: string,
+  status: 'draft' | 'published'
+): Promise<ReviewWithCategory[]> {
+  console.log(`📥 Fetching ${status} reviews for user: ${userId}`);
+
+  const supabaseAdmin = getFreshAdminClient();
+
+  // ✅ USE RPC FUNCTION to bypass Supabase JS SDK limits
+  console.log(`🔄 Using RPC function get_user_reviews_by_status...`);
+
+  const { data: reviews, error } = await supabaseAdmin
+    .rpc('get_user_reviews_by_status', {
+      p_user_id: userId,
+      p_status: status
+    });
+
+  console.log(`📥 [RPC ${status.toUpperCase()}] Returned ${reviews?.length || 0} reviews`);
+
+  if (error) {
+    console.error(`❌ [RPC] Error fetching ${status} reviews:`, error);
+    throw new Error(`Failed to fetch ${status} reviews: ${error.message}`);
+  }
+
+  if (!reviews || reviews.length === 0) {
+    console.log(`📭 [BY STATUS] No ${status} reviews found`);
+    return [];
+  }
+
+  console.log(`✅ [BY STATUS: ${status}] Total: ${reviews.length} reviews`);
+  console.log(`📋 [FIRST 3] IDs:`, reviews.slice(0, 3).map((r: any) => `${r.id.substring(0, 8)}... (${r.status})`));
+
+  // Fetch categories
+  const categoryIds = [...new Set(reviews.map((r: any) => r.category_id).filter(Boolean))];
+  let categoriesMap = new Map();
+
+  if (categoryIds.length > 0) {
+    const { data: categories } = await supabaseAdmin
+      .from('categories')
+      .select('id, name, slug')
+      .in('id', categoryIds);
+
+    if (categories) {
+      categories.forEach(cat => categoriesMap.set(cat.id, cat));
+    }
+  }
+
+  return reviews.map((review: any) => ({
     ...review,
     categories: review.category_id ? categoriesMap.get(review.category_id) : null
   }));
@@ -195,9 +200,12 @@ export async function getAllPublishedReviews(): Promise<ReviewWithCategory[]> {
   // ✅ Use fresh admin client
   const supabaseAdmin = getFreshAdminClient();
 
-  // ✅ Use RPC function
+  // ✅ Use direct query instead of RPC to avoid cache issues
   const { data: reviews, error } = await supabaseAdmin
-    .rpc('get_published_reviews');
+    .from('reviews')
+    .select('*')
+    .eq('status', 'published')
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('❌ [RPC] Error fetching published reviews:', error);

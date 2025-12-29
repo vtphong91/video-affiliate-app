@@ -216,6 +216,8 @@ export const db = {
 
   async updateReview(id: string, updates: Partial<Review>) {
     try {
+      console.log('🔧 [DB] updateReview called with:', { id, updates });
+
       const { data, error } = await supabaseAdmin
         .from('reviews')
         .update(updates)
@@ -224,13 +226,19 @@ export const db = {
         .single();
 
       if (error) {
-        console.error('Error updating review:', error);
+        console.error('❌ [DB] Error updating review:', error);
         throw error;
       }
 
+      console.log('✅ [DB] Review updated in database:', {
+        id: data.id,
+        status: data.status,
+        custom_title: data.custom_title?.substring(0, 50)
+      });
+
       return data;
     } catch (error) {
-      console.error('Exception in updateReview:', error);
+      console.error('❌ [DB] Exception in updateReview:', error);
       throw error;
     }
   },
