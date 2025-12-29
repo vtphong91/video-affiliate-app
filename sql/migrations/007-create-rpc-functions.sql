@@ -28,6 +28,7 @@ CREATE OR REPLACE FUNCTION get_user_reviews(p_user_id UUID)
 RETURNS SETOF reviews
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
 AS $$
   SELECT *
   FROM reviews
@@ -49,6 +50,7 @@ CREATE OR REPLACE FUNCTION get_user_reviews_by_status(
 RETURNS SETOF reviews
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
 AS $$
   SELECT *
   FROM reviews
@@ -68,6 +70,7 @@ CREATE OR REPLACE FUNCTION get_published_reviews()
 RETURNS SETOF reviews
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
 AS $$
   SELECT *
   FROM reviews
@@ -86,6 +89,7 @@ CREATE OR REPLACE FUNCTION get_user_reviews_count(p_user_id UUID)
 RETURNS BIGINT
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
 AS $$
   SELECT COUNT(*)::BIGINT
   FROM reviews
