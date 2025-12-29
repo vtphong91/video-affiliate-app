@@ -29,50 +29,34 @@ interface ReviewWithCategory extends Review {
 
 /**
  * Fetch all reviews for a user (no filters)
+ * ✅ USES RPC FUNCTION to bypass Supabase JS SDK bugs completely
  */
 export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCategory[]> {
-  console.log(`📥 Fetching ALL reviews for user: ${userId}`);
+  console.log(`📥 [RPC] Fetching ALL reviews for user: ${userId}`);
 
-  // ✅ Create completely fresh admin client inline to avoid ANY caching
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const freshAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+  // ✅ Create fresh admin client
+  const freshAdmin = getFreshAdminClient();
 
-  console.log('🔍 DEBUG: Using fresh admin client for reviews query');
-
-  // ✅ OPTIMAL SOLUTION: Query WITHOUT order() to avoid Supabase bug
-  // Supabase has a critical bug: when using .order() with select('*'), some rows are skipped!
-  // Solution: Fetch all data without ordering, then sort in JavaScript
+  // ✅ OPTIMAL SOLUTION: Use PostgreSQL RPC function
+  // This bypasses ALL Supabase JS SDK bugs:
+  // - Bug 1: select('*') + order() skips rows (70 instead of 73)
+  // - Bug 2: select('*') without order() still skips rows (72 instead of 73)
+  // - Bug 3: Selective fields skip rows with omitted fields
   const { data: reviews, error } = await freshAdmin
-    .from('reviews')
-    .select('*')
-    .eq('user_id', userId);
+    .rpc('get_user_reviews', { p_user_id: userId });
 
   if (error) {
-    console.error('❌ Error fetching reviews:', error);
+    console.error('❌ [RPC] Error calling get_user_reviews:', error);
     throw new Error(`Failed to fetch reviews: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
-    console.log('📭 No reviews found for user');
+    console.log('📭 [RPC] No reviews found for user');
     return [];
   }
 
-  console.log(`✅ Supabase returned ${reviews.length} reviews (unsorted)`);
-
-  // ✅ Sort in JavaScript to avoid Supabase ORDER BY bug
-  reviews.sort((a, b) => {
-    const dateA = new Date(a.created_at).getTime();
-    const dateB = new Date(b.created_at).getTime();
-    return dateB - dateA; // Descending order (newest first)
-  });
-
-  console.log(`📋 After sorting - First 5 IDs:`, reviews.slice(0, 5).map(r => r.id));
+  console.log(`✅ [RPC] Returned ${reviews.length} reviews (already sorted by DB)`);
+  console.log(`📋 [RPC] First 5 IDs:`, reviews.slice(0, 5).map((r: any) => r.id));
 
   // Fetch categories separately
   const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
@@ -107,40 +91,35 @@ export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCa
 
 /**
  * Fetch reviews with status filter
+ * ✅ USES RPC FUNCTION to bypass Supabase JS SDK bugs
  */
 export async function getReviewsByStatus(
   userId: string,
   status: 'draft' | 'published'
 ): Promise<ReviewWithCategory[]> {
-  console.log(`📥 Fetching ${status} reviews for user: ${userId}`);
+  console.log(`📥 [RPC] Fetching ${status} reviews for user: ${userId}`);
 
   // ✅ Use fresh admin client
   const supabaseAdmin = getFreshAdminClient();
 
-  // ✅ Query without ORDER BY, sort in JavaScript
+  // ✅ Use RPC function for reliable querying
   const { data: reviews, error } = await supabaseAdmin
-    .from('reviews')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', status);
+    .rpc('get_user_reviews_by_status', {
+      p_user_id: userId,
+      p_status: status
+    });
 
   if (error) {
-    console.error('❌ Error fetching reviews by status:', error);
+    console.error('❌ [RPC] Error calling get_user_reviews_by_status:', error);
     throw new Error(`Failed to fetch ${status} reviews: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
+    console.log(`📭 [RPC] No ${status} reviews found`);
     return [];
   }
 
-  console.log(`✅ Found ${reviews.length} ${status} reviews (unsorted)`);
-
-  // ✅ Sort in JavaScript
-  reviews.sort((a, b) => {
-    const dateA = new Date(a.created_at).getTime();
-    const dateB = new Date(b.created_at).getTime();
-    return dateB - dateA;
-  });
+  console.log(`✅ [RPC] Found ${reviews.length} ${status} reviews (already sorted by DB)`);
 
   // Fetch categories
   const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
@@ -208,36 +187,29 @@ export async function getPaginatedReviews(
 
 /**
  * Get all published reviews (for public page)
+ * ✅ USES RPC FUNCTION to bypass Supabase JS SDK bugs
  */
 export async function getAllPublishedReviews(): Promise<ReviewWithCategory[]> {
-  console.log('📥 Fetching ALL published reviews');
+  console.log('📥 [RPC] Fetching ALL published reviews');
 
   // ✅ Use fresh admin client
   const supabaseAdmin = getFreshAdminClient();
 
-  // ✅ Query without ORDER BY, sort in JavaScript
+  // ✅ Use RPC function for reliable querying
   const { data: reviews, error } = await supabaseAdmin
-    .from('reviews')
-    .select('*')
-    .eq('status', 'published');
+    .rpc('get_published_reviews');
 
   if (error) {
-    console.error('❌ Error fetching published reviews:', error);
+    console.error('❌ [RPC] Error calling get_published_reviews:', error);
     throw new Error(`Failed to fetch published reviews: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
+    console.log('📭 [RPC] No published reviews found');
     return [];
   }
 
-  console.log(`✅ Found ${reviews.length} published reviews (unsorted)`);
-
-  // ✅ Sort in JavaScript
-  reviews.sort((a, b) => {
-    const dateA = new Date(a.created_at).getTime();
-    const dateB = new Date(b.created_at).getTime();
-    return dateB - dateA;
-  });
+  console.log(`✅ [RPC] Found ${reviews.length} published reviews (already sorted by DB)`);
 
   // Fetch categories
   const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
