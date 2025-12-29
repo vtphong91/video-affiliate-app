@@ -43,32 +43,22 @@ export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCa
     },
   });
 
-  // ✅ Simple query WITHOUT order() - let JavaScript sort
+  // ✅ Use RPC function - it returns 74 reviews correctly!
   const { data: reviews, error } = await freshAdmin
-    .from('reviews')
-    .select('*')
-    .eq('user_id', userId);
+    .rpc('get_user_reviews', { p_user_id: userId });
 
   if (error) {
-    console.error('❌ Error fetching reviews:', error);
+    console.error('❌ [RPC] Error fetching reviews:', error);
     throw new Error(`Failed to fetch reviews: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
-    console.log('📭 No reviews found for user');
+    console.log('📭 [RPC] No reviews found for user');
     return [];
   }
 
-  console.log(`✅ Supabase returned ${reviews.length} reviews (unsorted)`);
-
-  // ✅ Sort in JavaScript to avoid Supabase ORDER BY bug
-  reviews.sort((a, b) => {
-    const dateA = new Date(a.created_at).getTime();
-    const dateB = new Date(b.created_at).getTime();
-    return dateB - dateA; // Descending order (newest first)
-  });
-
-  console.log(`📋 After sorting - First 5 IDs:`, reviews.slice(0, 5).map(r => r.id));
+  console.log(`✅ [RPC] Returned ${reviews.length} reviews (already sorted by DB)`);
+  console.log(`📋 [RPC] First 5 IDs:`, reviews.slice(0, 5).map((r: any) => r.id));
 
   // Fetch categories separately
   const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
@@ -113,30 +103,24 @@ export async function getReviewsByStatus(
   // ✅ Use fresh admin client
   const supabaseAdmin = getFreshAdminClient();
 
-  // ✅ Query without ORDER BY, sort in JavaScript
+  // ✅ Use RPC function
   const { data: reviews, error } = await supabaseAdmin
-    .from('reviews')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', status);
+    .rpc('get_user_reviews_by_status', {
+      p_user_id: userId,
+      p_status: status
+    });
 
   if (error) {
-    console.error('❌ Error fetching reviews by status:', error);
+    console.error('❌ [RPC] Error fetching reviews by status:', error);
     throw new Error(`Failed to fetch ${status} reviews: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
+    console.log(`📭 [RPC] No ${status} reviews found`);
     return [];
   }
 
-  console.log(`✅ Found ${reviews.length} ${status} reviews (unsorted)`);
-
-  // ✅ Sort in JavaScript
-  reviews.sort((a, b) => {
-    const dateA = new Date(a.created_at).getTime();
-    const dateB = new Date(b.created_at).getTime();
-    return dateB - dateA;
-  });
+  console.log(`✅ [RPC] Found ${reviews.length} ${status} reviews (already sorted by DB)`);
 
   // Fetch categories
   const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
@@ -211,29 +195,21 @@ export async function getAllPublishedReviews(): Promise<ReviewWithCategory[]> {
   // ✅ Use fresh admin client
   const supabaseAdmin = getFreshAdminClient();
 
-  // ✅ Query without ORDER BY, sort in JavaScript
+  // ✅ Use RPC function
   const { data: reviews, error } = await supabaseAdmin
-    .from('reviews')
-    .select('*')
-    .eq('status', 'published');
+    .rpc('get_published_reviews');
 
   if (error) {
-    console.error('❌ Error fetching published reviews:', error);
+    console.error('❌ [RPC] Error fetching published reviews:', error);
     throw new Error(`Failed to fetch published reviews: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
+    console.log('📭 [RPC] No published reviews found');
     return [];
   }
 
-  console.log(`✅ Found ${reviews.length} published reviews (unsorted)`);
-
-  // ✅ Sort in JavaScript
-  reviews.sort((a, b) => {
-    const dateA = new Date(a.created_at).getTime();
-    const dateB = new Date(b.created_at).getTime();
-    return dateB - dateA;
-  });
+  console.log(`✅ [RPC] Found ${reviews.length} published reviews (already sorted by DB)`);
 
   // Fetch categories
   const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
