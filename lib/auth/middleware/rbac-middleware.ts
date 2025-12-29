@@ -168,4 +168,67 @@ export const config = {
   ],
 };
 
+/**
+ * Check if user has specific permission (for API route usage)
+ * @param userId - User ID to check
+ * @param permission - Permission string to check (e.g., 'manage_settings', 'manage_users')
+ * @returns boolean - true if user has permission
+ */
+export async function checkPermission(userId: string, permission: string): Promise<boolean> {
+  if (!userId) return false;
+
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase credentials not configured');
+      return false;
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get user profile with role
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('role, is_active')
+      .eq('id', userId)
+      .single();
+
+    if (error || !profile) {
+      console.error('Error fetching user profile:', error);
+      return false;
+    }
+
+    // Check if user is active
+    if (!profile.is_active) {
+      return false;
+    }
+
+    // Admin has all permissions
+    if (profile.role === 'admin') {
+      return true;
+    }
+
+    // Map permission strings to role-based access
+    const permissionRoleMap: Record<string, string[]> = {
+      'manage_settings': ['admin'],
+      'manage_users': ['admin'],
+      'manage_roles': ['admin'],
+      'read_settings': ['admin', 'editor'],
+      'write_reviews': ['admin', 'editor'],
+      'read_reviews': ['admin', 'editor', 'viewer'],
+      'write_schedules': ['admin', 'editor'],
+      'read_schedules': ['admin', 'editor', 'viewer'],
+    };
+
+    const allowedRoles = permissionRoleMap[permission] || [];
+    return allowedRoles.includes(profile.role);
+
+  } catch (error) {
+    console.error('Error checking permission:', error);
+    return false;
+  }
+}
 

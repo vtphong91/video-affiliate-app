@@ -8,11 +8,24 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Save, ArrowLeft, Plus, X, ExternalLink } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, Plus, X, ExternalLink, Wand2, Copy, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { RichTextEditor } from '@/components/editors/RichTextEditor';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import type { Review, KeyPoint, AffiliateLink, AIAnalysis, Category } from '@/types';
+
+// Merchant type (from affiliate module)
+interface Merchant {
+  id: string;
+  name: string;
+  domain: string;
+  logo_url?: string;
+  platform: string;
+  campaign_id: string;
+  is_active: boolean;
+}
 
 export default function EditReviewPage() {
   const router = useRouter();
@@ -45,11 +58,30 @@ export default function EditReviewPage() {
 
   // Affiliate links
   const [affiliateLinks, setAffiliateLinks] = useState<AffiliateLink[]>([]);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [selectedMerchant, setSelectedMerchant] = useState<string>('');
+  const [generatingLink, setGeneratingLink] = useState<number | null>(null);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<string>('');
 
   useEffect(() => {
     fetchReview();
     fetchCategories();
+    fetchMerchants();
   }, [reviewId]);
+
+  const fetchMerchants = async () => {
+    try {
+      const response = await fetch('/api/merchants?active_only=true');
+      const data = await response.json();
+
+      if (data.success) {
+        setMerchants(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching merchants:', error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -210,12 +242,181 @@ export default function EditReviewPage() {
 
   // Affiliate Links handlers
   const addAffiliateLink = () => setAffiliateLinks([...affiliateLinks, { platform: '', url: '', price: '', discount: '' }]);
-  const updateAffiliateLink = (index: number, field: keyof AffiliateLink, value: string) => {
+  const updateAffiliateLink = (index: number, field: keyof AffiliateLink, value: string | undefined) => {
     const updated = [...affiliateLinks];
-    updated[index][field] = value;
+    (updated[index] as any)[field] = value;
     setAffiliateLinks(updated);
   };
   const removeAffiliateLink = (index: number) => setAffiliateLinks(affiliateLinks.filter((_, i) => i !== index));
+
+  const handleGenerateLink = async (index: number) => {
+    if (!selectedMerchant) {
+      toast({
+        title: 'Vui lòng chọn merchant',
+        description: 'Chọn merchant từ dropdown trước khi generate link',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const productUrl = affiliateLinks[index].url;
+    if (!productUrl || !productUrl.startsWith('http')) {
+      toast({
+        title: 'URL không hợp lệ',
+        description: 'Vui lòng nhập URL sản phẩm hợp lệ (bắt đầu với http)',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setGeneratingLink(index);
+
+    try {
+      const res = await fetch('/api/affiliate-links/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          merchantId: selectedMerchant,
+          originalUrl: productUrl,
+          linkType: 'product'
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate link');
+      }
+
+      // Update affiliate link with generated tracking URL
+      const merchant = merchants.find(m => m.id === selectedMerchant);
+      const updated = [...affiliateLinks];
+      updated[index] = {
+        ...updated[index],
+        trackingUrl: data.data.shortUrl || data.data.affiliateUrl,
+        platform: merchant?.name || updated[index].platform,
+        affSid: data.data.affSid,
+        generationMethod: data.data.generationMethod,
+        merchantId: merchant?.id,
+        merchantName: merchant?.name
+      };
+      setAffiliateLinks(updated);
+
+      toast({
+        title: 'Thành công!',
+        description: data.message || 'Link tracking đã được tạo'
+      });
+
+    } catch (error) {
+      console.error('Generate link error:', error);
+      toast({
+        title: 'Lỗi tạo link',
+        description: error instanceof Error ? error.message : 'Không thể tạo tracking link',
+        variant: 'destructive'
+      });
+    } finally {
+      setGeneratingLink(null);
+    }
+  };
+
+  const handleCopyLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast({
+      title: 'Đã copy!',
+      description: 'Link đã được copy vào clipboard'
+    });
+  };
+
+  const handleBulkGenerate = async () => {
+    if (!selectedMerchant) {
+      toast({
+        title: 'Vui lòng chọn merchant',
+        description: 'Chọn merchant từ dropdown trước khi bulk generate',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Get links that have URL but no tracking URL yet
+    const linksToGenerate = affiliateLinks
+      .map((link, index) => ({ link, index }))
+      .filter(({ link }) => link.url && link.url.startsWith('http') && !link.trackingUrl);
+
+    if (linksToGenerate.length === 0) {
+      toast({
+        title: 'Không có link nào cần generate',
+        description: 'Tất cả links đã có tracking URL hoặc chưa nhập URL',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setBulkGenerating(true);
+    setBulkProgress(`Đang tạo 0/${linksToGenerate.length} links...`);
+
+    try {
+      const res = await fetch('/api/affiliate-links/bulk-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          merchantId: selectedMerchant,
+          links: linksToGenerate.map(({ link }) => ({
+            originalUrl: link.url,
+            linkType: 'product'
+          }))
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to bulk generate');
+      }
+
+      // Update affiliate links with generated tracking URLs
+      const merchant = merchants.find(m => m.id === selectedMerchant);
+      const updated = [...affiliateLinks];
+
+      linksToGenerate.forEach(({ index }, resultIndex) => {
+        const result = data.data.results[resultIndex];
+
+        if (result.success) {
+          updated[index] = {
+            ...updated[index],
+            trackingUrl: result.shortUrl || result.affiliateUrl,
+            affSid: result.affSid,
+            generationMethod: result.generationMethod,
+            merchantId: merchant?.id,
+            merchantName: merchant?.name,
+            platform: merchant?.name || updated[index].platform
+          };
+        }
+      });
+
+      setAffiliateLinks(updated);
+
+      const successCount = data.data.generated;
+      const failedCount = data.data.failed;
+
+      toast({
+        title: 'Hoàn thành!',
+        description: failedCount === 0
+          ? `Đã tạo ${successCount} tracking links`
+          : `Tạo ${successCount} links thành công, ${failedCount} links thất bại`
+      });
+
+    } catch (error) {
+      console.error('Bulk generate error:', error);
+      toast({
+        title: 'Lỗi bulk generate',
+        description: error instanceof Error ? error.message : 'Không thể tạo links',
+        variant: 'destructive'
+      });
+    } finally {
+      setBulkGenerating(false);
+      setBulkProgress('');
+    }
+  };
 
   if (loading) {
     return (
@@ -559,17 +760,72 @@ export default function EditReviewPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>🔗 Affiliate Links</CardTitle>
-                    <Button size="sm" onClick={addAffiliateLink}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Thêm Link
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBulkGenerate}
+                        disabled={bulkGenerating || !selectedMerchant || affiliateLinks.filter(l => l.url && !l.trackingUrl).length === 0}
+                      >
+                        {bulkGenerating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            {bulkProgress || 'Đang tạo...'}
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-4 h-4 mr-1" />
+                            Bulk Generate ({affiliateLinks.filter(l => l.url && !l.trackingUrl).length})
+                          </>
+                        )}
+                      </Button>
+                      <Button size="sm" onClick={addAffiliateLink}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Thêm Link
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Merchant Selector */}
+                  {merchants.length > 0 && (
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <Label className="text-sm font-medium mb-2 block">
+                        🎯 Chọn Merchant để tạo link tracking tự động
+                      </Label>
+                      <Select value={selectedMerchant} onValueChange={setSelectedMerchant}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn merchant (Shopee, Lazada, Tiki...)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {merchants.map(m => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.logo_url && (
+                                <img src={m.logo_url} alt={m.name} className="inline-block w-4 h-4 mr-2" />
+                              )}
+                              {m.name} ({m.domain})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-600 mt-2">
+                        Sau khi chọn merchant, nhập URL sản phẩm và click nút Generate để tạo tracking link
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Affiliate Links */}
                   {affiliateLinks.map((link, index) => (
                     <div key={index} className="p-4 border rounded-lg space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Link #{index + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Link #{index + 1}</span>
+                          {link.generationMethod && (
+                            <Badge variant="outline" className="text-xs">
+                              {link.generationMethod === 'api' ? '⚡ API' : '🔗 Deeplink'}
+                            </Badge>
+                          )}
+                        </div>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -578,41 +834,112 @@ export default function EditReviewPage() {
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
+
                       <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-600">Nền tảng</Label>
+                          <Input
+                            value={link.platform}
+                            onChange={(e) => updateAffiliateLink(index, 'platform', e.target.value)}
+                            placeholder="Shopee, Lazada..."
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">Giá</Label>
+                          <Input
+                            value={link.price || ''}
+                            onChange={(e) => updateAffiliateLink(index, 'price', e.target.value)}
+                            placeholder="299.000đ"
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs text-gray-600">URL Sản Phẩm Gốc</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input
+                            value={link.url}
+                            onChange={(e) => updateAffiliateLink(index, 'url', e.target.value)}
+                            placeholder="https://shopee.vn/product/..."
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => handleGenerateLink(index)}
+                            disabled={generatingLink === index || !selectedMerchant}
+                            size="sm"
+                            className="whitespace-nowrap"
+                          >
+                            {generatingLink === index ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Wand2 className="h-4 w-4" />
+                            )}
+                            <span className="ml-1">Generate</span>
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Nhập URL gốc, click Generate để tạo tracking link
+                        </p>
+                      </div>
+
+                      {/* Show generated tracking URL */}
+                      {link.trackingUrl && link.trackingUrl !== link.url && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <Label className="text-xs font-medium text-green-700 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Tracking Link đã tạo
+                            </Label>
+                            {link.affSid && (
+                              <span className="text-xs text-gray-500">
+                                ID: {link.affSid.slice(0, 12)}...
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              value={link.trackingUrl}
+                              readOnly
+                              className="bg-white text-xs"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleCopyLink(link.trackingUrl!)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <Label className="text-xs text-gray-600">Giảm giá (tùy chọn)</Label>
                         <Input
-                          value={link.platform}
-                          onChange={(e) => updateAffiliateLink(index, 'platform', e.target.value)}
-                          placeholder="Nền tảng (vd: Shopee)"
-                        />
-                        <Input
-                          value={link.price || ''}
-                          onChange={(e) => updateAffiliateLink(index, 'price', e.target.value)}
-                          placeholder="Giá (vd: 299.000đ)"
+                          value={link.discount || ''}
+                          onChange={(e) => updateAffiliateLink(index, 'discount', e.target.value)}
+                          placeholder="-20%"
+                          className="mt-1"
                         />
                       </div>
-                      <Input
-                        value={link.url}
-                        onChange={(e) => updateAffiliateLink(index, 'url', e.target.value)}
-                        placeholder="URL affiliate link"
-                      />
-                      <Input
-                        value={link.discount || ''}
-                        onChange={(e) => updateAffiliateLink(index, 'discount', e.target.value)}
-                        placeholder="Giảm giá (vd: -20%)"
-                      />
+
                       {link.url && (
                         <a
-                          href={link.url}
+                          href={link.trackingUrl || link.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                         >
                           <ExternalLink className="w-3 h-3" />
-                          Xem link
+                          Preview link
                         </a>
                       )}
                     </div>
                   ))}
+
                   {affiliateLinks.length === 0 && (
                     <p className="text-center text-gray-500 py-8">
                       Chưa có affiliate link nào. Click "Thêm Link" để thêm.

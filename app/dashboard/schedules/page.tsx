@@ -180,8 +180,10 @@ export default function SchedulesPage() {
         console.log('⚠️ No session found, request may fail');
       }
       
-      const response = await fetch(`/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}`, {
-        headers
+      // ✅ DISABLE CACHE - Always fetch fresh data
+      const response = await fetch(`/api/schedules?page=${currentPage}&limit=${itemsPerPage}${statusParam}&t=${Date.now()}`, {
+        headers,
+        cache: 'no-store'
       });
       const result = await response.json();
       

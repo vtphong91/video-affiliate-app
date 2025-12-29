@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Users, 
-  Shield, 
-  Settings, 
-  BarChart3, 
-  Menu, 
-  X, 
+import {
+  Users,
+  Shield,
+  Settings,
+  BarChart3,
+  Menu,
+  X,
   Home,
   Key,
   Activity,
@@ -18,7 +18,10 @@ import {
   Crown,
   Zap,
   TrendingUp,
-  Globe
+  Globe,
+  DollarSign,
+  Brain,
+  Link as LinkIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,11 +34,12 @@ interface AdminLayoutProps {
 
 interface MenuItem {
   title: string;
-  href: string;
+  href?: string;
   icon: React.ComponentType<any>;
   permission?: string;
   badge?: string;
   children?: MenuItem[];
+  isGroup?: boolean;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -45,7 +49,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, userProfile } = useAuth();
   const { canAccessAdmin, canManageUsers, canViewAnalytics, canManageSettings } = useRoles();
 
-  // Menu items with permissions
+  // Menu items with permissions - Grouped by functionality
   const menuItems: MenuItem[] = [
     {
       title: 'Dashboard',
@@ -53,40 +57,89 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: Home,
     },
     {
-      title: 'Thành viên',
-      href: '/admin/members',
+      title: 'Quản Lý Người Dùng',
       icon: Users,
+      isGroup: true,
       permission: 'read:users',
+      children: [
+        {
+          title: 'Thành viên',
+          href: '/admin/members',
+          icon: Users,
+          permission: 'read:users',
+        },
+        {
+          title: 'Phân quyền',
+          href: '/admin/roles',
+          icon: Shield,
+          permission: 'read:users',
+        },
+        {
+          title: 'Quyền hạn',
+          href: '/admin/permissions',
+          icon: Key,
+          permission: 'read:users',
+        },
+      ],
     },
     {
-      title: 'Phân quyền',
-      href: '/admin/roles',
-      icon: Shield,
-      permission: 'read:users',
-    },
-    {
-      title: 'Quyền hạn',
-      href: '/admin/permissions',
-      icon: Key,
-      permission: 'read:users',
-    },
-    {
-      title: 'Nhật ký',
-      href: '/admin/audit-logs',
-      icon: Activity,
-      permission: 'read:audit_logs',
-    },
-    {
-      title: 'Thống kê',
-      href: '/admin/analytics',
-      icon: BarChart3,
-      permission: 'read:analytics',
-    },
-    {
-      title: 'Cài đặt',
-      href: '/admin/settings',
-      icon: Settings,
+      title: 'Affiliate Marketing',
+      icon: DollarSign,
+      isGroup: true,
       permission: 'read:settings',
+      children: [
+        {
+          title: 'Cấu Hình',
+          href: '/admin/affiliate-settings',
+          icon: DollarSign,
+          permission: 'read:settings',
+        },
+        {
+          title: 'Lịch Sử Links',
+          href: '/admin/affiliate-links',
+          icon: LinkIcon,
+          permission: 'read:settings',
+          badge: 'NEW',
+        },
+        {
+          title: 'Dashboard',
+          href: '/admin/affiliate-dashboard',
+          icon: TrendingUp,
+          permission: 'read:settings',
+        },
+      ],
+    },
+    {
+      title: 'Hệ Thống',
+      icon: Settings,
+      isGroup: true,
+      permission: 'read:settings',
+      children: [
+        {
+          title: 'AI Settings',
+          href: '/admin/ai-settings',
+          icon: Brain,
+          permission: 'read:settings',
+        },
+        {
+          title: 'Cài đặt',
+          href: '/admin/settings',
+          icon: Settings,
+          permission: 'read:settings',
+        },
+        {
+          title: 'Nhật ký',
+          href: '/admin/audit-logs',
+          icon: Activity,
+          permission: 'read:audit_logs',
+        },
+        {
+          title: 'Thống kê',
+          href: '/admin/analytics',
+          icon: BarChart3,
+          permission: 'read:analytics',
+        },
+      ],
     },
   ];
 
@@ -207,21 +260,90 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-2">
           {menuItems.map((item) => {
             if (!hasPermission(item.permission)) return null;
 
             const Icon = item.icon;
-            const active = isActive(item.href);
+            const isExpanded = isMenuExpanded(item.title);
+
+            // Group with children
+            if (item.isGroup && item.children) {
+              return (
+                <div key={item.title} className="space-y-1">
+                  {/* Group Header */}
+                  <button
+                    onClick={() => toggleMenu(item.title)}
+                    className="w-full group flex items-center justify-between px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ease-in-out text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </div>
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
+
+                  {/* Group Children */}
+                  {isExpanded && (
+                    <div className="ml-3 pl-4 border-l-2 border-slate-200 space-y-1">
+                      {item.children.map((child) => {
+                        if (!hasPermission(child.permission)) return null;
+
+                        const ChildIcon = child.icon;
+                        const active = child.href ? isActive(child.href) : false;
+
+                        return (
+                          <Link
+                            key={child.title}
+                            href={child.href || '#'}
+                            className={`
+                              group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ease-in-out
+                              ${active
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25'
+                                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              }
+                            `}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <ChildIcon className={`h-3.5 w-3.5 ${active ? 'text-white' : 'text-slate-500'}`} />
+                              <span>{child.title}</span>
+                            </div>
+                            {child.badge && (
+                              <Badge
+                                variant="secondary"
+                                className={`text-xs ${
+                                  active
+                                    ? 'bg-white/20 text-white border-white/30'
+                                    : 'bg-blue-100 text-blue-700'
+                                }`}
+                              >
+                                {child.badge}
+                              </Badge>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Single menu item (no children)
+            const active = item.href ? isActive(item.href) : false;
 
             return (
               <div key={item.title}>
                 <Link
-                  href={item.href}
+                  href={item.href || '#'}
                   className={`
                     group flex items-center justify-between px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ease-in-out
-                    ${active 
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25' 
+                    ${active
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25'
                       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:shadow-md'
                     }
                   `}
@@ -235,11 +357,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <span className="font-medium">{item.title}</span>
                   </div>
                   {item.badge && (
-                    <Badge 
-                      variant="secondary" 
+                    <Badge
+                      variant="secondary"
                       className={`text-xs ${
-                        active 
-                          ? 'bg-white/20 text-white border-white/30' 
+                        active
+                          ? 'bg-white/20 text-white border-white/30'
                           : 'bg-slate-200 text-slate-600'
                       }`}
                     >
@@ -291,6 +413,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">
                   {pathname === '/admin' ? '📊 Dashboard' :
+                   pathname.includes('/affiliate-links') ? '🔗 Quản Lý Affiliate Links' :
+                   pathname.includes('/affiliate-settings') ? '💰 Affiliate System' :
+                   pathname.includes('/ai-settings') ? '🤖 AI Settings' :
                    pathname.includes('/members') ? '👥 Quản lý thành viên' :
                    pathname.includes('/roles') ? '🛡️ Phân quyền' :
                    pathname.includes('/permissions') ? '🔑 Quyền hạn' :
@@ -300,6 +425,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </h2>
                 <p className="text-sm text-slate-600 mt-1">
                   {pathname === '/admin' ? 'Tổng quan hệ thống và thống kê' :
+                   pathname.includes('/affiliate-links') ? 'Xem lịch sử và thống kê affiliate links đã tạo' :
+                   pathname.includes('/affiliate-settings') ? 'Quản lý Affiliate Settings & Merchants' :
+                   pathname.includes('/ai-settings') ? 'Cấu hình AI Providers và Prompts' :
                    pathname.includes('/members') ? 'Quản lý thành viên và phân quyền' :
                    pathname.includes('/roles') ? 'Quản lý vai trò người dùng' :
                    pathname.includes('/permissions') ? 'Quản lý quyền hạn chi tiết' :

@@ -8,12 +8,12 @@ import { ROLE_PERMISSIONS } from '../config/auth-types';
 import type { UserRole, Permission } from '../config/auth-types';
 
 export const useRoles = () => {
-  const { user, hasRole, hasPermission } = useAuth();
+  const { user, userProfile, hasRole, hasPermission } = useAuth();
 
   // Get current user role
   const getCurrentRole = (): UserRole | null => {
-    if (!user) return null;
-    return (user.role as UserRole) || null;
+    if (!userProfile) return null;
+    return (userProfile.role as UserRole) || null;
   };
 
   // Check if user has specific role

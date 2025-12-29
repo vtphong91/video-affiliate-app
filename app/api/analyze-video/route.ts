@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getVideoInfoFromUrl, extractVideoId, detectVideoPlatform } from '@/lib/utils';
 import { analyzeVideo } from '@/lib/ai';
+import { getCachedAnalysis, setCachedAnalysis } from '@/lib/cache/ai-cache';
 import type { AnalyzeVideoRequest, AnalyzeVideoResponse } from '@/types';
 
 // Enable MOCK mode for testing without API keys
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(response);
     }
 
-    // REAL MODE: Use actual APIs
+    // REAL MODE: Use actual APIs with caching
     console.log('🔍 API Route - Starting video analysis for URL:', videoUrl);
 
     // Step 1: Get video info from URL
@@ -118,10 +119,24 @@ export async function POST(request: NextRequest) {
       hasTranscript: !!videoInfo.transcript
     });
 
-    // Step 2: Analyze video with AI
-    console.log('🔍 API Route - Step 2: Analyzing video with AI...');
-    const analysis = await analyzeVideo(videoInfo);
-    console.log('🔍 API Route - Step 2 COMPLETED - Analysis received');
+    // Step 2: Check cache first
+    console.log('🔍 API Route - Step 2: Checking AI cache...');
+    let analysis = await getCachedAnalysis(videoInfo.videoId, videoInfo.platform);
+
+    if (analysis) {
+      console.log('✅ API Route - Step 2 CACHE HIT - Using cached analysis');
+    } else {
+      console.log('❌ API Route - Step 2 CACHE MISS - Analyzing with AI...');
+
+      // Call AI to analyze
+      analysis = await analyzeVideo(videoInfo);
+      console.log('✅ API Route - Step 2 AI COMPLETED - Analysis received');
+
+      // Cache the result
+      console.log('💾 API Route - Step 3: Caching analysis result...');
+      await setCachedAnalysis(videoInfo.videoId, analysis, videoInfo.platform);
+      console.log('✅ API Route - Step 3 COMPLETED - Analysis cached');
+    }
 
     // Step 3: Return combined response
     const response: AnalyzeVideoResponse = {

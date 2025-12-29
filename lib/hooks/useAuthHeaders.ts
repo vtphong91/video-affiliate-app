@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/db/supabase';
+import { supabaseBrowser as supabase } from '@/lib/auth/supabase-browser';
 
 // ✅ Use Record type for TypeScript compatibility with HeadersInit
 export type AuthHeaders = Record<string, string>;

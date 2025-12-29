@@ -19,7 +19,8 @@ import { Loader2, Save, Sparkles, FileText, AlertCircle } from 'lucide-react';
 import { withUserRoute } from '@/lib/auth/middleware/route-protection';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
-import { supabase } from '@/lib/db/supabase';
+import { supabaseBrowser as supabase } from '@/lib/auth/supabase-browser';
+import { invalidateCache } from '@/lib/utils/request-cache';
 import type { VideoInfo, AIAnalysis, AffiliateLink, Category, PromptTemplate } from '@/types';
 
 type CreateStep = 'analyze' | 'template' | 'configure' | 'edit' | 'preview';
@@ -127,9 +128,17 @@ function CreateReviewPage() {
     try {
       setIsGenerating(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // Try to get session, refresh if needed
+      let { data: { session } } = await supabase.auth.getSession();
+
       if (!session?.access_token) {
-        throw new Error('Phiên đăng nhập đã hết hạn');
+        console.log('Session not found, attempting refresh...');
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        session = refreshedSession;
+      }
+
+      if (!session?.access_token) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
       }
 
       const response = await fetch('/api/reviews/create-with-template', {
@@ -192,7 +201,14 @@ function CreateReviewPage() {
     setIsSaving(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Try to get session, refresh if needed
+      let { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.log('Session not found, attempting refresh...');
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        session = refreshedSession;
+      }
 
       if (!session?.access_token) {
         throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
@@ -223,6 +239,13 @@ function CreateReviewPage() {
 
       const data = await response.json();
       setSavedReview({ id: data.review.id, slug: data.review.slug });
+
+      // ✅ Invalidate ALL reviews-related caches để trang Reviews và dropdown hiển thị review mới
+      console.log('🗑️ Invalidating ALL reviews caches after creating new review');
+      invalidateCache(/\/api\/reviews/); // Admin reviews page
+      invalidateCache(/\/api\/reviews-fast/); // Dropdown tạo lịch
+      invalidateCache(/\/api\/reviews-public/); // Public reviews page
+      invalidateCache(/\/api\/dashboard\/stats/); // Dashboard statistics
 
       toast({
         title: 'Lưu thành công!',
@@ -644,7 +667,10 @@ function CreateReviewPage() {
             <Button variant="outline" onClick={() => window.open(`/review/${savedReview.slug}`, '_blank')}>
               Xem Công Khai
             </Button>
-            <Button onClick={() => router.push('/dashboard/reviews')} className="flex-1">
+            <Button onClick={() => {
+              // Force refresh reviews page by adding timestamp parameter
+              router.push(`/dashboard/reviews?refresh=${Date.now()}`);
+            }} className="flex-1">
               Xem Tất Cả Reviews
             </Button>
           </div>

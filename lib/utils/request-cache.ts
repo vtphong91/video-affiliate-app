@@ -222,11 +222,18 @@ class RequestCache {
 
   /**
    * Generate cache key
+   * ⚠️ CRITICAL: Include user-specific headers to prevent cache sharing between users
    */
   private getCacheKey(url: string, options: RequestInit): string {
     const method = options.method || 'GET';
     const body = options.body ? JSON.stringify(options.body) : '';
-    return `${method}:${url}:${body}`;
+
+    // ✅ FIX: Include user-specific headers in cache key
+    const headers = options.headers as Record<string, string> || {};
+    const userId = headers['x-user-id'] || '';
+
+    // Format: GET:/api/reviews?page=1:body:userId
+    return `${method}:${url}:${body}:${userId}`;
   }
 
   /**

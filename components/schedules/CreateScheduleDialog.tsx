@@ -7,12 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { CalendarIcon, Clock, Target, MessageSquare, X } from 'lucide-react';
+import { CalendarIcon, Clock, Target, MessageSquare, X, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Review } from '@/types';
 import { createTimestampFromDatePicker, debugTimezone } from '@/lib/utils/timezone-utils';
 import { formatFacebookPost } from '@/lib/apis/facebook';
-import { supabase } from '@/lib/db/supabase';
+import { supabaseBrowser as supabase } from '@/lib/auth/supabase-browser';
+import { invalidateCache } from '@/lib/utils/request-cache';
 
 interface CreateScheduleDialogProps {
   open: boolean;
@@ -71,54 +72,86 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
   useEffect(() => {
     console.log('🔍 CreateScheduleDialog: useEffect triggered, open:', open);
     if (open) {
-      console.log('🔍 CreateScheduleDialog: Opening dialog, calling fetchReviews');
-      fetchReviews();
+      console.log('🔍 CreateScheduleDialog: Opening dialog, force refreshing reviews');
+      // ✅ Clear cache before fetching to ensure fresh data
+      console.log('🗑️ Clearing cache for reviews and used-review-ids');
+      invalidateCache(/\/api\/reviews-fast/);
+      invalidateCache(/\/api\/schedules\/used-review-ids/);
+      // Always force refresh when opening to get latest used review IDs
+      fetchReviews(true);
     } else {
-      console.log('🔍 CreateScheduleDialog: Dialog closed');
+      console.log('🔍 CreateScheduleDialog: Dialog closed, clearing reviews');
+      // Clear reviews when closing to ensure fresh fetch on next open
+      setReviews([]);
     }
   }, [open]);
 
-  const fetchReviews = async () => {
+  const fetchReviews = async (forceRefresh = false) => {
     try {
       setReviewsLoading(true);
-      console.log('🔍 CreateScheduleDialog: Fetching reviews...');
-      
-      // Fetch both reviews and used review IDs
-      const [reviewsResponse, usedIdsResponse] = await Promise.all([
-        fetch('/api/reviews-fast'), // Use fast API
-        fetch('/api/schedules/used-review-ids')
-      ]);
-      
+      console.log('🔍 CreateScheduleDialog: Fetching reviews... (forceRefresh:', forceRefresh, ')');
+
+      // Get authentication session
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        console.error('❌ No session found, cannot fetch reviews');
+        setReviews([]);
+        return;
+      }
+
+      // Build auth headers
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'x-user-id': session.user.id,
+        'x-user-email': session.user.email || '',
+        'x-user-role': session.user.user_metadata?.role || 'user',
+      };
+
+      console.log('🔑 Auth headers:', {
+        userId: session.user.id,
+        email: session.user.email,
+        role: session.user.user_metadata?.role
+      });
+
+      // Add cache-busting timestamp if force refresh
+      const cacheBuster = forceRefresh ? `?t=${Date.now()}` : '';
+
+      // ✅ Fetch reviews - API already excludes scheduled reviews
+      const reviewsResponse = await fetch(`/api/reviews-fast${cacheBuster}`, {
+        cache: 'no-store',
+        headers
+      });
+
       console.log('🔍 CreateScheduleDialog: Reviews response status:', reviewsResponse.status);
-      console.log('🔍 CreateScheduleDialog: Used IDs response status:', usedIdsResponse.status);
-      
+
       const reviewsResult = await reviewsResponse.json();
-      const usedIdsResult = await usedIdsResponse.json();
-      
+
+      console.log('📊 API Response:', reviewsResult);
+
       if (reviewsResult.success) {
-        const allReviews = reviewsResult.data || [];
-        const usedReviewIds = usedIdsResult.success ? usedIdsResult.usedReviewIds : [];
-        
-        console.log('🔍 CreateScheduleDialog: Used IDs data:', usedIdsResult);
-        console.log('🔍 CreateScheduleDialog: Used review IDs:', usedReviewIds);
-        
-        // Filter out reviews that are already used in schedules
-        const availableReviews = allReviews.filter((review: any) => {
-          const isUsed = usedReviewIds.includes(review.id);
-          console.log(`🔍 Review ${review.id} (${review.video_title}): ${isUsed ? 'USED' : 'AVAILABLE'}`);
-          return !isUsed;
-        });
-        
-        console.log(`✅ Total reviews: ${allReviews.length}, Used: ${usedReviewIds.length}, Available: ${availableReviews.length}`);
-        console.log('🔍 Available reviews:', availableReviews.map(r => ({ id: r.id, title: r.video_title })));
-        
+        const availableReviews = reviewsResult.data || [];
+
+        console.log(`📊 Available reviews from API: ${availableReviews.length}`);
+        console.log(`  - Reviews list:`, availableReviews.map(r => ({
+          id: r.id,
+          title: r.video_title
+        })));
+
         setReviews(availableReviews);
+
+        if (forceRefresh) {
+          toast({
+            title: "Đã làm mới danh sách",
+            description: `Tìm thấy ${availableReviews.length} reviews có thể tạo lịch`,
+          });
+        }
       } else {
         console.error('❌ Reviews API failed:', reviewsResult.error);
         setReviews([]);
       }
     } catch (error) {
-      console.error('Error fetching reviews:', error);
+      console.error('❌ Error fetching reviews:', error);
       setReviews([]);
     } finally {
       setReviewsLoading(false);
@@ -277,16 +310,17 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
       }
 
       console.log('🔍 Step 7: Schedule created successfully');
-      
-      // Don't call onSubmit with the created schedule data
-      // The parent component will handle the success
+
       toast({
         title: '✅ Thành công!',
         description: 'Lịch đăng bài đã được tạo',
       });
-      
+
+      // Call onSubmit to notify parent to refresh schedules list
+      // This ensures the dropdown filters out the newly scheduled review
+      onSubmit(data.data);
+
       onOpenChange(false); // Close dialog
-      // Don't call onSubmit to avoid double API call
     } catch (error) {
       console.error('❌ Schedule creation error:', error);
       toast({
@@ -347,7 +381,20 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Select Review */}
             <div className="space-y-2">
-              <Label htmlFor="review">Chọn Review *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="review">Chọn Review *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchReviews(true)}
+                  disabled={reviewsLoading}
+                  className="text-xs"
+                >
+                  <RefreshCw className={cn("h-3 w-3 mr-1", reviewsLoading && "animate-spin")} />
+                  Làm mới
+                </Button>
+              </div>
               <div className="text-xs text-gray-500 mb-1">
                 {reviewsLoading && '🔄 Đang tải...'}
                 {!reviewsLoading && `📊 Có ${reviews.length} reviews`}

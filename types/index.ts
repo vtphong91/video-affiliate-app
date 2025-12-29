@@ -41,9 +41,16 @@ export interface AIAnalysis {
 // Affiliate Link
 export interface AffiliateLink {
   platform: string;
-  url: string;
+  url: string;              // Original product URL or manually entered URL
+  trackingUrl?: string;     // Generated affiliate tracking URL (from API/deeplink)
   price?: string;
   discount?: string;
+  affSid?: string;          // Tracking ID from generation
+  generationMethod?: 'api' | 'deeplink';  // How the tracking URL was generated
+  merchantId?: string;      // ID of merchant used for generation
+  merchantName?: string;    // Name of merchant (for display)
+  clicks?: number;          // Click counter (Phase 4-Lite)
+  lastClickedAt?: string;   // Last click timestamp
 }
 
 // Review Status

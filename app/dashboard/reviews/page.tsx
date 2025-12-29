@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,11 +12,12 @@ import { withUserRoute } from '@/lib/auth/middleware/route-protection';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
 import { useAuthHeaders } from '@/lib/hooks/useAuthHeaders';
-import { cachedFetch, invalidateCache } from '@/lib/utils/request-cache';
+import { cachedFetch, invalidateCache, clearCache } from '@/lib/utils/request-cache';
 import { SkeletonGrid, ReviewCardSkeleton } from '@/components/ui/skeleton';
 import type { Review } from '@/types';
 
 function ReviewsPage() {
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { displayName } = useUser();
   const headers = useAuthHeaders();
@@ -33,22 +35,29 @@ function ReviewsPage() {
   // ✅ FIX: Use user?.id instead of user object to prevent unnecessary re-fetches
   const userId = user?.id;
 
-  // Fetch reviews with caching
+  // ✅ Clear ALL cache on component mount (one-time on page load)
+  useEffect(() => {
+    console.log('🗑️ ReviewsPage: Clearing ALL cache on mount to ensure fresh data');
+    clearCache();
+  }, []); // Empty deps = run once on mount
+
+  // Fetch reviews WITHOUT caching to ensure fresh data
   const fetchReviews = useCallback(async (page: number, force = false) => {
     try {
       setLoading(true);
 
       console.log('🔍 ReviewsPage: Fetching reviews for page', page);
 
-      // ✅ Use cachedFetch with 60 second TTL
-      const data = await cachedFetch(
-        `/api/reviews?page=${page}&limit=${itemsPerPage}`,
+      // ✅ DISABLE CACHE - Always fetch fresh data
+      const response = await fetch(
+        `/api/reviews?page=${page}&limit=${itemsPerPage}&t=${Date.now()}`,
         {
           headers,
-          ttl: 60000, // 60 seconds cache
-          force, // Force refresh if specified
+          cache: 'no-store',
         }
       );
+
+      const data = await response.json();
 
       if (data.success) {
         setReviews(data.data?.reviews || []);
@@ -62,6 +71,17 @@ function ReviewsPage() {
     }
   }, [headers, itemsPerPage]);
 
+  // ✅ Detect refresh parameter from URL (when navigating from create page)
+  useEffect(() => {
+    const refreshParam = searchParams.get('refresh');
+    if (refreshParam && userId && headers['x-user-id']) {
+      console.log('🔄 Refresh parameter detected - forcing data reload');
+      invalidateCache(/\/api\/reviews/);
+      clearCache();
+      fetchReviews(currentPage, true);
+    }
+  }, [searchParams, userId, headers, currentPage, fetchReviews]);
+
   // ✅ FIX: Wait for both userId AND headers to be ready
   useEffect(() => {
     // Check if headers contain user ID (means auth is ready)
@@ -69,14 +89,17 @@ function ReviewsPage() {
 
     if (userId && hasAuthHeaders) {
       console.log('🔍 ReviewsPage: User ID and headers ready, fetching reviews for page:', currentPage);
-      fetchReviews(currentPage);
+      // ✅ FORCE CLEAR old cache on mount to ensure fresh data after cache key fix
+      invalidateCache(/\/api\/reviews/);
+      fetchReviews(currentPage, true); // Force refresh on first load
     } else {
       console.log('🔍 ReviewsPage: Waiting for auth...', { userId, hasAuthHeaders });
       if (!userId) {
         setLoading(false);
       }
     }
-  }, [currentPage, userId, headers, fetchReviews]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, userId, headers]);
 
   // ✅ Prefetch next page on mount
   useEffect(() => {

@@ -1,0 +1,547 @@
+
+> video-affiliate-app@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.21
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 4.4s
+ ○ Compiling /dashboard/settings ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Compiled /dashboard/settings in 10s (1010 modules)
+ ✓ Compiled in 613ms (465 modules)
+ ✓ Compiled in 1289ms (465 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 740ms (988 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+ GET /dashboard 200 in 1229ms
+ ○ Compiling /api/dashboard/stats ...
+ ✓ Compiled /api/dashboard/stats in 1581ms (642 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔍 db.getReviews called with: {
+  userId: '1788ee95-7d22-4b0b-8e45-07ae2d03c7e1',
+  status: undefined,
+  limit: 10000,
+  offset: 0
+}
+🔍 Filtering by user_id: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Reviews fetched: 59 reviews
+📋 getSchedules: Found 57 schedules (showing 57) for user 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1, status: undefined
+📊 getSchedulesCount: Found 57 schedules for user 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1, status: undefined
+🔍 getActivityLogs: Fetching logs from last 48h (since 2025-12-25T09:21:43.640Z)
+✅ Found 2 activity logs in last 48h
+ GET /api/dashboard/stats 200 in 3219ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔍 db.getReviews called with: {
+  userId: '1788ee95-7d22-4b0b-8e45-07ae2d03c7e1',
+  status: undefined,
+  limit: 10000,
+  offset: 0
+}
+🔍 Filtering by user_id: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Reviews fetched: 59 reviews
+📋 getSchedules: Found 57 schedules (showing 57) for user 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1, status: undefined
+📊 getSchedulesCount: Found 57 schedules for user 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1, status: undefined
+🔍 getActivityLogs: Fetching logs from last 48h (since 2025-12-25T09:21:44.708Z)
+✅ Found 2 activity logs in last 48h
+ GET /api/dashboard/stats 200 in 1061ms
+ ✓ Compiled /_not-found in 428ms (1104 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 785ms
+ ✓ Compiled in 1414ms (986 modules)
+ ✓ Compiled in 531ms (986 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 1572ms (1002 modules)
+ GET / 200 in 2031ms
+ ✓ Compiled /api/dashboard/stats in 218ms (650 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔍 db.getReviews called with: {
+  userId: '1788ee95-7d22-4b0b-8e45-07ae2d03c7e1',
+  status: undefined,
+  limit: 10000,
+  offset: 0
+}
+🔍 Filtering by user_id: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Reviews fetched: 59 reviews
+📋 getSchedules: Found 57 schedules (showing 57) for user 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1, status: undefined
+📊 getSchedulesCount: Found 57 schedules for user 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1, status: undefined
+🔍 getActivityLogs: Fetching logs from last 48h (since 2025-12-25T09:27:12.907Z)
+✅ Found 2 activity logs in last 48h
+ GET /api/dashboard/stats 200 in 1306ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔍 db.getReviews called with: {
+  userId: '1788ee95-7d22-4b0b-8e45-07ae2d03c7e1',
+  status: undefined,
+  limit: 10000,
+  offset: 0
+}
+🔍 Filtering by user_id: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Reviews fetched: 59 reviews
+📋 getSchedules: Found 57 schedules (showing 57) for user 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1, status: undefined
+📊 getSchedulesCount: Found 57 schedules for user 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1, status: undefined
+🔍 getActivityLogs: Fetching logs from last 48h (since 2025-12-25T09:27:13.718Z)
+✅ Found 2 activity logs in last 48h
+ GET /api/dashboard/stats 200 in 797ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 731ms (1148 modules)
+ ○ Compiling /admin/affiliate-settings ...
+ ✓ Compiled /admin/affiliate-settings in 1689ms (1304 modules)
+ ✓ Compiled /api/admin/merchants in 335ms (754 modules)
+ ✓ Compiled (757 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 1227ms
+ GET /api/admin/merchants 200 in 1251ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 241ms
+ GET /api/admin/merchants 200 in 250ms
+🔧 PATCH /api/admin/affiliate-settings - Starting...
+📋 Headers: {
+  authorization: null,
+  cookie: 'authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiVHBQLUQ2RW5xZlAtdlZ2RlZ...'
+}
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+👤 User ID from request: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Checking permissions for user: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Has permission: true
+📦 Request body: {
+  api_token: '***REDACTED***',
+  api_url: 'https://api.accesstrade.vn/v1',
+  link_mode: 'api',
+  publisher_id: '',
+  utm_source: 'video-affiliate',
+  utm_campaign: 'review'
+}
+🔐 Encrypting API token...
+ PATCH /api/admin/affiliate-settings 200 in 531ms
+ ✓ Compiled in 2.4s (1321 modules)
+ ✓ Compiled in 463ms (636 modules)
+ ✓ Compiled in 1660ms (1205 modules)
+ GET /admin/affiliate-settings 200 in 370ms
+ ○ Compiling /api/admin/merchants ...
+ ✓ Compiled /api/admin/merchants in 802ms (752 modules)
+ ✓ Compiled in 2ms (755 modules)
+ ✓ Compiled in 0ms (755 modules)
+ ✓ Compiled in 1ms (755 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 5627ms
+ GET /api/admin/merchants 200 in 5668ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 269ms
+ GET /api/admin/merchants 200 in 261ms
+ ✓ Compiled in 2.6s (1205 modules)
+ ✓ Compiled in 1544ms (1205 modules)
+ ✓ Compiled /api/admin/merchants in 455ms (752 modules)
+ ✓ Compiled (755 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 1377ms
+ GET /api/admin/merchants 200 in 1413ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 280ms
+ GET /api/admin/merchants 200 in 281ms
+ ✓ Compiled in 2s (1324 modules)
+ ✓ Compiled in 1420ms (1324 modules)
+ GET /admin/affiliate-settings 200 in 481ms
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/merchants 200 in 496ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 567ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/merchants 200 in 227ms
+ GET /api/admin/affiliate-settings 200 in 239ms
+ ✓ Compiled in 2.3s (1324 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔧 PATCH /api/admin/affiliate-settings - Starting...
+📋 Headers: {
+  authorization: null,
+  cookie: 'authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiVHBQLUQ2RW5xZlAtdlZ2RlZ...'
+}
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+👤 User ID from request: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Checking permissions for user: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Has permission: true
+📦 Request body: {
+  api_url: 'https://api.accesstrade.vn/v1',
+  link_mode: 'api',
+  utm_source: 'video-affiliate',
+  utm_campaign: 'review',
+  api_token: '***REDACTED***',
+  publisher_id: '4790392958945222748'
+}
+🔐 Encrypting API token...
+🔐 Encrypting publisher_id...
+Update affiliate settings error: Error: Failed to update settings: value too long for type character varying(50)
+    at AffiliateSettingsService.updateSettings (webpack-internal:///(rsc)/./lib/affiliate/services/settings-service.ts:94:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async PATCH (webpack-internal:///(rsc)/./app/api/admin/affiliate-settings/route.ts:127:25)
+    at async F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:57228
+    at async eT.execute (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:46851)
+    at async eT.handle (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:58562)
+    at async doRender (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1353:42)
+    at async cacheEntry.responseCache.get.routeKind (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1575:28)
+    at async DevServer.renderToResponseWithComponentsImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1483:28)
+    at async DevServer.renderPageComponent (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1911:24)
+    at async DevServer.renderToResponseImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1949:32)
+    at async DevServer.pipeImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:921:25)
+    at async NextNodeServer.handleCatchallRenderRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:817:17)
+    at async F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:173:21)
+    at async handleRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:350:24)
+    at async requestHandlerImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:374:13)
+    at async Server.requestListener (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\start-server.js:141:13)
+ PATCH /api/admin/affiliate-settings 500 in 762ms
+ ✓ Compiled in 1496ms (1321 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1945ms (1310 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 2622ms
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔧 PATCH /api/admin/affiliate-settings - Starting...
+📋 Headers: {
+  authorization: null,
+  cookie: 'authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiVHBQLUQ2RW5xZlAtdlZ2RlZ...'
+}
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+👤 User ID from request: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Checking permissions for user: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Has permission: true
+📦 Request body: {
+  api_url: 'https://api.accesstrade.vn/v1',
+  link_mode: 'api',
+  utm_source: 'video-affiliate',
+  utm_campaign: 'review',
+  api_token: '***REDACTED***',
+  publisher_id: '4790392958945222748'
+}
+🔐 Encrypting API token...
+🔐 Encrypting publisher_id...
+Update affiliate settings error: Error: Failed to update settings: value too long for type character varying(50)
+    at AffiliateSettingsService.updateSettings (webpack-internal:///(rsc)/./lib/affiliate/services/settings-service.ts:94:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async PATCH (webpack-internal:///(rsc)/./app/api/admin/affiliate-settings/route.ts:127:25)
+    at async F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:57228
+    at async eT.execute (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:46851)
+    at async eT.handle (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:58562)
+    at async doRender (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1353:42)
+    at async cacheEntry.responseCache.get.routeKind (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1575:28)
+    at async DevServer.renderToResponseWithComponentsImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1483:28)
+    at async DevServer.renderPageComponent (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1911:24)
+    at async DevServer.renderToResponseImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1949:32)
+    at async DevServer.pipeImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:921:25)
+    at async NextNodeServer.handleCatchallRenderRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:817:17)
+    at async F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:173:21)
+    at async handleRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:350:24)
+    at async requestHandlerImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:374:13)
+    at async Server.requestListener (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\start-server.js:141:13)
+ PATCH /api/admin/affiliate-settings 500 in 656ms
+ ✓ Compiled in 1053ms (571 modules)
+ GET /admin/affiliate-settings 200 in 202ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 121ms
+🔐 Getting session from Supabase...
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ ○ Compiling /api/admin/merchants ...
+ ✓ Compiled /api/admin/merchants in 711ms (756 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 1115ms
+ GET /api/admin/affiliate-settings 200 in 1136ms
+ GET /api/admin/merchants 200 in 1191ms
+ GET /api/admin/merchants 200 in 1282ms
+ GET /admin/affiliate-settings 200 in 512ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 106ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 643ms
+ GET /api/admin/merchants 200 in 659ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 351ms
+ GET /api/admin/merchants 200 in 346ms
+🔧 PATCH /api/admin/affiliate-settings - Starting...
+📋 Headers: {
+  authorization: null,
+  cookie: 'authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiVHBQLUQ2RW5xZlAtdlZ2RlZ...'
+}
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+👤 User ID from request: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Checking permissions for user: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Has permission: true
+📦 Request body: {
+  api_url: 'https://api.accesstrade.vn/v1',
+  link_mode: 'api',
+  utm_source: 'video-affiliate',
+  utm_campaign: 'review',
+  api_token: '***REDACTED***',
+  publisher_id: '4790392958945222748'
+}
+🔐 Encrypting API token...
+🔐 Encrypting publisher_id...
+Update affiliate settings error: Error: Failed to update settings: value too long for type character varying(50)
+    at AffiliateSettingsService.updateSettings (webpack-internal:///(rsc)/./lib/affiliate/services/settings-service.ts:94:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async PATCH (webpack-internal:///(rsc)/./app/api/admin/affiliate-settings/route.ts:127:25)
+    at async F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:57228
+    at async eT.execute (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:46851)
+    at async eT.handle (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:58562)
+    at async doRender (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1353:42)
+    at async cacheEntry.responseCache.get.routeKind (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1575:28)
+    at async DevServer.renderToResponseWithComponentsImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1483:28)
+    at async DevServer.renderPageComponent (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1911:24)
+    at async DevServer.renderToResponseImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:1949:32)
+    at async DevServer.pipeImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:921:25)
+    at async NextNodeServer.handleCatchallRenderRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\base-server.js:817:17)
+    at async F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:173:21)
+    at async handleRequest (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:350:24)
+    at async requestHandlerImpl (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\router-server.js:374:13)
+    at async Server.requestListener (F:\VSCODE\AUTOPOSTFACEBOOK\video-affiliate-app\node_modules\next\dist\server\lib\start-server.js:141:13)
+ PATCH /api/admin/affiliate-settings 500 in 633ms
+ GET /admin/affiliate-settings 200 in 127ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 77ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/merchants 200 in 480ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 546ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/merchants 200 in 239ms
+ GET /api/admin/affiliate-settings 200 in 222ms
+🔧 PATCH /api/admin/affiliate-settings - Starting...
+📋 Headers: {
+  authorization: null,
+  cookie: 'authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiVHBQLUQ2RW5xZlAtdlZ2RlZ...'
+}
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+👤 User ID from request: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Checking permissions for user: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Has permission: true
+📦 Request body: {
+  api_url: 'https://api.accesstrade.vn/v1',
+  link_mode: 'api',
+  utm_source: 'video-affiliate',
+  utm_campaign: 'review',
+  api_token: '***REDACTED***',
+  publisher_id: '4790392958945222748'
+}
+🔐 Encrypting API token...
+🔐 Encrypting publisher_id...
+ PATCH /api/admin/affiliate-settings 200 in 565ms
+ ○ Compiling /api/admin/affiliate-settings/test ...
+ ✓ Compiled /api/admin/affiliate-settings/test in 612ms (758 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🧪 POST /api/admin/affiliate-settings/test - Starting...
+📋 Headers: {
+  authorization: null,
+  cookie: 'authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiVHBQLUQ2RW5xZlAtdlZ2RlZ...'
+}
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+👤 User ID from request: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Checking permissions for user: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Has permission: true
+🔑 Using existing token from database...
+🧪 Testing AccessTrade API connection... {
+  api_url: 'https://api.accesstrade.vn/v1',
+  token_preview: '1BIuwwkz...',
+  using_existing: true
+}
+🧪 API test result: {
+  success: false,
+  message: 'API test failed: Campaign does not exists or not running',
+  details: {
+    message: 'Campaign does not exists or not running',
+    status: false,
+    status_code: '03'
+  }
+}
+ POST /api/admin/affiliate-settings/test 200 in 1545ms
+ ✓ Compiled in 850ms (754 modules)
+ ✓ Compiled in 653ms (636 modules)
+ GET /admin/affiliate-settings 200 in 428ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1103ms (1194 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1420ms
+ ✓ Compiled /api/admin/merchants in 410ms (753 modules)
+ ✓ Compiled in 1ms (756 modules)
+ ✓ Compiled in 0ms (756 modules)
+ ✓ Compiled in 1ms (756 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 5372ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/merchants 200 in 5440ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/merchants 200 in 227ms
+ GET /api/admin/affiliate-settings 200 in 321ms
+ ✓ Compiled /api/admin/merchants/[id] in 345ms (758 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ DELETE /api/admin/merchants/93431729-a933-4748-b8d7-9b43689d3247 200 in 4771ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/merchants 200 in 331ms
+ ○ Compiling /api/admin/affiliate-settings/test ...
+ ✓ Compiled /api/admin/affiliate-settings/test in 571ms (760 modules)
+✅ Supabase configured, creating real client
+✅ Creating admin client with service role
+🧪 POST /api/admin/affiliate-settings/test - Starting...
+📋 Headers: {
+  authorization: null,
+  cookie: 'authjs.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwia2lkIjoiVHBQLUQ2RW5xZlAtdlZ2RlZ...'
+}
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+👤 User ID from request: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+🔐 Checking permissions for user: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+✅ Has permission: true
+🔑 Using existing token from database...
+🧪 Testing AccessTrade API connection... {
+  api_url: 'https://api.accesstrade.vn/v1',
+  token_preview: '1BIuwwkz...',
+  using_existing: true
+}
+🧪 API test result: {
+  success: true,
+  message: 'Kết nối API thành công! Token hợp lệ.',
+  details: {
+    note: 'API token đã được xác thực thành công với AccessTrade.',
+    response_status: 200
+  }
+}
+ POST /api/admin/affiliate-settings/test 200 in 3280ms
+🔐 Getting session from Supabase...
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+✅ Got user from Supabase session: 1788ee95-7d22-4b0b-8e45-07ae2d03c7e1
+ GET /api/admin/affiliate-settings 200 in 255ms

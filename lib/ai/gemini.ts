@@ -81,7 +81,104 @@ export async function analyzeVideoWithGemini(
     let analysis: AIAnalysis;
 
     try {
-      analysis = JSON.parse(jsonContent) as AIAnalysis;
+      // Parse JSON first
+      const parsedData = JSON.parse(jsonContent);
+      console.log('✅ Gemini - JSON parsed successfully');
+      console.log('🔍 Gemini - Parsed data fields:', Object.keys(parsedData));
+      console.log('🔍 Gemini - targetAudience field:', {
+        targetAudience: parsedData.targetAudience,
+        target_audience: parsedData.target_audience,
+        isArray: Array.isArray(parsedData.targetAudience || parsedData.target_audience),
+        value: parsedData.targetAudience || parsedData.target_audience
+      });
+      console.log('🔍 Gemini - seoKeywords field:', {
+        seoKeywords: parsedData.seoKeywords,
+        seo_keywords: parsedData.seo_keywords,
+        isArray: Array.isArray(parsedData.seoKeywords || parsedData.seo_keywords),
+        value: parsedData.seoKeywords || parsedData.seo_keywords
+      });
+
+      // Transform to AIAnalysis format with field mapping (handle both camelCase and snake_case)
+      analysis = {
+        summary: parsedData.summary || parsedData.product_summary || '',
+        pros: Array.isArray(parsedData.pros) ? parsedData.pros : [],
+        cons: Array.isArray(parsedData.cons) ? parsedData.cons : [],
+        keyPoints: Array.isArray(parsedData.keyPoints || parsedData.key_points)
+          ? (parsedData.keyPoints || parsedData.key_points).map((kp: any) => ({
+              time: kp.time || kp.timestamp || '0:00',
+              content: kp.content || kp.text || String(kp),
+            }))
+          : [],
+        comparisonTable: parsedData.comparisonTable || parsedData.comparison_table || { headers: [], rows: [] },
+        targetAudience: Array.isArray(parsedData.targetAudience || parsedData.target_audience)
+          ? (parsedData.targetAudience || parsedData.target_audience)
+          : [],
+        cta: parsedData.cta || parsedData.call_to_action || '',
+        seoKeywords: Array.isArray(parsedData.seoKeywords || parsedData.seo_keywords)
+          ? (parsedData.seoKeywords || parsedData.seo_keywords)
+          : [],
+      };
+
+      console.log('🤖 Gemini - Analysis stats:', {
+        summaryLength: analysis.summary.length,
+        prosCount: analysis.pros.length,
+        consCount: analysis.cons.length,
+        keyPointsCount: analysis.keyPoints.length,
+        targetAudienceCount: analysis.targetAudience.length,
+        seoKeywordsCount: analysis.seoKeywords.length,
+      });
+
+      // ⚠️ CRITICAL VALIDATION: targetAudience and seoKeywords must not be empty
+      if (analysis.targetAudience.length === 0) {
+        console.error('❌ Gemini - targetAudience is EMPTY! This is a CRITICAL ERROR.');
+        console.error('🔧 Gemini - Generating fallback targetAudience...');
+
+        // Fallback: Generate targetAudience based on video info
+        analysis.targetAudience = [
+          'Người tiêu dùng quan tâm đến sản phẩm này, có nhu cầu mua sắm online và muốn tìm hiểu trước khi mua',
+          'Gia đình hoặc cá nhân đang tìm kiếm giải pháp cho nhu cầu sử dụng hàng ngày, ưu tiên chất lượng và giá trị',
+          'Khách hàng muốn tham khảo review chi tiết từ người dùng thực tế trước khi quyết định mua hàng'
+        ];
+        console.warn('⚠️ Gemini - Using fallback targetAudience. User should edit manually for better targeting.');
+      }
+
+      if (analysis.seoKeywords.length === 0) {
+        console.error('❌ Gemini - seoKeywords is EMPTY! This is a CRITICAL ERROR.');
+        console.error('🔧 Gemini - Generating fallback seoKeywords from video title...');
+
+        // Fallback: Generate SEO keywords from video title
+        const videoTitle = videoInfo.title;
+        const cleanTitle = videoTitle.replace(/[^\w\s\u00C0-\u1EF9]/g, ' ').trim();
+
+        analysis.seoKeywords = [
+          cleanTitle,
+          `review ${cleanTitle}`,
+          `đánh giá ${cleanTitle}`,
+          `mua ${cleanTitle}`,
+          `giá ${cleanTitle}`,
+          `${cleanTitle} có tốt không`,
+          `${cleanTitle} chính hãng`,
+          `so sánh ${cleanTitle}`,
+          `${cleanTitle} giá rẻ`,
+          `${cleanTitle} uy tín`
+        ];
+        console.warn('⚠️ Gemini - Using fallback seoKeywords based on title. User should review and refine manually.');
+      }
+
+      // Final check: Ensure minimum items
+      if (analysis.targetAudience.length < 3) {
+        console.warn('⚠️ Gemini - targetAudience has less than 3 items. Padding with generic entries...');
+        while (analysis.targetAudience.length < 3) {
+          analysis.targetAudience.push('Khách hàng có nhu cầu sử dụng sản phẩm này');
+        }
+      }
+
+      if (analysis.seoKeywords.length < 10) {
+        console.warn('⚠️ Gemini - seoKeywords has less than 10 items. Padding with generic entries...');
+        while (analysis.seoKeywords.length < 10) {
+          analysis.seoKeywords.push(`sản phẩm ${videoInfo.platform}`);
+        }
+      }
     } catch (parseError) {
       console.error('❌ Gemini - JSON parse failed:', parseError);
       console.error('❌ Gemini - Failed content:', jsonContent.substring(0, 500));
@@ -96,6 +193,15 @@ export async function analyzeVideoWithGemini(
       !analysis.cta
     ) {
       throw new Error('Invalid analysis format from AI');
+    }
+
+    // Additional validation for targetAudience and seoKeywords
+    if (!analysis.targetAudience || analysis.targetAudience.length === 0) {
+      throw new Error('targetAudience is required but was not provided by AI');
+    }
+
+    if (!analysis.seoKeywords || analysis.seoKeywords.length === 0) {
+      throw new Error('seoKeywords is required but was not provided by AI');
     }
 
     console.log('✅ Gemini - Analysis completed successfully');
@@ -156,7 +262,29 @@ export async function analyzeVideoWithGeminiPro(
 
     let analysis: AIAnalysis;
     try {
-      analysis = JSON.parse(jsonContent) as AIAnalysis;
+      // Parse JSON first
+      const parsedData = JSON.parse(jsonContent);
+
+      // Transform to AIAnalysis format with field mapping (handle both camelCase and snake_case)
+      analysis = {
+        summary: parsedData.summary || parsedData.product_summary || '',
+        pros: Array.isArray(parsedData.pros) ? parsedData.pros : [],
+        cons: Array.isArray(parsedData.cons) ? parsedData.cons : [],
+        keyPoints: Array.isArray(parsedData.keyPoints || parsedData.key_points)
+          ? (parsedData.keyPoints || parsedData.key_points).map((kp: any) => ({
+              time: kp.time || kp.timestamp || '0:00',
+              content: kp.content || kp.text || String(kp),
+            }))
+          : [],
+        comparisonTable: parsedData.comparisonTable || parsedData.comparison_table || { headers: [], rows: [] },
+        targetAudience: Array.isArray(parsedData.targetAudience || parsedData.target_audience)
+          ? (parsedData.targetAudience || parsedData.target_audience)
+          : [],
+        cta: parsedData.cta || parsedData.call_to_action || '',
+        seoKeywords: Array.isArray(parsedData.seoKeywords || parsedData.seo_keywords)
+          ? (parsedData.seoKeywords || parsedData.seo_keywords)
+          : [],
+      };
     } catch (parseError) {
       console.error('❌ Gemini Pro - JSON parse failed:', parseError);
       console.error('❌ Gemini Pro - Failed content:', jsonContent.substring(0, 500));

@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
-
-// Public endpoint - no authentication required
-// Only returns published reviews
+import { getAllPublishedReviews } from '@/lib/services/review-service';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Public Reviews API called');
+    console.log('🌐 Public Reviews API called');
 
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -22,72 +19,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch ONLY published reviews (no user filtering - public data)
-    const { data: reviews, error } = await supabaseAdmin
-      .from('reviews')
-      .select(`
-        id,
-        slug,
-        video_title,
-        video_url,
-        video_platform,
-        video_thumbnail,
-        channel_name,
-        summary,
-        pros,
-        cons,
-        target_audience,
-        seo_keywords,
-        affiliate_links,
-        status,
-        created_at,
-        views,
-        categories (
-          id,
-          name,
-          slug
-        )
-      `)
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // Fetch all published reviews
+    const allReviews = await getAllPublishedReviews();
 
-    if (error) {
-      console.error('❌ Error fetching public reviews:', error);
-      return NextResponse.json(
-        { success: false, error: 'Failed to fetch reviews' },
-        { status: 500 }
-      );
-    }
+    // Apply pagination
+    const reviews = allReviews.slice(offset, offset + limit);
+    const totalCount = allReviews.length;
 
-    // Get total count of published reviews
-    const { count, error: countError } = await supabaseAdmin
-      .from('reviews')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'published');
-
-    if (countError) {
-      console.error('❌ Error counting reviews:', countError);
-    }
-
-    console.log(`✅ Found ${reviews?.length || 0} published reviews`);
+    console.log(`✅ Returning ${reviews.length} published reviews (total: ${totalCount})`);
 
     return NextResponse.json({
       success: true,
       data: {
-        reviews: reviews || [],
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
+        reviews,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
         currentPage: Math.floor(offset / limit) + 1,
         pagination: {
           limit,
           offset,
-          hasMore: (reviews?.length || 0) === limit,
+          hasMore: (offset + limit) < totalCount,
         },
       },
     });
   } catch (error) {
-    console.error('❌ Exception in public reviews API:', error);
+    console.error('❌ Error in public reviews API:', error);
 
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clear Auth Cookies</title>
+</head>
+<body>
+  <h1>Clear Old Authentication Cookies</h1>
+  <button onclick="clearCookies()">Clear All Auth Cookies</button>
+  <pre id="result"></pre>
+
+  <script>
+    function clearCookies() {
+      const result = document.getElementById('result');
+      const cookies = document.cookie.split(';');
+
+      result.textContent = 'Clearing cookies...\n\n';
+
+      cookies.forEach(cookie => {
+        const name = cookie.split('=')[0].trim();
+        result.textContent += `Deleting: ${name}\n`;
+
+        // Delete cookie
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+      });
+
+      result.textContent += '\n✅ All cookies cleared!\n';
+      result.textContent += '\nPlease close this tab and login again at:\n';
+      result.textContent += `http://localhost:3003/auth/login`;
+
+      setTimeout(() => {
+        window.location.href = '/auth/login';
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

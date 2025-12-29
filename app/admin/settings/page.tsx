@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Settings,
   Save,
@@ -21,7 +22,8 @@ import {
   Plus,
   Trash2,
   Edit,
-  Brain
+  Brain,
+  BarChart3
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useRoles } from '@/lib/auth/hooks/useEnhancedRoles';
@@ -490,8 +492,32 @@ export default function SystemSettings() {
         </CardContent>
       </Card>
 
-      {/* AI Provider Management */}
-      <Card className="border-purple-200">
+      {/* Tabs Navigation */}
+      <Tabs defaultValue="ai-providers" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
+          <TabsTrigger value="ai-providers" className="flex items-center space-x-2">
+            <Brain className="h-4 w-4" />
+            <span>AI Providers</span>
+            <Badge variant="outline" className="ml-1 bg-purple-50 text-purple-700 border-purple-200">
+              {aiProviders.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="environment" className="flex items-center space-x-2">
+            <Settings className="h-4 w-4" />
+            <span>Biến môi trường</span>
+            <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700 border-blue-200">
+              {settings.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="summary" className="flex items-center space-x-2">
+            <BarChart3 className="h-4 w-4" />
+            <span>Tóm tắt</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Tab 1: AI Providers */}
+        <TabsContent value="ai-providers" className="space-y-6">
+          <Card className="border-purple-200">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center space-x-2">
@@ -858,8 +884,10 @@ export default function SystemSettings() {
           </div>
         </div>
       )}
+        </TabsContent>
 
-      {/* Settings by Category */}
+        {/* Tab 2: Environment Variables */}
+        <TabsContent value="environment" className="space-y-6">
       {loading ? (
         <div className="space-y-6">
           {[...Array(3)].map((_, i) => (
@@ -960,9 +988,11 @@ export default function SystemSettings() {
           ))}
         </div>
       )}
+        </TabsContent>
 
-      {/* Summary */}
-      <Card>
+        {/* Tab 3: Summary */}
+        <TabsContent value="summary" className="space-y-6">
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <CheckCircle className="h-5 w-5 text-green-500" />
@@ -990,6 +1020,8 @@ export default function SystemSettings() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

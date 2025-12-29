@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/supabase';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
+import { getAllReviewsForUser } from '@/lib/services/review-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,34 +41,29 @@ export async function GET(request: NextRequest) {
   try {
     // Get user ID for filtering
     const userId = await getUserIdFromRequest(request);
-    
-    // Get ALL reviews and schedules (no pagination limit for stats)
-    // Use large limit to get all data, or use count functions for totals
-    const reviews = await db.getReviews({ 
-      userId, 
-      limit: 10000, 
-      offset: 0 
-    });
-    
-    // Get all schedules without pagination
+
+    // Fetch all reviews using new service
+    const reviews = await getAllReviewsForUser(userId);
+
+    // Get all schedules
     const allSchedules = await db.getSchedules(userId, undefined, 10000, 0);
-    
-    // Also get counts for accurate totals
-    const totalReviewsCount = await db.getReviewsCount({ userId });
-    const totalSchedulesCount = await db.getSchedulesCount(userId);
-    
+
+    // Count from actual data
+    const totalReviewsCount = reviews.length;
+    const totalSchedulesCount = allSchedules.length;
+
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const stats: DashboardStats = {
-      totalReviews: totalReviewsCount, // Use count for accurate total
-      totalSchedules: totalSchedulesCount, // Use count for accurate total
+      totalReviews: totalReviewsCount, // Count from actual fetched data
+      totalSchedules: totalSchedulesCount, // Count from actual fetched data
       publishedPosts: allSchedules.filter(s => s.status === 'posted').length,
       pendingSchedules: allSchedules.filter(s => s.status === 'pending').length,
       failedPosts: allSchedules.filter(s => s.status === 'failed').length,
-      reviewsToday: reviews.filter(r => new Date(r.created_at) >= today).length,
-      postsToday: allSchedules.filter(s => 
+      reviewsToday: (reviews || []).filter(r => new Date(r.created_at) >= today).length,
+      postsToday: allSchedules.filter(s =>
         s.status === 'posted' && new Date(s.posted_at || s.created_at) >= today
       ).length,
       averageResponseTime: 245, // Mock data
@@ -165,8 +161,8 @@ export async function GET(request: NextRequest) {
       { label: 'Đang xử lý', value: allSchedules.filter(s => s.status === 'processing').length, color: '#3B82F6' },
     ];
 
-    // Get real activity logs
-    const activityLogs = await db.getActivityLogs();
+    // Get real activity logs (pass userId for filtering)
+    const activityLogs = await db.getActivityLogs(userId);
     const activities: ActivityItem[] = activityLogs.map(log => ({
       id: log.id,
       type: log.type as ActivityItem['type'],

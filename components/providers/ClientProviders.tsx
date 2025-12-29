@@ -3,6 +3,8 @@
 import { ReactNode } from 'react';
 import { SupabaseAuthProvider } from '@/lib/auth/SupabaseAuthProvider';
 import { SettingsProvider } from '@/lib/contexts/settings-context';
+import { ReactQueryProvider } from '@/lib/providers/ReactQueryProvider';
+import { Toaster } from '@/components/ui/toaster';
 
 interface ClientProvidersProps {
   children: ReactNode;
@@ -10,11 +12,14 @@ interface ClientProvidersProps {
 
 export function ClientProviders({ children }: ClientProvidersProps) {
   return (
-    <SupabaseAuthProvider>
-      <SettingsProvider>
-        {children}
-      </SettingsProvider>
-    </SupabaseAuthProvider>
+    <ReactQueryProvider>
+      <SupabaseAuthProvider>
+        <SettingsProvider>
+          {children}
+          <Toaster />
+        </SettingsProvider>
+      </SupabaseAuthProvider>
+    </ReactQueryProvider>
   );
 }
 

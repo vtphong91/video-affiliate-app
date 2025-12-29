@@ -14,6 +14,7 @@ interface ReviewPreviewProps {
   affiliateLinks: AffiliateLink[];
   customTitle?: string;
   customContent?: string | null; // ✅ NEW: Add custom content prop
+  reviewId?: string; // For click tracking
 }
 
 export function ReviewPreview({
@@ -22,8 +23,46 @@ export function ReviewPreview({
   affiliateLinks,
   customTitle,
   customContent, // ✅ NEW
+  reviewId,
 }: ReviewPreviewProps) {
   const title = customTitle || videoInfo.title;
+
+  // Handle affiliate link click with tracking
+  const handleAffiliateClick = async (link: AffiliateLink, e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Only track if we have reviewId and affSid (tracking enabled)
+    if (!reviewId || !link.affSid) {
+      return; // Let default link behavior happen
+    }
+
+    e.preventDefault();
+
+    try {
+      // Track click
+      const response = await fetch('/api/affiliate-links/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reviewId,
+          affSid: link.affSid,
+          referrer: document.referrer || window.location.href
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.redirectUrl) {
+        // Redirect to tracking URL
+        window.open(data.redirectUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        // Fallback to direct link
+        window.open(link.trackingUrl || link.url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('Click tracking failed:', error);
+      // Fallback to direct link
+      window.open(link.trackingUrl || link.url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   // Show custom content if it exists and is substantial (template mode)
   const hasCustomContent = customContent && customContent.length > 100;
@@ -209,7 +248,8 @@ export function ReviewPreview({
                   variant={index === 0 ? 'default' : 'outline'}
                 >
                   <a
-                    href={link.url}
+                    href={link.trackingUrl || link.url}
+                    onClick={(e) => handleAffiliateClick(link, e)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

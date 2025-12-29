@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase, supabaseAdmin } from '@/lib/db/supabase';
+import { supabaseBrowser as supabase } from '@/lib/auth/supabase-browser';
 
 interface UserProfile {
   id: string;
@@ -41,7 +41,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   
         // Cache for user profile to avoid repeated fetches
         const profileCache = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
-        const CACHE_DURATION = 120000; // 2 minutes cache for better performance
+        const CACHE_DURATION = 900000; // 15 minutes cache (optimized from 2 min)
 
   // Force clear loading state if stuck
   useEffect(() => {
@@ -63,8 +63,30 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       // Don't set user to null on timeout - let the session refresh logic handle it
       // Only set loading to false to prevent infinite loading
     }, 5000); // Reduced timeout to 5 seconds for faster response
-    
+
     return () => clearTimeout(initialTimeout);
+  }, []);
+
+  // Auto-refresh token every 6 hours to maintain 7-day session
+  useEffect(() => {
+    const refreshInterval = setInterval(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log('🔄 Auto-refreshing session token...');
+          const { data, error } = await supabase.auth.refreshSession();
+          if (error) {
+            console.error('❌ Failed to refresh session:', error);
+          } else {
+            console.log('✅ Session refreshed successfully');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error in auto-refresh:', error);
+      }
+    }, 6 * 60 * 60 * 1000); // 6 hours in milliseconds
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   // Initialize auth state
@@ -173,36 +195,36 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // Create a timeout promise - reduced to 5 seconds for faster response
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      // Create a timeout promise - increased to 15 seconds for better reliability
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 15000)
       );
-      
+
       // Create the profile fetch promise with better error handling
-      const profilePromise = supabaseAdmin
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single()
         .then((result) => {
-          console.log('🔍 SupabaseAuthProvider: Profile query completed:', { 
-            hasData: !!result.data, 
+          console.log('🔍 SupabaseAuthProvider: Profile query completed:', {
+            hasData: !!result.data,
             error: result.error?.message,
             dataKeys: result.data ? Object.keys(result.data) : null
           });
           return result;
         });
-      
+
       // Race between profile fetch and timeout
       const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
 
       if (error) {
         console.error('❌ SupabaseAuthProvider: Profile query error:', error);
         
-        // Retry logic for network errors with shorter delay
+        // Retry logic for network errors
         if (retryCount < MAX_RETRIES && (error.message.includes('timeout') || error.message.includes('network'))) {
           console.log(`🔄 SupabaseAuthProvider: Retrying profile fetch (${retryCount + 1}/${MAX_RETRIES})`);
-          await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1))); // Shorter delay
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // 1-2 second delay
           return fetchUserProfile(userId, retryCount + 1);
         }
         
@@ -244,10 +266,10 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('❌ SupabaseAuthProvider: Exception in fetchUserProfile:', error);
       
-      // Retry logic for exceptions with shorter delay
+      // Retry logic for exceptions
       if (retryCount < MAX_RETRIES) {
         console.log(`🔄 SupabaseAuthProvider: Retrying profile fetch after exception (${retryCount + 1}/${MAX_RETRIES})`);
-        await new Promise(resolve => setTimeout(resolve, 200)); // Very short delay
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
         return fetchUserProfile(userId, retryCount + 1);
       }
       

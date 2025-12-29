@@ -38,7 +38,22 @@
       "Bash(killall:*)",
       "Bash(timeout 15 bash:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File kill-all-node.ps1)",
-      "Bash(timeout 10 bash:*)"
+      "Bash(timeout 10 bash:*)",
+      "Bash(if not exist \"components\\\\admin\" mkdir \"components\\\\admin\")",
+      "Bash(if exist .next rd /s /q .next)",
+      "Bash(node test-auth-debug.js:*)",
+      "Bash(node upgrade-to-admin.js:*)",
+      "Bash(timeout 20 bash:*)",
+      "Bash(ls:*)",
+      "Bash(rd /s /q .next)",
+      "Bash(python -m json.tool:*)",
+      "Bash(python:*)",
+      "Bash(tasklist:*)",
+      "Bash(node test-missing-review.js:*)",
+      "Bash(powershell -Command \"Get-Process node | Stop-Process -Force\")",
+      "Bash(echo:*)",
+      "Bash(if exist nul del nul)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []

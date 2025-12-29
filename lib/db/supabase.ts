@@ -37,13 +37,25 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your_supabase') ||
   supabaseAdmin = supabase;
 } else {
   console.log('✅ Supabase configured, creating real client');
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
-  
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      // Session expires after 7 days of inactivity
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+
   // Server-side client with service role (fallback to anon key if service role not available)
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (serviceRoleKey && !serviceRoleKey.includes('your_supabase')) {
     console.log('✅ Creating admin client with service role');
-    supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false, // Admin client doesn't need session persistence
+        autoRefreshToken: false,
+      },
+    });
   } else {
     console.warn('⚠️ Service role key not configured, using anon key for admin client');
     supabaseAdmin = supabase; // Use same client as fallback
@@ -939,9 +951,17 @@ export const db = {
 
   async incrementTemplateUsage(templateId: string) {
     try {
+      // Get current usage count first
+      const { data: currentData } = await supabaseAdmin
+        .from('prompt_templates')
+        .select('usage_count')
+        .eq('id', templateId)
+        .single();
+
+      // Increment usage count
       const { error } = await supabaseAdmin
         .from('prompt_templates')
-        .update({ usage_count: supabaseAdmin.raw('usage_count + 1') })
+        .update({ usage_count: (currentData?.usage_count || 0) + 1 })
         .eq('id', templateId);
 
       if (error) {

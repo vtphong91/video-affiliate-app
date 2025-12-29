@@ -4,43 +4,60 @@
  */
 
 import { NextRequest } from 'next/server';
-import { supabase, supabaseAdmin } from '@/lib/db/supabase';
+import { supabaseAdmin } from '@/lib/db/supabase';
+import { createServerClient } from '@supabase/ssr';
 
 /**
- * Get user ID from request headers or session (optimized version)
+ * Get user ID from request using Supabase SSR (correct method for API routes)
  */
 export async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
   try {
     // Method 1: Try to get from headers first (fastest)
     const userIdFromHeader = request.headers.get('x-user-id');
     if (userIdFromHeader) {
+      console.log('✅ Got user ID from header:', userIdFromHeader);
       return userIdFromHeader;
     }
 
-    // Method 2: Try to get from Supabase cookies (correct cookie names)
-    // Supabase stores auth in cookies with project-specific names
-    // Format: sb-{project-ref}-auth-token
-    const cookies = request.cookies;
-    const authTokenCookie = cookies.getAll().find(cookie =>
-      cookie.name.includes('auth-token') && cookie.name.startsWith('sb-')
+    // Method 2: Use Supabase SSR to get user from cookies (correct way)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('❌ Supabase credentials not configured');
+      return null;
+    }
+
+    // Create Supabase client for server-side with proper cookie handling
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value;
+          },
+          set() {
+            // No-op for API routes (can't set cookies in response here)
+          },
+          remove() {
+            // No-op for API routes
+          },
+        },
+      }
     );
 
-    if (authTokenCookie) {
-      try {
-        // Parse the auth token cookie value (it's a JSON string)
-        const authData = JSON.parse(authTokenCookie.value);
+    console.log('🔐 Getting session from Supabase...');
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        if (authData.access_token) {
-          // Use supabaseAdmin for server-side token verification in API routes
-          const { data, error } = await supabaseAdmin.auth.getUser(authData.access_token);
+    if (sessionError) {
+      console.error('❌ Session error:', sessionError.message);
+      return null;
+    }
 
-          if (!error && data.user) {
-            return data.user.id;
-          }
-        }
-      } catch (error) {
-        // Cookie auth failed, try next method
-      }
+    if (session?.user) {
+      console.log('✅ Got user from Supabase session:', session.user.id);
+      return session.user.id;
     }
 
     // Method 3: Try Bearer token (fallback)
@@ -48,20 +65,22 @@ export async function getUserIdFromRequest(request: NextRequest): Promise<string
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       try {
-        // Use supabaseAdmin for server-side token verification
+        console.log('🔐 Trying Bearer token...');
         const { data, error } = await supabaseAdmin.auth.getUser(token);
 
         if (!error && data.user) {
+          console.log('✅ Got user from Bearer token:', data.user.id);
           return data.user.id;
         }
       } catch (error) {
-        // Bearer token auth failed
+        console.error('❌ Bearer token error:', error);
       }
     }
 
+    console.log('❌ No valid authentication method found');
     return null;
   } catch (error) {
-    console.error('Error getting user ID from request:', error);
+    console.error('❌ Error getting user ID from request:', error);
     return null;
   }
 }
@@ -113,7 +132,7 @@ export async function getUserRoleFromRequest(request: NextRequest): Promise<stri
     // Method 2: Try to get from user profile
     const userId = await getUserIdFromRequest(request);
     if (userId) {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('user_profiles')
         .select('role')
         .eq('id', userId)
