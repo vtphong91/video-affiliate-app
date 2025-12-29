@@ -173,9 +173,9 @@ export default function EditReviewPage() {
           description: `Trạng thái đã được chuyển sang ${newStatus === 'published' ? 'Xuất bản' : 'Nháp'}. Đang chuyển về trang danh sách...`,
         });
 
-        // ✅ Redirect về trang Reviews với refresh parameter để force reload
+        // ✅ Force full page reload to clear ALL caches
         setTimeout(() => {
-          router.push('/dashboard/reviews?refresh=' + Date.now());
+          window.location.href = '/dashboard/reviews';
         }, 1000);
       } else {
         throw new Error(data.error || 'Không thể cập nhật status');

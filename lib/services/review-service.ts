@@ -35,17 +35,18 @@ export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCa
 
   const supabaseAdmin = getFreshAdminClient();
 
-  // ✅ USE RPC FUNCTION to bypass Supabase JS SDK limits
-  console.log('🔄 Using RPC function get_user_reviews...');
+  // ✅ USE RPC FUNCTION - Supabase connection issue with direct queries
+  const timestamp = Date.now();
+  console.log(`🔄 Using RPC get_user_reviews... (ts: ${timestamp})`);
 
   const { data: reviews, error } = await supabaseAdmin
     .rpc('get_user_reviews', { p_user_id: userId });
 
-  console.log(`📥 [RPC QUERY] Returned ${reviews?.length || 0} reviews`);
+  console.log(`📥 [RPC] Returned ${reviews?.length || 0} reviews`);
 
   if (error) {
     console.error('❌ Error from RPC:', error);
-    throw new Error(`Failed to fetch reviews via RPC: ${error.message}`);
+    throw new Error(`Failed to fetch reviews: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
@@ -53,21 +54,17 @@ export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCa
     return [];
   }
 
-  // Sort by created_at
-  const sortedReviews = reviews.sort((a: any, b: any) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
-
+  // Already sorted by database
   // 📊 STATISTICS: Count by status
-  const draftCount = sortedReviews.filter((r: any) => r.status === 'draft').length;
-  const publishedCount = sortedReviews.filter((r: any) => r.status === 'published').length;
+  const draftCount = reviews.filter((r: any) => r.status === 'draft').length;
+  const publishedCount = reviews.filter((r: any) => r.status === 'published').length;
 
-  console.log(`✅ [ALL REVIEWS via RPC] Total: ${sortedReviews.length} reviews`);
-  console.log(`📊 [RPC STATISTICS] Draft: ${draftCount}, Published: ${publishedCount}`);
-  console.log(`📋 [FIRST 3] IDs:`, sortedReviews.slice(0, 3).map((r: any) => `${r.id.substring(0, 8)}... (${r.status})`));
+  console.log(`✅ [ALL REVIEWS] Total: ${reviews.length} reviews`);
+  console.log(`📊 [STATISTICS] Draft: ${draftCount}, Published: ${publishedCount}`);
+  console.log(`📋 [FIRST 3] IDs:`, reviews.slice(0, 3).map((r: any) => `${r.id.substring(0, 8)}... (${r.status})`));
 
   // Fetch categories separately
-  const categoryIds = [...new Set(sortedReviews.map((r: any) => r.category_id).filter(Boolean))];
+  const categoryIds = [...new Set(reviews.map((r: any) => r.category_id).filter(Boolean))];
   let categoriesMap = new Map();
 
   if (categoryIds.length > 0) {
@@ -82,7 +79,7 @@ export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCa
   }
 
   // Map categories to reviews
-  const reviewsWithCategories = sortedReviews.map((review: any) => ({
+  const reviewsWithCategories = reviews.map((review: any) => ({
     ...review,
     categories: review.category_id ? categoriesMap.get(review.category_id) : null
   }));
@@ -103,8 +100,9 @@ export async function getReviewsByStatus(
 
   const supabaseAdmin = getFreshAdminClient();
 
-  // ✅ USE RPC FUNCTION to bypass Supabase JS SDK limits
-  console.log(`🔄 Using RPC function get_user_reviews_by_status...`);
+  // ✅ USE RPC FUNCTION - Supabase connection issue with direct queries
+  const timestamp = Date.now();
+  console.log(`🔄 Using RPC get_user_reviews_by_status... (ts: ${timestamp})`);
 
   const { data: reviews, error } = await supabaseAdmin
     .rpc('get_user_reviews_by_status', {
@@ -115,7 +113,7 @@ export async function getReviewsByStatus(
   console.log(`📥 [RPC ${status.toUpperCase()}] Returned ${reviews?.length || 0} reviews`);
 
   if (error) {
-    console.error(`❌ [RPC] Error fetching ${status} reviews:`, error);
+    console.error(`❌ Error fetching ${status} reviews:`, error);
     throw new Error(`Failed to fetch ${status} reviews: ${error.message}`);
   }
 
