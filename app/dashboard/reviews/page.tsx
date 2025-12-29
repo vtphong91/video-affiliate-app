@@ -26,6 +26,9 @@ function ReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  // Status filter state
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -46,16 +49,19 @@ function ReviewsPage() {
     try {
       setLoading(true);
 
-      console.log('🔍 ReviewsPage: Fetching reviews for page', page);
+      console.log('🔍 ReviewsPage: Fetching reviews for page', page, 'with status filter:', statusFilter);
+
+      // Build URL with status filter
+      let url = `/api/reviews?page=${page}&limit=${itemsPerPage}&t=${Date.now()}`;
+      if (statusFilter !== 'all') {
+        url += `&status=${statusFilter}`;
+      }
 
       // ✅ DISABLE CACHE - Always fetch fresh data
-      const response = await fetch(
-        `/api/reviews?page=${page}&limit=${itemsPerPage}&t=${Date.now()}`,
-        {
-          headers,
-          cache: 'no-store',
-        }
-      );
+      const response = await fetch(url, {
+        headers,
+        cache: 'no-store',
+      });
 
       const data = await response.json();
 
@@ -69,7 +75,7 @@ function ReviewsPage() {
     } finally {
       setLoading(false);
     }
-  }, [headers, itemsPerPage]);
+  }, [headers, itemsPerPage, statusFilter]);
 
   // ✅ Detect refresh parameter from URL (when navigating from create page)
   useEffect(() => {
@@ -81,6 +87,17 @@ function ReviewsPage() {
       fetchReviews(currentPage, true);
     }
   }, [searchParams, userId, headers, currentPage, fetchReviews]);
+
+  // ✅ Re-fetch when status filter changes (reset to page 1)
+  useEffect(() => {
+    if (userId && headers['x-user-id']) {
+      console.log('🔄 Status filter changed to:', statusFilter);
+      setCurrentPage(1); // Reset to page 1
+      invalidateCache(/\/api\/reviews/);
+      fetchReviews(1, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, userId, headers]);
 
   // ✅ FIX: Wait for both userId AND headers to be ready
   useEffect(() => {
@@ -238,6 +255,40 @@ function ReviewsPage() {
             Tạo Mới
           </Button>
         </Link>
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            statusFilter === 'all'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Tất cả
+        </button>
+        <button
+          onClick={() => setStatusFilter('published')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            statusFilter === 'published'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Đã xuất bản
+        </button>
+        <button
+          onClick={() => setStatusFilter('draft')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            statusFilter === 'draft'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Bản nháp
+        </button>
       </div>
 
       {/* Reviews List */}
