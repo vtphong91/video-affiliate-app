@@ -63,7 +63,20 @@
       "Bash(timeout 3 bash:*)",
       "Bash(node debug-missing-review.js:*)",
       "Bash(node check-schedule.js:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git checkout:*)",
+      "Bash(npx tsx:*)",
+      "Bash(git diff:*)",
+      "Bash(timeout 30 bash:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File clear-all-cache.ps1)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(for file in app/api/debug-reviews-diff/route.ts app/api/categories/route.ts app/api/create-review/route.ts app/api/debug-category/route.ts app/api/debug-single-review/route.ts app/api/manual-cron/route.ts app/api/post-facebook/route.ts app/api/schedules/route.ts app/api/schedules-fast/route.ts app/api/templates/route.ts app/api/test-fresh-client/route.ts app/api/test-reviews-count/route.ts app/api/test-tabs/route.ts)",
+      "Bash(do)",
+      "Bash(if ! head -n 1 \"$file\")",
+      "Bash(tee:*)",
+      "Bash(for file in lib/affiliate/services/*.ts)",
+      "Bash(if ! head -1 \"$file\")"
     ],
     "deny": [],
     "ask": []

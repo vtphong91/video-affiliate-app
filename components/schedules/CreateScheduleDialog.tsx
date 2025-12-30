@@ -13,7 +13,6 @@ import type { Review } from '@/types';
 import { createTimestampFromDatePicker, debugTimezone } from '@/lib/utils/timezone-utils';
 import { formatFacebookPost } from '@/lib/apis/facebook';
 import { supabaseBrowser as supabase } from '@/lib/auth/supabase-browser';
-import { invalidateCache } from '@/lib/utils/request-cache';
 
 interface CreateScheduleDialogProps {
   open: boolean;
@@ -73,10 +72,6 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
     console.log('🔍 CreateScheduleDialog: useEffect triggered, open:', open);
     if (open) {
       console.log('🔍 CreateScheduleDialog: Opening dialog, force refreshing reviews');
-      // ✅ Clear cache before fetching to ensure fresh data
-      console.log('🗑️ Clearing cache for reviews and used-review-ids');
-      invalidateCache(/\/api\/reviews-fast/);
-      invalidateCache(/\/api\/schedules\/used-review-ids/);
       // Always force refresh when opening to get latest used review IDs
       fetchReviews(true);
     } else {
@@ -89,7 +84,7 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
   const fetchReviews = async (forceRefresh = false) => {
     try {
       setReviewsLoading(true);
-      console.log('🔍 CreateScheduleDialog: Fetching reviews... (forceRefresh:', forceRefresh, ')');
+      console.log('🔍 [UNSCHEDULED ENDPOINT] CreateScheduleDialog: Fetching unscheduled reviews... (forceRefresh:', forceRefresh, ')');
 
       // Get authentication session
       const { data: { session } } = await supabase.auth.getSession();
@@ -114,11 +109,11 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
         role: session.user.user_metadata?.role
       });
 
-      // Add cache-busting timestamp if force refresh
-      const cacheBuster = forceRefresh ? `?t=${Date.now()}` : '';
+      // ✅ ALWAYS use cache-busting timestamp to prevent browser cache
+      const cacheBuster = `?t=${Date.now()}`;
 
-      // ✅ Fetch reviews - API already excludes scheduled reviews
-      const reviewsResponse = await fetch(`/api/reviews-fast${cacheBuster}`, {
+      // ✅ FINAL FIX: Use reviews-unscheduled endpoint (complete rewrite, schedules query first)
+      const reviewsResponse = await fetch(`/api/reviews-unscheduled${cacheBuster}`, {
         cache: 'no-store',
         headers
       });
@@ -160,9 +155,9 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     console.log('📝 Form data before submit:', formData);
-    
+
     if (!formData.reviewId) {
       toast({
         title: 'Lỗi',
@@ -171,7 +166,7 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
       });
       return;
     }
-    
+
     if (!formData.scheduledFor || isNaN(formData.scheduledFor.getTime())) {
       toast({
         title: 'Lỗi',
@@ -190,6 +185,33 @@ export function CreateScheduleDialog({ open, onOpenChange, onSubmit }: CreateSch
         variant: 'destructive',
       });
       return;
+    }
+
+    // ✅ VALIDATE: Check if review has already been scheduled (prevent race condition)
+    console.log('🔍 Validating review is not already scheduled...');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: existingSchedules } = await supabase
+          .from('schedules')
+          .select('id, status')
+          .eq('review_id', formData.reviewId)
+          .limit(1);
+
+        if (existingSchedules && existingSchedules.length > 0) {
+          console.log('❌ Review already has schedule:', existingSchedules[0]);
+          toast({
+            title: 'Không thể tạo lịch',
+            description: `Review này đã có lịch đăng bài (${existingSchedules[0].status}). Vui lòng chọn review khác hoặc làm mới danh sách.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+        console.log('✅ Review validation passed - no existing schedules');
+      }
+    } catch (validationError) {
+      console.error('⚠️ Validation error:', validationError);
+      // Continue anyway if validation fails
     }
 
     setLoading(true);

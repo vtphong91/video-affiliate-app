@@ -147,7 +147,7 @@ export default function EditReviewPage() {
     }
   };
 
-  // ✅ Hàm riêng để update CHỈ status - chuẩn nhất!
+  // ✅ Hàm riêng để update CHỈ status - KHÔNG redirect
   const updateStatus = async (newStatus: 'draft' | 'published') => {
     console.log('🟢 [UPDATE STATUS] Called with:', newStatus);
     try {
@@ -168,15 +168,16 @@ export default function EditReviewPage() {
       console.log('🟢 [UPDATE STATUS] Response data:', data);
 
       if (data.success) {
+        // ✅ UPDATE LOCAL STATE to reflect new status
+        setStatus(newStatus);
+
         toast({
           title: '✅ Cập nhật thành công!',
-          description: `Trạng thái đã được chuyển sang ${newStatus === 'published' ? 'Xuất bản' : 'Nháp'}. Đang chuyển về trang danh sách...`,
+          description: `Trạng thái đã được chuyển sang ${newStatus === 'published' ? 'Xuất bản' : 'Nháp'}`,
         });
 
-        // ✅ Force full page reload to clear ALL caches
-        setTimeout(() => {
-          window.location.href = '/dashboard/reviews';
-        }, 1000);
+        // ✅ BỎ redirect - giữ user ở trang edit
+        // User có thể tiếp tục chỉnh sửa hoặc tự click "Quay lại"
       } else {
         throw new Error(data.error || 'Không thể cập nhật status');
       }

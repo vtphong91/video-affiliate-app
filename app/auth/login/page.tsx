@@ -11,7 +11,6 @@ import { LoginForm } from '@/components/auth/forms/LoginForm';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { ClientProviders } from '@/components/providers/ClientProviders';
-import { clearSupabaseCache } from '@/lib/utils/clear-cache';
 import { Button } from '@/components/ui/button';
 
 function LoginPageContent() {
@@ -71,7 +70,29 @@ function LoginPageForm() {
 
   // Handle clear cache
   const handleClearCache = () => {
-    clearSupabaseCache();
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.includes('supabase') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // Clear sessionStorage
+      const sessionKeys = Object.keys(sessionStorage);
+      sessionKeys.forEach(key => {
+        if (key.includes('supabase') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+
+      // Clear cookies
+      document.cookie.split(";").forEach(function(c) {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    }
+
     toast({
       title: "Cache Cleared",
       description: "Supabase cache and cookies have been cleared. Please try logging in again.",

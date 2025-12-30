@@ -12,7 +12,6 @@ import { withUserRoute } from '@/lib/auth/middleware/route-protection';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
 import { useAuthHeaders } from '@/lib/hooks/useAuthHeaders';
-import { cachedFetch, invalidateCache, clearCache } from '@/lib/utils/request-cache';
 import { SkeletonGrid, ReviewCardSkeleton } from '@/components/ui/skeleton';
 import type { Review } from '@/types';
 
@@ -38,13 +37,10 @@ function ReviewsPage() {
   // ✅ FIX: Use user?.id instead of user object to prevent unnecessary re-fetches
   const userId = user?.id;
 
-  // ✅ Clear ALL cache on component mount (one-time on page load)
-  useEffect(() => {
-    console.log('🗑️ ReviewsPage: Clearing ALL cache on mount to ensure fresh data');
-    clearCache();
-  }, []); // Empty deps = run once on mount
+  // ✅ Refresh trigger to force re-fetch when navigating back from create page
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Fetch reviews WITHOUT caching to ensure fresh data
+  // Fetch reviews - always fresh data, no caching
   const fetchReviews = useCallback(async (page: number, force = false) => {
     try {
       setLoading(true);
@@ -82,57 +78,27 @@ function ReviewsPage() {
     const refreshParam = searchParams.get('refresh');
     if (refreshParam && userId && headers['x-user-id']) {
       console.log('🔄 Refresh parameter detected - forcing data reload');
-      invalidateCache(/\/api\/reviews/);
-      clearCache();
-      fetchReviews(currentPage, true);
+      setRefreshTrigger(prev => prev + 1); // Trigger re-fetch
     }
-  }, [searchParams, userId, headers, currentPage, fetchReviews]);
+  }, [searchParams, userId, headers]);
 
-  // ✅ Re-fetch when status filter changes (reset to page 1)
+  // ✅ Main effect: Fetch when page, status filter, auth, or refresh trigger changes
   useEffect(() => {
-    if (userId && headers['x-user-id']) {
-      console.log('🔄 Status filter changed to:', statusFilter);
-      setCurrentPage(1); // Reset to page 1
-      invalidateCache(/\/api\/reviews/);
-      fetchReviews(1, true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, userId, headers]);
-
-  // ✅ FIX: Wait for both userId AND headers to be ready
-  useEffect(() => {
-    // Check if headers contain user ID (means auth is ready)
     const hasAuthHeaders = headers['x-user-id'] !== undefined;
 
     if (userId && hasAuthHeaders) {
-      console.log('🔍 ReviewsPage: User ID and headers ready, fetching reviews for page:', currentPage);
-      // ✅ FORCE CLEAR old cache on mount to ensure fresh data after cache key fix
-      invalidateCache(/\/api\/reviews/);
-      fetchReviews(currentPage, true); // Force refresh on first load
-    } else {
-      console.log('🔍 ReviewsPage: Waiting for auth...', { userId, hasAuthHeaders });
-      if (!userId) {
-        setLoading(false);
-      }
+      console.log('🔍 ReviewsPage: Fetching reviews - page:', currentPage, 'filter:', statusFilter, 'refreshTrigger:', refreshTrigger);
+      fetchReviews(currentPage, true);
+    } else if (!userId) {
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, userId, headers]);
+  }, [currentPage, statusFilter, userId, headers, refreshTrigger]);
 
-  // ✅ Prefetch next page on mount
+  // ✅ When status filter changes, reset to page 1
   useEffect(() => {
-    if (currentPage < totalPages && headers['x-user-id']) {
-      // Prefetch next page in background
-      const timer = setTimeout(() => {
-        console.log('🔮 Prefetching next page:', currentPage + 1);
-        cachedFetch(
-          `/api/reviews?page=${currentPage + 1}&limit=${itemsPerPage}`,
-          { headers, ttl: 60000 }
-        ).catch(() => {}); // Silently fail
-      }, 1000); // Delay 1 second
-
-      return () => clearTimeout(timer);
-    }
-  }, [currentPage, totalPages, headers, itemsPerPage]);
+    setCurrentPage(1);
+  }, [statusFilter]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Bạn có chắc muốn xóa review này?')) return;
@@ -147,9 +113,6 @@ function ReviewsPage() {
 
       if (response.ok) {
         console.log('✅ Review deleted successfully');
-
-        // ✅ Invalidate cache for reviews
-        invalidateCache(/\/api\/reviews/);
 
         // Check if we need to go back a page (if this was the last item on current page)
         const remainingItems = reviews.length - 1;
@@ -171,13 +134,13 @@ function ReviewsPage() {
     }
   };
 
-  // ✅ Prefetch next page on hover
+  // Prefetch next page on hover (removed caching - just fetch normally)
   const prefetchNextPage = useCallback(() => {
     if (currentPage < totalPages && headers['x-user-id']) {
-      cachedFetch(
-        `/api/reviews?page=${currentPage + 1}&limit=${itemsPerPage}`,
-        { headers, ttl: 60000 }
-      ).catch(() => {});
+      fetch(`/api/reviews?page=${currentPage + 1}&limit=${itemsPerPage}`, {
+        headers,
+        cache: 'no-store',
+      }).catch(() => {});
     }
   }, [currentPage, totalPages, headers, itemsPerPage]);
 

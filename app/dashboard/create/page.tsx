@@ -20,7 +20,6 @@ import { withUserRoute } from '@/lib/auth/middleware/route-protection';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
 import { supabaseBrowser as supabase } from '@/lib/auth/supabase-browser';
-import { invalidateCache } from '@/lib/utils/request-cache';
 import type { VideoInfo, AIAnalysis, AffiliateLink, Category, PromptTemplate } from '@/types';
 
 type CreateStep = 'analyze' | 'template' | 'configure' | 'edit' | 'preview';
@@ -239,13 +238,6 @@ function CreateReviewPage() {
 
       const data = await response.json();
       setSavedReview({ id: data.review.id, slug: data.review.slug });
-
-      // ✅ Invalidate ALL reviews-related caches để trang Reviews và dropdown hiển thị review mới
-      console.log('🗑️ Invalidating ALL reviews caches after creating new review');
-      invalidateCache(/\/api\/reviews/); // Admin reviews page
-      invalidateCache(/\/api\/reviews-fast/); // Dropdown tạo lịch
-      invalidateCache(/\/api\/reviews-public/); // Public reviews page
-      invalidateCache(/\/api\/dashboard\/stats/); // Dashboard statistics
 
       toast({
         title: 'Lưu thành công!',
