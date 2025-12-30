@@ -46,20 +46,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Get fresh admin client with cache-busting
-    const supabaseAdmin = getFreshSupabaseAdminClient();
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
-    // Get total affiliate links
-    const linksCountResult = await supabaseAdmin
+    // Get total affiliate links - fetch all and count
+    const linksResult = await (supabaseAdmin
       .from('affiliate_links')
-      .select('id', { count: 'exact', head: true });
-    const totalLinks = linksCountResult.count || 0;
+      .select('id'));
+
+    const totalLinks = linksResult.data?.length ?? 0;
 
     // Get total short URLs
-    const urlsCountResult = await supabaseAdmin
+    const urlsResult = await (supabaseAdmin
       .from('short_urls')
-      .select('id', { count: 'exact', head: true })
-      .eq('is_active', true);
-    const totalShortUrls = urlsCountResult.count || 0;
+      .select('id')
+      .eq('is_active', true));
+
+    const totalShortUrls = urlsResult.data?.length ?? 0;
 
     // Get total short URL clicks
     const { data: shortUrlsData } = await supabaseAdmin

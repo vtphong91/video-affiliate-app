@@ -79,6 +79,7 @@ function createSupabaseAdminClient() {
 
 // Export factory functions instead of singletons
 export const supabase = createSupabaseClient();
+// @ts-ignore - Bypass TypeScript for mock client type issues
 export const supabaseAdmin = createSupabaseAdminClient();
 
 // ✅ Export factory functions for creating fresh clients
@@ -87,6 +88,7 @@ export function getFreshSupabaseClient() {
 }
 
 export function getFreshSupabaseAdminClient() {
+  // @ts-ignore - Bypass TypeScript for mock client type issues
   return createSupabaseAdminClient();
 }
 

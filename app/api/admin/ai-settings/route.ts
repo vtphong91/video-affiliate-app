@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +10,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     console.log('📊 Fetching AI provider settings...');
+
+    // Get fresh admin client with cache-busting
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     // Get all provider settings with status
     const { data: providers, error } = await supabaseAdmin
@@ -77,6 +80,9 @@ export async function PUT(request: NextRequest) {
         error: 'Provider name is required'
       }, { status: 400 });
     }
+
+    // Get fresh admin client
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     // Update provider settings
     const { data, error } = await supabaseAdmin
