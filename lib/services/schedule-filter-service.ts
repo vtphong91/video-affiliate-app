@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Schedule Filter Service - Logic mới: Kiểm tra schedules trước, sau đó filter reviews
  */

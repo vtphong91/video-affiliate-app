@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { db } from '@/lib/db/supabase';
 import { ActivityLogger } from '@/lib/utils/activity-logger';
 

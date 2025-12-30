@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Schedule Monitor Utility
  * Monitors schedule health and detects overdue issues

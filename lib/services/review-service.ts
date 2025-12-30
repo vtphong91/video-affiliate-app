@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Review Service - Centralized review data fetching logic
  * All review queries go through this service

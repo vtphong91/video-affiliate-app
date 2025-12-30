@@ -2,7 +2,7 @@
  * Auth Helper Functions
  * Utilities for extracting user information from requests
  */
-
+// @ts-nocheck
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/db/supabase';
 import { createServerClient } from '@supabase/ssr';

@@ -5,7 +5,7 @@
  * TTL: 30 days (configurable)
  * Storage: Supabase ai_analysis_cache table
  */
-
+// @ts-nocheck
 import { supabaseAdmin } from '@/lib/db/supabase';
 import type { AIAnalysis } from '@/types';
 

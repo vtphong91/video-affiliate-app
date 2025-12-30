@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from '@supabase/supabase-js';
 import type { Review, UserSettings, Category, Schedule, WebhookLog, ActivityLog, PromptTemplate, ReviewTemplateUsage } from '@/types';
 

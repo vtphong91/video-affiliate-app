@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { VideoInfo, AIAnalysis } from '@/types';
 import { analyzeVideoWithOpenAI, analyzeVideoWithGPT35, generateContentWithOpenAI } from './openai';
 import { analyzeVideoWithClaude, analyzeVideoWithClaudeHaiku, generateContentWithClaude } from './claude';

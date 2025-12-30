@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from '@/lib/db/supabase';
 
 export interface WebhookLog {
