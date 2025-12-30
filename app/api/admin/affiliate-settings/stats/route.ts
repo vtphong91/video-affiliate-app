@@ -49,15 +49,17 @@ export async function GET(request: NextRequest) {
     const supabaseAdmin = getFreshSupabaseAdminClient();
 
     // Get total affiliate links
-    const { count: totalLinks } = await supabaseAdmin
+    const linksCountResult = await supabaseAdmin
       .from('affiliate_links')
       .select('id', { count: 'exact', head: true });
+    const totalLinks = linksCountResult.count || 0;
 
     // Get total short URLs
-    const { count: totalShortUrls } = await supabaseAdmin
+    const urlsCountResult = await supabaseAdmin
       .from('short_urls')
       .select('id', { count: 'exact', head: true })
       .eq('is_active', true);
+    const totalShortUrls = urlsCountResult.count || 0;
 
     // Get total short URL clicks
     const { data: shortUrlsData } = await supabaseAdmin
@@ -118,9 +120,9 @@ export async function GET(request: NextRequest) {
       : 0;
 
     const stats: AffiliateStats = {
-      totalLinks: totalLinks || 0,
+      totalLinks,
       totalClicks,
-      totalShortUrls: totalShortUrls || 0,
+      totalShortUrls,
       totalShortUrlClicks,
       clicksToday,
       conversionRate,
