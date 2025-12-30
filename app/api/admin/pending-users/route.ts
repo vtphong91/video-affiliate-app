@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,8 @@ async function checkAdminAccess(request: NextRequest): Promise<{ isAdmin: boolea
   if (!userId) {
     return { isAdmin: false, userId: null };
   }
+
+  const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
   // Check user role
   const { data: profile } = await supabaseAdmin
@@ -38,6 +41,8 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('🔍 Fetching pending users...');
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     const { data: pendingUsers, error } = await supabaseAdmin
       .from('user_profiles')

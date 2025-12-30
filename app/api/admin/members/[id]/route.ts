@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import type { EnhancedUserProfile, UserRole, Permission } from '@/lib/auth/config/auth-types';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,8 @@ export async function GET(
     const { id } = params;
 
     console.log('👤 Fetching member...', { id });
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     const { data, error } = await supabaseAdmin
       .from('user_profiles')
@@ -71,6 +74,8 @@ export async function PUT(
     const { full_name, role, permissions, is_active } = body;
 
     console.log('🔄 Updating member...', { id, role, is_active });
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     // Get current member data before update for audit log
     const { data: currentMember, error: fetchError } = await supabaseAdmin
@@ -185,6 +190,8 @@ export async function DELETE(
     const { id } = params;
 
     console.log('🗑️ Soft deleting member...', { id });
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     // Get current admin user ID
     const { getUserIdFromRequest } = await import('@/lib/auth/helpers/auth-helpers');

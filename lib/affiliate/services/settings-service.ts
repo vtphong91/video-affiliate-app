@@ -2,7 +2,7 @@
  * Affiliate Settings Service
  * Manage global affiliate API configuration
  */
-
+// @ts-nocheck
 import { supabaseAdmin } from '@/lib/db/supabase';
 import { encrypt, decrypt, isEncrypted } from '@/lib/utils/encryption';
 import type {

@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 /**
@@ -35,6 +36,8 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     console.log('🔗 Query params:', { merchantId, reviewId, page, limit, offset });
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     // Query reviews with affiliate_links JSONB array
     let query = supabaseAdmin

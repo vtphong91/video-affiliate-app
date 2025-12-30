@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
 
     console.log('📋 Params:', { status, excludeScheduled, limit, page });
+    console.log('🔍 [DEBUG] status type:', typeof status, '| value:', status, '| statusFilter will be:', status || undefined);
 
     // Get authenticated user ID
     const userId = await getUserIdFromRequest(request);

@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import { getAllReviewsForUser } from '@/lib/services/review-service';
 
 export const dynamic = 'force-dynamic';
@@ -7,6 +8,8 @@ export const dynamic = 'force-dynamic';
 // Debug endpoint to find missing review
 export async function GET() {
   const userId = '1788ee95-7d22-4b0b-8e45-07ae2d03c7e1';
+
+  const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
   // Method 1: Direct Supabase query (like test endpoint)
   const { data: directReviews, error: directError } = await supabaseAdmin

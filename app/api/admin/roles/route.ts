@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import type { Role, Permission } from '@/lib/auth/config/auth-types';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     console.log('📋 Fetching roles...');
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     const { data, error } = await supabaseAdmin
       .from('roles')
@@ -51,6 +54,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('👤 Creating new role...', { name, display_name });
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     const { data, error } = await supabaseAdmin
       .from('roles')

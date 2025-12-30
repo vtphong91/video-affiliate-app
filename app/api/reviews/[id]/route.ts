@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db/supabase';
 import { ActivityLogger } from '@/lib/utils/activity-logger';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
@@ -61,6 +62,15 @@ export async function DELETE(
     // Log activity
     if (userId) {
       await ActivityLogger.reviewDeleted(userId, reviewTitle, id);
+    }
+
+    // ✅ INVALIDATE CACHE: Force Next.js to regenerate cached routes
+    try {
+      revalidatePath('/dashboard/reviews');
+      revalidatePath('/api/reviews');
+      console.log('✅ [CACHE] Invalidated cache for /dashboard/reviews and /api/reviews');
+    } catch (cacheError) {
+      console.error('⚠️ [CACHE] Failed to invalidate cache:', cacheError);
     }
 
     // Return success with cache-control headers
@@ -126,6 +136,17 @@ export async function PATCH(
     // Log activity
     if (userId) {
       await ActivityLogger.reviewUpdated(userId, review.video_title, review.id);
+    }
+
+    // ✅ INVALIDATE CACHE: Force Next.js to regenerate cached routes
+    // This ensures the reviews list page shows updated data immediately
+    try {
+      revalidatePath('/dashboard/reviews');
+      revalidatePath('/api/reviews');
+      console.log('✅ [CACHE] Invalidated cache for /dashboard/reviews and /api/reviews');
+    } catch (cacheError) {
+      console.error('⚠️ [CACHE] Failed to invalidate cache:', cacheError);
+      // Don't fail the request if cache invalidation fails
     }
 
     return NextResponse.json({

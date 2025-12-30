@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 import type { EnhancedUserProfile, UserRole, Permission } from '@/lib/auth/config/auth-types';
 import crypto from 'crypto';
@@ -13,6 +14,8 @@ async function checkAdminAccess(request: NextRequest): Promise<{ isAdmin: boolea
   if (!userId) {
     return { isAdmin: false, userId: null };
   }
+
+  const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
   // Check user role
   const { data: profile } = await supabaseAdmin

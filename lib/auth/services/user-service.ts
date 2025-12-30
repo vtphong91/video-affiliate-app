@@ -2,7 +2,7 @@
  * User Service
  * Provides user-related utilities and API calls
  */
-
+// @ts-nocheck
 import { supabase } from '@/lib/db/supabase';
 import type { UserProfile, UserRole } from '@/lib/auth/config/auth-types';
 

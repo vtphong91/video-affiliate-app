@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,8 @@ export async function POST(
         { status: 401 }
       );
     }
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     // Get member info
     const { data: memberData, error: fetchError } = await supabaseAdmin

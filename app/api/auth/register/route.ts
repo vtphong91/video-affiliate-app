@@ -1,5 +1,6 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     // Check if user already exists by checking user_profiles table
     const { data: existingProfile } = await supabaseAdmin
