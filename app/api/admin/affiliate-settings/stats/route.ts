@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import { getUserIdFromRequest, getUserRoleFromRequest } from '@/lib/auth/helpers/auth-helpers';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +44,9 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Get fresh admin client with cache-busting
+    const supabaseAdmin = getFreshSupabaseAdminClient();
 
     // Get total affiliate links
     const { count: totalLinks } = await supabaseAdmin
