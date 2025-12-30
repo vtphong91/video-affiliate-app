@@ -3,21 +3,8 @@
  * All review queries go through this service
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 import type { Review } from '@/types';
-
-// ✅ Create fresh admin client each time to avoid stale connections
-function getFreshAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
 
 interface ReviewWithCategory extends Review {
   categories?: {
@@ -33,19 +20,23 @@ interface ReviewWithCategory extends Review {
 export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCategory[]> {
   console.log(`📥 Fetching ALL reviews for user: ${userId}`);
 
-  const supabaseAdmin = getFreshAdminClient();
+  // ✅ USE CENTRALIZED FRESH CLIENT with cache-busting headers
+  const supabaseAdmin = getFreshSupabaseAdminClient();
 
-  // ✅ USE RPC FUNCTION - Supabase connection issue with direct queries
+  // ✅ USE DIRECT QUERY - RPC function has caching issues
   const timestamp = Date.now();
-  console.log(`🔄 Using RPC get_user_reviews... (ts: ${timestamp})`);
+  console.log(`🔄 Using DIRECT QUERY with fresh client... (ts: ${timestamp})`);
 
   const { data: reviews, error } = await supabaseAdmin
-    .rpc('get_user_reviews', { p_user_id: userId });
+    .from('reviews')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
-  console.log(`📥 [RPC] Returned ${reviews?.length || 0} reviews`);
+  console.log(`📥 [DIRECT] Returned ${reviews?.length || 0} reviews`);
 
   if (error) {
-    console.error('❌ Error from RPC:', error);
+    console.error('❌ Error from direct query:', error);
     throw new Error(`Failed to fetch reviews: ${error.message}`);
   }
 
@@ -62,6 +53,14 @@ export async function getAllReviewsForUser(userId: string): Promise<ReviewWithCa
   console.log(`✅ [ALL REVIEWS] Total: ${reviews.length} reviews`);
   console.log(`📊 [STATISTICS] Draft: ${draftCount}, Published: ${publishedCount}`);
   console.log(`📋 [FIRST 3] IDs:`, reviews.slice(0, 3).map((r: any) => `${r.id.substring(0, 8)}... (${r.status})`));
+
+  // 🔍 DEBUG: Check if the specific draft reviews are present
+  const draftId1 = 'ebf7dcde-eeb0-46a0-997c-5d77f9f41128'; // MÁY XAY SINH TỐ
+  const draftId2 = 'c014b170-30fb-428b-8e66-e3a82cf1b48e'; // Nồi cơm điện
+  const hasDraft1 = reviews.some((r: any) => r.id === draftId1);
+  const hasDraft2 = reviews.some((r: any) => r.id === draftId2);
+  console.log(`🔍 [DEBUG] Contains draft ${draftId1.substring(0, 8)}...: ${hasDraft1 ? 'YES ✅' : 'NO ❌'}`);
+  console.log(`🔍 [DEBUG] Contains draft ${draftId2.substring(0, 8)}...: ${hasDraft2 ? 'YES ✅' : 'NO ❌'}`);
 
   // Fetch categories separately
   const categoryIds = [...new Set(reviews.map((r: any) => r.category_id).filter(Boolean))];
@@ -98,19 +97,28 @@ export async function getReviewsByStatus(
 ): Promise<ReviewWithCategory[]> {
   console.log(`📥 Fetching ${status} reviews for user: ${userId}`);
 
-  const supabaseAdmin = getFreshAdminClient();
+  const supabaseAdmin = getFreshSupabaseAdminClient();
 
-  // ✅ USE RPC FUNCTION - Supabase connection issue with direct queries
+  // ✅ USE DIRECT QUERY - RPC function has caching issues
   const timestamp = Date.now();
-  console.log(`🔄 Using RPC get_user_reviews_by_status... (ts: ${timestamp})`);
+  console.log(`🔄 Using DIRECT QUERY for ${status}... (ts: ${timestamp})`);
 
   const { data: reviews, error } = await supabaseAdmin
-    .rpc('get_user_reviews_by_status', {
-      p_user_id: userId,
-      p_status: status
-    });
+    .from('reviews')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', status)
+    .order('created_at', { ascending: false });
 
-  console.log(`📥 [RPC ${status.toUpperCase()}] Returned ${reviews?.length || 0} reviews`);
+  console.log(`📥 [DIRECT ${status.toUpperCase()}] Returned ${reviews?.length || 0} reviews`);
+
+  // 🔍 DEBUG: Log all review IDs to find which ones are missing
+  if (reviews && reviews.length > 0) {
+    console.log('🔍 [DEBUG] All returned review IDs:');
+    reviews.forEach((r: any, i: number) => {
+      console.log(`   ${i + 1}. ${r.id} - ${r.video_title?.substring(0, 50)}`);
+    });
+  }
 
   if (error) {
     console.error(`❌ Error fetching ${status} reviews:`, error);
@@ -196,26 +204,31 @@ export async function getAllPublishedReviews(): Promise<ReviewWithCategory[]> {
   console.log('📥 Fetching ALL published reviews');
 
   // ✅ Use fresh admin client
-  const supabaseAdmin = getFreshAdminClient();
+  const supabaseAdmin = getFreshSupabaseAdminClient();
 
-  // ✅ Use direct query instead of RPC to avoid cache issues
+  // ✅ USE DIRECT QUERY - RPC function has caching issues
+  const timestamp = Date.now();
+  console.log(`🔄 Using DIRECT QUERY for published... (ts: ${timestamp})`);
+
   const { data: reviews, error } = await supabaseAdmin
     .from('reviews')
     .select('*')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
+  console.log(`📥 [DIRECT] Returned ${reviews?.length || 0} published reviews`);
+
   if (error) {
-    console.error('❌ [RPC] Error fetching published reviews:', error);
+    console.error('❌ [DIRECT] Error fetching published reviews:', error);
     throw new Error(`Failed to fetch published reviews: ${error.message}`);
   }
 
   if (!reviews || reviews.length === 0) {
-    console.log('📭 [RPC] No published reviews found');
+    console.log('📭 [DIRECT] No published reviews found');
     return [];
   }
 
-  console.log(`✅ [RPC] Found ${reviews.length} published reviews (already sorted by DB)`);
+  console.log(`✅ [DIRECT] Found ${reviews.length} published reviews (already sorted by DB)`);
 
   // Fetch categories
   const categoryIds = [...new Set(reviews.map(r => r.category_id).filter(Boolean))];
@@ -240,6 +253,8 @@ export async function getAllPublishedReviews(): Promise<ReviewWithCategory[]> {
 
 /**
  * Exclude scheduled reviews from list
+ * CHỈ hiển thị reviews CHƯA BAO GIỜ có trong bảng schedules
+ * Logic đơn giản: review_id NOT IN (SELECT DISTINCT review_id FROM schedules)
  */
 export async function excludeScheduledReviews(
   reviews: ReviewWithCategory[]
@@ -247,14 +262,23 @@ export async function excludeScheduledReviews(
   if (reviews.length === 0) return [];
 
   // ✅ Use fresh admin client
-  const supabaseAdmin = getFreshAdminClient();
+  const supabaseAdmin = getFreshSupabaseAdminClient();
 
-  const reviewIds = reviews.map(r => r.id);
+  // ✅ FIX: Query by user_id instead of .in(review_id, array)
+  // .in() clause có thể miss một số records khi array quá lớn
+  // Lấy user_id từ review đầu tiên (tất cả reviews cùng user)
+  const userId = reviews[0].user_id;
 
+  if (!userId) {
+    console.error('❌ No user_id found in reviews');
+    return reviews;
+  }
+
+  // ✅ FIXED: Query by user_id instead of .in() to avoid missing records
   const { data: scheduledReviews, error} = await supabaseAdmin
     .from('schedules')
     .select('review_id')
-    .in('review_id', reviewIds)
+    .eq('user_id', userId)
     .not('review_id', 'is', null);
 
   if (error) {
@@ -262,6 +286,11 @@ export async function excludeScheduledReviews(
     return reviews; // Return all if error
   }
 
+  // Lấy danh sách UNIQUE review_id đã từng có schedule
   const scheduledIds = new Set(scheduledReviews?.map(s => s.review_id) || []);
+
+  console.log(`📊 [excludeScheduledReviews] Total reviews: ${reviews.length}, Already scheduled (ever): ${scheduledIds.size}, Available (never scheduled): ${reviews.length - scheduledIds.size}`);
+
+  // Chỉ trả về reviews CHƯA BAO GIỜ có trong schedules
   return reviews.filter(review => !scheduledIds.has(review.id));
 }

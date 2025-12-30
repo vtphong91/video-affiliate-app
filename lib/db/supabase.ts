@@ -4,65 +4,91 @@ import type { Review, UserSettings, Category, Schedule, WebhookLog, ActivityLog,
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Check if Supabase is configured and create appropriate client
-let supabase: any;
-let supabaseAdmin: any;
+// ✅ CREATE FRESH CLIENTS - NO SINGLETON CACHING
+// This prevents stale data issues in Next.js API routes
 
-if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your_supabase') || supabaseAnonKey.includes('your_supabase')) {
-  console.warn('⚠️ Supabase not configured, using mock mode');
-  // Create a mock client for development
-  supabase = {
+function createSupabaseClient() {
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your_supabase') || supabaseAnonKey.includes('your_supabase')) {
+    console.warn('⚠️ Supabase not configured, using mock mode');
+    // Return mock client for development
+    return {
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: null }),
+        signOut: () => Promise.resolve({ error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+      },
+      from: () => ({
+        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+        insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+        update: () => ({ eq: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) }),
+        delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        upsert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+        order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }),
+        range: () => Promise.resolve({ data: [], error: null }),
+        lte: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
+        lt: () => ({ lte: () => ({ order: () => Promise.resolve({ data: [], error: null }) }) }),
+        in: () => Promise.resolve({ data: [], error: null })
+      }),
+      rpc: () => Promise.resolve({ error: null })
+    };
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-      signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: null }),
-      signOut: () => Promise.resolve({ error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
-    },
-    from: () => ({
-      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
-      insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
-      update: () => ({ eq: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) }),
-      delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
-      upsert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
-      order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }),
-      range: () => Promise.resolve({ data: [], error: null }),
-      lte: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
-      lt: () => ({ lte: () => ({ order: () => Promise.resolve({ data: [], error: null }) }) }),
-      in: () => Promise.resolve({ data: [], error: null })
-    }),
-    rpc: () => Promise.resolve({ error: null })
-  };
-  
-  supabaseAdmin = supabase;
-} else {
-  console.log('✅ Supabase configured, creating real client');
-  supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      // Session expires after 7 days of inactivity
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
   });
-
-  // Server-side client with service role (fallback to anon key if service role not available)
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (serviceRoleKey && !serviceRoleKey.includes('your_supabase')) {
-    console.log('✅ Creating admin client with service role');
-    supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        persistSession: false, // Admin client doesn't need session persistence
-        autoRefreshToken: false,
-      },
-    });
-  } else {
-    console.warn('⚠️ Service role key not configured, using anon key for admin client');
-    supabaseAdmin = supabase; // Use same client as fallback
-  }
 }
 
-export { supabase, supabaseAdmin };
+function createSupabaseAdminClient() {
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your_supabase') || supabaseAnonKey.includes('your_supabase')) {
+    return createSupabaseClient(); // Return mock
+  }
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceRoleKey && !serviceRoleKey.includes('your_supabase')) {
+    console.log('🔑 [DEBUG] Creating admin client with service role key:', serviceRoleKey.substring(0, 20) + '...');
+
+    // ✅ FIX: Add unique request ID and cache-busting headers to prevent connection pooling
+    // This forces Supabase.js to bypass cached connections and fetch fresh data
+    const uniqueRequestId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+
+    return createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      global: {
+        headers: {
+          'X-Request-ID': uniqueRequestId,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      },
+    });
+  }
+
+  console.warn('⚠️ Service role key not configured, using anon key for admin client');
+  return createSupabaseClient();
+}
+
+// Export factory functions instead of singletons
+export const supabase = createSupabaseClient();
+export const supabaseAdmin = createSupabaseAdminClient();
+
+// ✅ Export factory functions for creating fresh clients
+export function getFreshSupabaseClient() {
+  return createSupabaseClient();
+}
+
+export function getFreshSupabaseAdminClient() {
+  return createSupabaseAdminClient();
+}
 
 // Database queries
 export const db = {
@@ -70,10 +96,13 @@ export const db = {
   async getReviews(options: { userId?: string; status?: string; limit?: number; offset?: number } = {}) {
     try {
       const { userId, status, limit = 10, offset = 0 } = options;
-      
+
       console.log('🔍 db.getReviews called with:', { userId, status, limit, offset });
-      
-      let query = supabaseAdmin
+
+      // ✅ Use fresh admin client to avoid caching
+      const adminClient = getFreshSupabaseAdminClient();
+
+      let query = adminClient
         .from('reviews')
         .select(`
           id, 
@@ -124,8 +153,10 @@ export const db = {
   async getReviewsCount(options: { userId?: string; status?: string } = {}) {
     try {
       const { userId, status } = options;
-      
-      let query = supabaseAdmin
+
+      const adminClient = getFreshSupabaseAdminClient();
+
+      let query = adminClient
         .from('reviews')
         .select('*', { count: 'exact', head: true });
 
@@ -153,7 +184,8 @@ export const db = {
 
   async getReview(id: string) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error } = await adminClient
         .from('reviews')
         .select('*')
         .eq('id', id)
@@ -175,7 +207,8 @@ export const db = {
     try {
       console.log('🔍 getReviewBySlug: Fetching review with slug:', slug);
 
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error } = await adminClient
         .from('reviews')
         .select('*')
         .eq('slug', slug)
@@ -196,7 +229,8 @@ export const db = {
 
   async createReview(review: Partial<Review>) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error } = await adminClient
         .from('reviews')
         .insert(review)
         .select()
@@ -218,7 +252,8 @@ export const db = {
     try {
       console.log('🔧 [DB] updateReview called with:', { id, updates });
 
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error } = await adminClient
         .from('reviews')
         .update(updates)
         .eq('id', id)
@@ -245,7 +280,8 @@ export const db = {
 
   async deleteReview(id: string) {
     try {
-      const { error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { error } = await adminClient
         .from('reviews')
         .delete()
         .eq('id', id);
@@ -266,7 +302,8 @@ export const db = {
   // Categories
   async getCategories() {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error } = await adminClient
         .from('categories')
         .select('*')
         .order('name');
@@ -285,7 +322,8 @@ export const db = {
 
   async createCategory(category: Partial<Category>) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error } = await adminClient
         .from('categories')
         .insert(category)
         .select()
@@ -305,7 +343,8 @@ export const db = {
 
   async updateCategory(id: string, updates: Partial<Category>) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error } = await adminClient
         .from('categories')
         .update(updates)
         .eq('id', id)
@@ -326,7 +365,8 @@ export const db = {
 
   async deleteCategory(id: string) {
     try {
-      const { error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { error } = await adminClient
         .from('categories')
         .delete()
         .eq('id', id);
@@ -347,7 +387,8 @@ export const db = {
   async getSchedules(userId?: string, status?: string, limit = 10, offset = 0) {
     try {
       // Get all schedules first (without limit) to sort properly
-      let query = supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      let query = adminClient
         .from('schedules')
         .select(`
           *,
@@ -414,7 +455,8 @@ export const db = {
 
   async getSchedulesCount(userId?: string, status?: string) {
     try {
-      let query = supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      let query = adminClient
         .from('schedules')
         .select('*', { count: 'exact', head: true });
 
@@ -454,7 +496,8 @@ export const db = {
 
       // TEMP FIX: Get ALL pending schedules first, then filter in JavaScript
       // This works regardless of database column type (TEXT, TIMESTAMP, or TIMESTAMPTZ)
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error } = await adminClient
         .from('schedules')
         .select('*')
         .eq('status', 'pending')
@@ -501,7 +544,7 @@ export const db = {
 
   async getFailedSchedulesForRetry() {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('schedules')
         .select('*')
         .eq('status', 'failed')
@@ -522,7 +565,8 @@ export const db = {
 
   async createSchedule(schedule: Partial<Schedule>) {
     try {
-      const { data, error} = await supabaseAdmin  // Use supabaseAdmin to bypass RLS
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data, error} = await adminClient  // Use admin client to bypass RLS
         .from('schedules')
         .insert(schedule)
         .select()
@@ -542,7 +586,7 @@ export const db = {
 
   async updateSchedule(id: string, updates: Partial<Schedule>) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('schedules')
         .update(updates)
         .eq('id', id)
@@ -563,7 +607,7 @@ export const db = {
 
   async getSchedule(id: string) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('schedules')
         .select('*')
         .eq('id', id)
@@ -584,7 +628,8 @@ export const db = {
 
   async deleteSchedule(id: string) {
     try {
-      const { error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { error } = await adminClient
         .from('schedules')
         .delete()
         .eq('id', id);
@@ -605,7 +650,7 @@ export const db = {
   // Webhook Logs
   async createWebhookLog(log: Partial<WebhookLog>) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('webhook_logs')
         .insert(log)
         .select()
@@ -625,7 +670,7 @@ export const db = {
 
   async updateWebhookLog(id: string, updates: Partial<WebhookLog>) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('webhook_logs')
         .update(updates)
         .eq('id', id)
@@ -647,7 +692,7 @@ export const db = {
   // User Profiles
   async getUserProfile(userId: string) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
@@ -667,7 +712,7 @@ export const db = {
 
   async createUserProfile(profile: any) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('user_profiles')
         .insert(profile)
         .select()
@@ -687,7 +732,7 @@ export const db = {
 
   async updateUserProfile(userId: string, updates: any) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('user_profiles')
         .update(updates)
         .eq('user_id', userId)
@@ -709,7 +754,7 @@ export const db = {
   // Activity Logs
   async createActivityLog(log: Partial<ActivityLog>) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('activity_logs')
         .insert(log)
         .select()
@@ -736,7 +781,8 @@ export const db = {
 
       console.log(`🔍 getActivityLogs: Fetching logs from last ${hoursAgo}h (since ${cutoffISO})`);
 
-      let query = supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      let query = adminClient
         .from('activity_logs')
         .select('*')
         .gte('created_at', cutoffISO) // Only logs from last X hours
@@ -765,7 +811,7 @@ export const db = {
   // User Settings
   async getUserSettings(userId: string) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('user_settings')
         .select('*')
         .eq('user_id', userId)
@@ -785,7 +831,7 @@ export const db = {
 
   async updateUserSettings(userId: string, settings: Partial<UserSettings>) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('user_settings')
         .upsert({ user_id: userId, ...settings })
         .select()
@@ -829,7 +875,8 @@ export const db = {
         offset = 0,
       } = options;
 
-      let query = supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      let query = adminClient
         .from('prompt_templates')
         .select('*')
         .eq('is_active', isActive)
@@ -873,7 +920,7 @@ export const db = {
 
   async getTemplate(id: string) {
     try {
-      const { data, error } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
         .from('prompt_templates')
         .select('*')
         .eq('id', id)
@@ -960,14 +1007,15 @@ export const db = {
   async incrementTemplateUsage(templateId: string) {
     try {
       // Get current usage count first
-      const { data: currentData } = await supabaseAdmin
+      const adminClient = getFreshSupabaseAdminClient();
+      const { data: currentData } = await adminClient
         .from('prompt_templates')
         .select('usage_count')
         .eq('id', templateId)
         .single();
 
-      // Increment usage count
-      const { error } = await supabaseAdmin
+      // Increment usage count (reuse same client instance)
+      const { error } = await adminClient
         .from('prompt_templates')
         .update({ usage_count: (currentData?.usage_count || 0) + 1 })
         .eq('id', templateId);

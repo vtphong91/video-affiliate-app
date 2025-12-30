@@ -68,6 +68,7 @@ export default function SchedulesPage() {
   const [editingSchedule, setEditingSchedule] = useState<ScheduleWithReview | null>(null);
   const [viewingScheduleId, setViewingScheduleId] = useState<string | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [dialogKey, setDialogKey] = useState(0); // Counter to force dialog re-mount
   const { toast } = useToast();
 
   // Auto refresh state
@@ -634,12 +635,17 @@ export default function SchedulesPage() {
 
         {/* Create Schedule Dialog */}
         <CreateScheduleDialog
+          key={dialogKey}
           open={showCreateDialog}
           onOpenChange={(open) => {
             setShowCreateDialog(open);
             if (!open) {
               // Refresh schedules when dialog closes
               fetchSchedules();
+            }
+            if (open) {
+              // Increment key to force re-mount when opening
+              setDialogKey(prev => prev + 1);
             }
           }}
           onSubmit={handleCreateSchedule}
