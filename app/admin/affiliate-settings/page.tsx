@@ -588,13 +588,19 @@ export default function AffiliateSettingsPage() {
                     value={formData.utm_source}
                     onChange={(e) => setFormData({ ...formData, utm_source: e.target.value })}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Nguồn traffic (mặc định: video-affiliate)
+                  </p>
                 </div>
                 <div>
-                  <Label>UTM Campaign</Label>
+                  <Label>UTM Content</Label>
                   <Input
                     value={formData.utm_campaign}
                     onChange={(e) => setFormData({ ...formData, utm_campaign: e.target.value })}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Loại nội dung (mặc định: review). UTM Campaign sẽ tự động là tên merchant
+                  </p>
                 </div>
               </div>
 

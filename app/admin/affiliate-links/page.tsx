@@ -350,7 +350,6 @@ export default function AffiliateLinksPage() {
                   <TableRow>
                     <TableHead>Review</TableHead>
                     <TableHead>Merchant</TableHead>
-                    <TableHead>Link Gốc</TableHead>
                     <TableHead>Link Affiliate</TableHead>
                     <TableHead className="text-center">Method</TableHead>
                     <TableHead className="text-center">Clicks</TableHead>
@@ -374,31 +373,6 @@ export default function AffiliateLinksPage() {
                       {/* Merchant */}
                       <TableCell>
                         <Badge variant="secondary">{link.merchantName}</Badge>
-                      </TableCell>
-
-                      {/* Original URL */}
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600 max-w-[200px] truncate">
-                            {truncateUrl(link.originalUrl, 40)}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => copyToClipboard(link.originalUrl, 'Link gốc')}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                          <a
-                            href={link.originalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Button size="sm" variant="ghost">
-                              <ExternalLink className="h-3 w-3" />
-                            </Button>
-                          </a>
-                        </div>
                       </TableCell>
 
                       {/* Tracking URL */}

@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db/supabase';
 import { ActivityLogger } from '@/lib/utils/activity-logger';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
+import { affiliateLinksSyncService } from '@/lib/affiliate/services/sync-service';
 
 // Force dynamic rendering to prevent caching issues
 export const dynamic = 'force-dynamic';
@@ -53,6 +54,9 @@ export async function DELETE(
     }
 
     const reviewTitle = review.video_title || 'Unknown';
+
+    // Delete synced affiliate links first
+    await affiliateLinksSyncService.deleteSyncedLinks(id);
 
     // Delete the review
     await db.deleteReview(id);
@@ -136,6 +140,22 @@ export async function PATCH(
     // Log activity
     if (userId) {
       await ActivityLogger.reviewUpdated(userId, review.video_title, review.id);
+    }
+
+    // Sync affiliate links if they were updated
+    if (updates.affiliate_links && userId) {
+      console.log('🔄 Re-syncing affiliate links after update...');
+      const syncResult = await affiliateLinksSyncService.updateSyncedLinks(
+        id,
+        userId,
+        updates.affiliate_links
+      );
+
+      if (syncResult.success) {
+        console.log(`✅ Re-synced ${syncResult.synced} affiliate links`);
+      } else {
+        console.warn('⚠️ Some links failed to re-sync:', syncResult.errors);
+      }
     }
 
     // ✅ INVALIDATE CACHE: Force Next.js to regenerate cached routes

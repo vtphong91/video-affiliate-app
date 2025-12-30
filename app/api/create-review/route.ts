@@ -3,6 +3,7 @@ import { db } from '@/lib/db/supabase';
 import { generateSlug } from '@/lib/utils';
 import { ActivityLogger } from '@/lib/utils/activity-logger';
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
+import { affiliateLinksSyncService } from '@/lib/affiliate/services/sync-service';
 import type { CreateReviewRequest, CreateReviewResponse } from '@/types';
 
 // Set to false để lưu vào database thật
@@ -92,6 +93,22 @@ export async function POST(request: NextRequest) {
         review.video_title,
         review.id
       );
+
+      // Sync affiliate links to separate table for tracking
+      if (affiliateLinks && affiliateLinks.length > 0) {
+        console.log('🔄 Syncing affiliate links to tracking table...');
+        const syncResult = await affiliateLinksSyncService.syncToAffiliateLinkTable(
+          review.id,
+          userId,
+          affiliateLinks
+        );
+
+        if (syncResult.success) {
+          console.log(`✅ Synced ${syncResult.synced} affiliate links to tracking table`);
+        } else {
+          console.warn('⚠️ Some links failed to sync:', syncResult.errors);
+        }
+      }
     }
 
     const response: CreateReviewResponse = {

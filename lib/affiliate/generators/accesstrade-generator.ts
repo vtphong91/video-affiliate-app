@@ -38,14 +38,19 @@ export class AccessTradeGenerator {
     const affSid = `${userId.slice(0, 8)}_${merchant.id.slice(0, 8)}_${timestamp}`;
 
     // Build API request
+    // UTM Structure for tracking:
+    // - utm_source: video-affiliate (fixed)
+    // - utm_medium: affiliate (fixed)
+    // - utm_campaign: merchant name (dynamic) ← For tracking which merchant
+    // - utm_content: content type from settings (e.g., "review")
     const requestBody: AccessTradeCreateLinkRequest = {
       campaign_id: merchant.campaign_id,
       urls: [originalUrl],
       url_enc: false, // Don't double-encode
       utm_source: utmSource,
       utm_medium: 'affiliate',
-      utm_campaign: utmCampaign,
-      utm_content: merchant.name.toLowerCase().replace(/\s+/g, '-'),
+      utm_campaign: merchant.name.toLowerCase().replace(/\s+/g, '-'), // Merchant name for campaign tracking
+      utm_content: utmCampaign, // Content type (e.g., "review")
       sub1: userId,
       sub2: merchant.id,
       sub3: merchant.campaign_id,

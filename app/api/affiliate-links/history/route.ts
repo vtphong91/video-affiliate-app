@@ -39,17 +39,32 @@ export async function GET(request: NextRequest) {
 
     const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
-    // Query reviews with affiliate_links JSONB array
+    // Query affiliate_links table directly (with join to merchants and reviews)
     let query = supabaseAdmin
-      .from('reviews')
+      .from('affiliate_links')
       .select(`
         id,
-        title,
-        slug,
-        affiliate_links,
+        review_id,
+        merchant_id,
+        original_url,
+        affiliate_url,
+        short_url,
+        aff_sid,
+        generation_method,
+        label,
         created_at,
         updated_at,
-        user_id
+        merchants (
+          id,
+          name,
+          domain,
+          logo_url
+        ),
+        reviews (
+          id,
+          video_title,
+          slug
+        )
       `, { count: 'exact' })
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -70,44 +85,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('✅ Query success - Reviews found:', reviews?.length, 'Total count:', count);
+    console.log('✅ Query success - Links found:', reviews?.length, 'Total count:', count);
 
-    // Flatten affiliate_links from all reviews into a single array
+    // Map data from affiliate_links table
     const allLinks: any[] = [];
 
-    reviews?.forEach((review) => {
-      const links = review.affiliate_links as any[];
-      if (Array.isArray(links) && links.length > 0) {
-        links.forEach((link) => {
-          // Skip links without tracking URLs (not generated yet)
-          if (!link.trackingUrl && !link.affiliateUrl) {
-            return;
-          }
+    reviews?.forEach((linkData: any) => {
+      allLinks.push({
+        // Link info
+        id: linkData.id,
+        reviewId: linkData.review_id,
+        reviewTitle: linkData.reviews?.video_title || 'Unknown Review',
+        reviewSlug: linkData.reviews?.slug || '',
+        merchantId: linkData.merchant_id,
+        merchantName: linkData.merchants?.name || 'Unknown',
+        merchantDomain: linkData.merchants?.domain || '',
+        merchantLogo: linkData.merchants?.logo_url || '',
+        originalUrl: linkData.original_url,
+        trackingUrl: linkData.affiliate_url,
+        shortUrl: linkData.short_url || null,
+        generationMethod: linkData.generation_method || 'unknown',
+        affSid: linkData.aff_sid || null,
+        label: linkData.label || null,
 
-          allLinks.push({
-            // Link info
-            id: link.affSid || `${review.id}_${link.url}`,
-            reviewId: review.id,
-            reviewTitle: review.title,
-            reviewSlug: review.slug,
-            merchantId: link.merchantId || null,
-            merchantName: link.merchantName || 'Unknown',
-            originalUrl: link.url,
-            trackingUrl: link.trackingUrl || link.affiliateUrl,
-            shortUrl: link.shortUrl || null,
-            generationMethod: link.generationMethod || 'unknown',
-            affSid: link.affSid || null,
+        // Stats (will be from clicks tracking later)
+        clicks: 0, // TODO: Add clicks tracking
+        lastClickedAt: null,
 
-            // Stats
-            clicks: link.clicks || 0,
-            lastClickedAt: link.lastClickedAt || null,
-
-            // Metadata
-            createdAt: review.created_at,
-            updatedAt: review.updated_at,
-          });
-        });
-      }
+        // Metadata
+        createdAt: linkData.created_at,
+        updatedAt: linkData.updated_at,
+      });
     });
 
     // Apply merchant filter if provided
@@ -122,10 +130,11 @@ export async function GET(request: NextRequest) {
     );
 
     // Calculate stats
+    const uniqueReviews = new Set(filteredLinks.map(link => link.reviewId));
     const stats = {
-      totalLinks: filteredLinks.length,
+      totalLinks: count || 0,
       totalClicks: filteredLinks.reduce((sum, link) => sum + link.clicks, 0),
-      totalReviews: reviews?.length || 0,
+      totalReviews: uniqueReviews.size,
       avgClicksPerLink: filteredLinks.length > 0
         ? Math.round(filteredLinks.reduce((sum, link) => sum + link.clicks, 0) / filteredLinks.length)
         : 0,

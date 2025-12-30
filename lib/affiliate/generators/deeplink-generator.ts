@@ -37,11 +37,12 @@ export class DeeplinkGenerator {
     const affSid = `${userId.slice(0, 8)}_${merchant.id.slice(0, 8)}_${timestamp}`;
 
     // Build target URL with UTM parameters
+    // UTM Structure: campaign=merchant, content=review type
     const targetUrl = this.buildTargetUrl(originalUrl, {
       utmSource,
-      utmCampaign,
+      utmCampaign: merchant.name.toLowerCase().replace(/\s+/g, '-'), // Merchant name
       utmMedium: 'affiliate',
-      utmContent: merchant.name.toLowerCase().replace(/\s+/g, '-'),
+      utmContent: utmCampaign, // Content type (e.g., "review")
       sub1: userId,
       sub2: merchant.id,
       sub3: merchant.campaign_id,
