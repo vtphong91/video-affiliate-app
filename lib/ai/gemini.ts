@@ -153,14 +153,9 @@ export async function analyzeVideoWithGemini(
         analysis.seoKeywords = [
           cleanTitle,
           `review ${cleanTitle}`,
-          `đánh giá ${cleanTitle}`,
           `mua ${cleanTitle}`,
           `giá ${cleanTitle}`,
-          `${cleanTitle} có tốt không`,
-          `${cleanTitle} chính hãng`,
-          `so sánh ${cleanTitle}`,
-          `${cleanTitle} giá rẻ`,
-          `${cleanTitle} uy tín`
+          `so sánh ${cleanTitle}`
         ];
         console.warn('⚠️ Gemini - Using fallback seoKeywords based on title. User should review and refine manually.');
       }
@@ -173,9 +168,9 @@ export async function analyzeVideoWithGemini(
         }
       }
 
-      if (analysis.seoKeywords.length < 10) {
-        console.warn('⚠️ Gemini - seoKeywords has less than 10 items. Padding with generic entries...');
-        while (analysis.seoKeywords.length < 10) {
+      if (analysis.seoKeywords.length < 5) {
+        console.warn('⚠️ Gemini - seoKeywords has less than 5 items. Padding with generic entries...');
+        while (analysis.seoKeywords.length < 5) {
           analysis.seoKeywords.push(`sản phẩm ${videoInfo.platform}`);
         }
       }
