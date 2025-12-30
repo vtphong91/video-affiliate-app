@@ -76,7 +76,8 @@
       "Bash(if ! head -n 1 \"$file\")",
       "Bash(tee:*)",
       "Bash(for file in lib/affiliate/services/*.ts)",
-      "Bash(if ! head -1 \"$file\")"
+      "Bash(if ! head -1 \"$file\")",
+      "Bash(psql $NEXT_PUBLIC_SUPABASE_URL -c \"\\\\dt\")"
     ],
     "deny": [],
     "ask": []
