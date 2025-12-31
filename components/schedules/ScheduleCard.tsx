@@ -71,20 +71,11 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit, onViewDetail
 
   const formatDateTime = (timestamp: string, status: string) => {
     console.log('🔍 formatDateTime - Input timestamp:', timestamp);
-    
-    // Parse GMT+7 string từ database trực tiếp
-    const gmt7Date = new Date(timestamp);
-    console.log('🔍 GMT+7 Date from database:', gmt7Date);
-    
-    const day = gmt7Date.getDate().toString().padStart(2, '0');
-    const month = (gmt7Date.getMonth() + 1).toString().padStart(2, '0');
-    const year = gmt7Date.getFullYear();
-    const hours = gmt7Date.getHours().toString().padStart(2, '0');
-    const minutes = gmt7Date.getMinutes().toString().padStart(2, '0');
-    
-    const formatted = `${day}/${month}/${year} - ${hours}:${minutes}`;
+
+    // ✅ FIX: Use timezone utility function để convert UTC từ database sang GMT+7
+    const formatted = formatTimestampForDisplay(timestamp, 'dd/MM/yyyy - HH:mm');
     console.log('🔍 Formatted GMT+7 time:', formatted);
-    
+
     return formatted;
   };
 
