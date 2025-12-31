@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     if (!videoUrl) {
       return NextResponse.json(
-        { error: 'Video URL is required' },
+        { success: false, error: 'Video URL is required' },
         { status: 400 }
       );
     }
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
       if (!platform || !videoId) {
         return NextResponse.json(
-          { error: 'Invalid video URL' },
+          { success: false, error: 'Invalid video URL' },
           { status: 400 }
         );
       }
@@ -168,9 +168,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: Return combined response
-    const response: AnalyzeVideoResponse = {
-      videoInfo,
-      analysis,
+    const response = {
+      success: true,
+      data: {
+        videoInfo,
+        analysis,
+      },
     };
 
     return NextResponse.json(response);
@@ -188,6 +191,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
+        success: false,
         error: errorMessage,
         details: error instanceof Error ? error.stack : undefined
       },

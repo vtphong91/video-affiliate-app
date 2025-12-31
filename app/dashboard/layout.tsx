@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Video, List, Settings, Tag, Home, Calendar, PlusCircle, LayoutDashboard, Shield, Users, UserCheck } from 'lucide-react';
+import { Video, List, Settings, Tag, Home, Calendar, PlusCircle, LayoutDashboard, Shield, Users, UserCheck, Sparkles } from 'lucide-react';
 import { AuthButton } from '@/components/auth/ui/AuthButton';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useRoles } from '@/lib/auth/hooks/useRoles';
@@ -111,6 +111,12 @@ function DashboardLayoutContent({
                 <Button variant="ghost" className="w-full justify-start">
                   <PlusCircle className="h-4 w-4 mr-2" />
                   Tạo Review
+                </Button>
+              </Link>
+              <Link href="/dashboard/create-from-template">
+                <Button variant="ghost" className="w-full justify-start">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Tạo Review Từ Template
                 </Button>
               </Link>
               <Link href="/dashboard/reviews">

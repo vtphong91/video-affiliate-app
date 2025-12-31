@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/auth/helpers/auth-helpers';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '@/lib/db/supabase';
+import {
+  transformTutorialToReview,
+  isTutorialContent,
+  isTutorialTemplate,
+  type VideoData,
+} from '@/lib/transformers/tutorial-to-review';
+import { generateContentWithFallback } from '@/lib/ai/generate-with-fallback';
+import { convertAiContentToHtml } from '@/lib/utils/markdown-to-html';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // 2 minutes for AI generation
@@ -73,29 +80,72 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Template found:', template.name);
 
+    // Detect template type
+    const isTutorial = isTutorialTemplate(template);
+    console.log('📝 Template type:', isTutorial ? 'Tutorial/How-to' : 'Product Review');
+
     // Build prompt using template's prompt_template
     const prompt = buildPromptFromTemplate(template, videoData, config);
     console.log('📝 Generated prompt (first 200 chars):', prompt.substring(0, 200));
 
-    // Call AI to generate review using Gemini
-    console.log('🤖 Calling Gemini AI to generate review...');
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 8000,
-        responseMimeType: 'application/json',
-      },
-    });
+    // Build system prompt based on template type
+    let systemPrompt: string;
+    let expectedStructure: string;
 
-    const systemPrompt = `Bạn là chuyên gia phân tích review sản phẩm cho Facebook.
+    if (isTutorial) {
+      systemPrompt = `Bạn là chuyên gia tạo nội dung hướng dẫn (Tutorial/How-to) cho Facebook.
 Tone: ${config.tone}.
 Ngôn ngữ: ${config.language === 'vi' ? 'Tiếng Việt' : 'English'}.
 Độ dài: ${config.length}.
 
-QUAN TRỌNG: Trả về kết quả dưới dạng JSON với cấu trúc sau:
-{
+QUAN TRỌNG: Trả về kết quả dưới dạng JSON với cấu trúc sau:`;
+
+      expectedStructure = `{
+  "tutorial_title": "Tiêu đề hướng dẫn",
+  "goal_statement": "Mục tiêu của hướng dẫn này",
+  "difficulty": "Dễ|Trung bình|Khó",
+  "time_estimate": "30 phút",
+  "materials_needed": [
+    {
+      "item_name": "Tên vật liệu/sản phẩm",
+      "quantity": "Số lượng",
+      "why_this_product": "Tại sao dùng sản phẩm này",
+      "affiliate_link": "Link affiliate (nếu có)",
+      "recommended_brands": ["Thương hiệu 1", "Thương hiệu 2"]
+    }
+  ],
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Tiêu đề bước",
+      "description": "Mô tả chi tiết",
+      "timestamp": "02:30",
+      "tips": ["Mẹo 1", "Mẹo 2"],
+      "products_used": ["Tên sản phẩm được dùng trong bước này"]
+    }
+  ],
+  "tips_and_tricks": ["Mẹo 1", "Mẹo 2"],
+  "common_mistakes": [
+    {
+      "mistake": "Lỗi thường gặp",
+      "why_it_happens": "Tại sao xảy ra",
+      "how_to_avoid": "Cách khắc phục"
+    }
+  ],
+  "final_result": "Mô tả kết quả cuối cùng",
+  "cta": "Lời kêu gọi hành động",
+  "target_audience": ["Đối tượng 1", "Đối tượng 2"],
+  "seoKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
+}`;
+    } else {
+      systemPrompt = `Bạn là chuyên gia phân tích review sản phẩm cho Facebook.
+Tone: ${config.tone}.
+Ngôn ngữ: ${config.language === 'vi' ? 'Tiếng Việt' : 'English'}.
+Độ dài: ${config.length}.
+
+QUAN TRỌNG: Trả về kết quả dưới dạng JSON với cấu trúc sau:`;
+
+      expectedStructure = `{
   "summary": "Tóm tắt ngắn gọn",
   "pros": ["Ưu điểm 1", "Ưu điểm 2", "Ưu điểm 3"],
   "cons": ["Nhược điểm 1", "Nhược điểm 2"],
@@ -105,20 +155,49 @@ QUAN TRỌNG: Trả về kết quả dưới dạng JSON với cấu trúc sau:
   "targetAudience": ["Đối tượng 1", "Đối tượng 2"],
   "seoKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
 }`;
+    }
 
-    const fullPrompt = `${systemPrompt}\n\n${prompt}`;
-    const result = await model.generateContent(fullPrompt);
-    const aiContent = result.response.text();
+    const fullPrompt = `${systemPrompt}\n${expectedStructure}\n\n${prompt}`;
+
+    // Call AI with automatic fallback to other providers
+    console.log('🤖 Calling AI to generate content (with multi-provider fallback)...');
+    const aiContent = await generateContentWithFallback(fullPrompt, {
+      temperature: 0.7,
+      maxTokens: 8000,
+      responseFormat: 'json',
+    });
     console.log('✅ AI response received');
 
     // Parse AI response
-    let reviewContent;
+    let aiResponse;
     try {
-      reviewContent = JSON.parse(aiContent);
-      console.log('✅ Parsed AI response:', Object.keys(reviewContent));
+      aiResponse = JSON.parse(aiContent);
+      console.log('✅ Parsed AI response:', Object.keys(aiResponse));
     } catch (parseError) {
       console.error('❌ Failed to parse AI response:', parseError);
       throw new Error('AI response is not valid JSON');
+    }
+
+    // Transform Tutorial to Review structure if needed
+    let reviewContent;
+    if (isTutorial && isTutorialContent(aiResponse)) {
+      console.log('🔄 Transforming Tutorial content to Review structure...');
+      const transformed = transformTutorialToReview(aiResponse, videoData as VideoData);
+      reviewContent = {
+        summary: transformed.summary,
+        pros: transformed.pros,
+        cons: transformed.cons,
+        keyPoints: transformed.key_points,
+        mainContent: transformed.custom_content,
+        cta: transformed.cta,
+        targetAudience: transformed.target_audience,
+        seoKeywords: transformed.seo_keywords,
+        affiliateLinks: transformed.affiliate_links,
+      };
+      console.log('✅ Transformation complete');
+    } else {
+      console.log('📝 Using Product Review structure as-is');
+      reviewContent = aiResponse;
     }
 
     // Validate required fields
@@ -126,7 +205,7 @@ QUAN TRỌNG: Trả về kết quả dưới dạng JSON với cấu trúc sau:
     const missingFields = requiredFields.filter(field => !reviewContent[field]);
 
     if (missingFields.length > 0) {
-      console.warn('⚠️ Missing fields in AI response:', missingFields);
+      console.warn('⚠️ Missing fields in response:', missingFields);
       // Fill with defaults
       if (!reviewContent.summary) reviewContent.summary = videoData.videoDescription || 'Tóm tắt video';
       if (!reviewContent.pros) reviewContent.pros = [];
@@ -137,6 +216,10 @@ QUAN TRỌNG: Trả về kết quả dưới dạng JSON với cấu trúc sau:
       if (!reviewContent.seoKeywords) reviewContent.seoKeywords = [];
     }
 
+    // Convert mainContent from markdown to HTML for RichTextEditor
+    const mainContentHtml = convertAiContentToHtml(reviewContent.mainContent || '');
+    console.log('🎨 Converted mainContent to HTML:', mainContentHtml.substring(0, 200) + '...');
+
     // Return generated content
     return NextResponse.json({
       success: true,
@@ -145,12 +228,13 @@ QUAN TRỌNG: Trả về kết quả dưới dạng JSON với cấu trúc sau:
         pros: Array.isArray(reviewContent.pros) ? reviewContent.pros : [],
         cons: Array.isArray(reviewContent.cons) ? reviewContent.cons : [],
         keyPoints: Array.isArray(reviewContent.keyPoints) ? reviewContent.keyPoints : [],
-        mainContent: reviewContent.mainContent || '',
+        mainContent: mainContentHtml,
         cta: reviewContent.cta || '',
         targetAudience: Array.isArray(reviewContent.targetAudience) ? reviewContent.targetAudience : [],
         seoKeywords: Array.isArray(reviewContent.seoKeywords) ? reviewContent.seoKeywords : [],
+        affiliateLinks: Array.isArray(reviewContent.affiliateLinks) ? reviewContent.affiliateLinks : [],
       },
-      message: 'Review content generated successfully',
+      message: isTutorial ? 'Tutorial content generated and transformed successfully' : 'Review content generated successfully',
       timestamp: new Date().toISOString(),
     });
 

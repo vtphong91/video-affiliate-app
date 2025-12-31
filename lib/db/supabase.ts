@@ -880,7 +880,7 @@ export const db = {
 
       const adminClient = getFreshSupabaseAdminClient();
       let query = adminClient
-        .from('prompt_templates')
+        .from('templates')
         .select('*')
         .eq('is_active', isActive)
         .order('usage_count', { ascending: false })
@@ -924,7 +924,7 @@ export const db = {
   async getTemplate(id: string) {
     try {
       const adminClient = getFreshSupabaseAdminClient(); const { data, error } = await adminClient
-        .from('prompt_templates')
+        .from('templates')
         .select('*')
         .eq('id', id)
         .single();
@@ -944,7 +944,7 @@ export const db = {
   async createTemplate(template: Partial<PromptTemplate>) {
     try {
       const { data, error } = await supabase
-        .from('prompt_templates')
+        .from('templates')
         .insert(template)
         .select()
         .single();
@@ -965,7 +965,7 @@ export const db = {
   async updateTemplate(id: string, updates: Partial<PromptTemplate>) {
     try {
       const { data, error } = await supabase
-        .from('prompt_templates')
+        .from('templates')
         .update(updates)
         .eq('id', id)
         .select()
@@ -988,7 +988,7 @@ export const db = {
     try {
       // Soft delete by setting is_active = false
       const { data, error } = await supabase
-        .from('prompt_templates')
+        .from('templates')
         .update({ is_active: false })
         .eq('id', id)
         .select()
@@ -1012,14 +1012,14 @@ export const db = {
       // Get current usage count first
       const adminClient = getFreshSupabaseAdminClient();
       const { data: currentData } = await adminClient
-        .from('prompt_templates')
+        .from('templates')
         .select('usage_count')
         .eq('id', templateId)
         .single();
 
       // Increment usage count (reuse same client instance)
       const { error } = await adminClient
-        .from('prompt_templates')
+        .from('templates')
         .update({ usage_count: (currentData?.usage_count || 0) + 1 })
         .eq('id', templateId);
 
@@ -1057,7 +1057,7 @@ export const db = {
         .from('review_template_usage')
         .select(`
           *,
-          template:prompt_templates(*)
+          template:templates(*)
         `)
         .eq('review_id', reviewId)
         .single();

@@ -79,7 +79,9 @@
       "Bash(if ! head -1 \"$file\")",
       "Bash(psql $NEXT_PUBLIC_SUPABASE_URL -c \"\\\\dt\")",
       "Bash(psql \"$NEXT_PUBLIC_SUPABASE_URL\" -c \"SELECT id, name, category, description, prompt_template FROM templates ORDER BY created_at;\")",
-      "Bash(if exist \"ai-cache.json\" del \"ai-cache.json\")"
+      "Bash(if exist \"ai-cache.json\" del \"ai-cache.json\")",
+      "Bash(psql \"$NEXT_PUBLIC_SUPABASE_URL\" -f sql/insert-additional-templates.sql)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []
