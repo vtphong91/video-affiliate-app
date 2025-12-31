@@ -221,15 +221,19 @@ export function ScheduleCard({ schedule, onDelete, onRetry, onEdit, onViewDetail
             )}>
               {formatDateTime(schedule.scheduled_for, schedule.status)}
             </span>
-            {formatScheduledTime(schedule.scheduled_for, schedule.status) && (
-              <span className={cn(
-                "text-xs px-2 py-1 rounded-full",
-                schedule.status === 'pending' && "bg-yellow-100 text-yellow-800",
-                schedule.status === 'processing' && "bg-blue-100 text-blue-800"
-              )}>
-                ({formatScheduledTime(schedule.scheduled_for, schedule.status)})
-              </span>
-            )}
+            {formatScheduledTime(schedule.scheduled_for, schedule.status) && (() => {
+              const timeRemaining = calculateTimeRemaining(schedule.scheduled_for);
+              return (
+                <span className={cn(
+                  "text-xs px-2 py-1 rounded-full",
+                  schedule.status === 'pending' && timeRemaining.isOverdue && "bg-red-100 text-red-800",
+                  schedule.status === 'pending' && !timeRemaining.isOverdue && "bg-blue-100 text-blue-800",
+                  schedule.status === 'processing' && "bg-blue-100 text-blue-800"
+                )}>
+                  ({formatScheduledTime(schedule.scheduled_for, schedule.status)})
+                </span>
+              );
+            })()}
             {schedule.status === 'posted' && (
               <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 flex items-center gap-1">
                 <CheckCircle className="h-3 w-3" />
