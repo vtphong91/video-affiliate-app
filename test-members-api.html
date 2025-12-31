@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Members API</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        pre {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+        .info { color: #00ccff; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Members API</h1>
+
+    <div>
+        <button onclick="testDebugMembers()">Test /api/debug-members</button>
+        <button onclick="testAdminMembers()">Test /api/admin/members</button>
+        <button onclick="testCurrentUser()">Test /api/debug-current-user</button>
+        <button onclick="clearResults()">Clear</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const pre = document.createElement('pre');
+            pre.className = type;
+            pre.textContent = message;
+            resultsDiv.appendChild(pre);
+        }
+
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+
+        async function testDebugMembers() {
+            log('🔍 Testing /api/debug-members...', 'info');
+            try {
+                const response = await fetch('/api/debug-members');
+                const data = await response.json();
+
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                log(JSON.stringify(data, null, 2), response.ok ? 'success' : 'error');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAdminMembers() {
+            log('🔍 Testing /api/admin/members...', 'info');
+            try {
+                const params = new URLSearchParams({
+                    page: '1',
+                    limit: '10',
+                    role: 'all',
+                    active: 'all'
+                });
+
+                const response = await fetch(`/api/admin/members?${params}`);
+                const data = await response.json();
+
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                log(JSON.stringify(data, null, 2), response.ok ? 'success' : 'error');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCurrentUser() {
+            log('🔍 Testing /api/debug-current-user...', 'info');
+            try {
+                const response = await fetch('/api/debug-current-user');
+                const data = await response.json();
+
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                log(JSON.stringify(data, null, 2), response.ok ? 'success' : 'error');
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto run on load
+        window.onload = () => {
+            log('🚀 Ready to test! Click buttons above.', 'info');
+        };
+    </script>
+</body>
+</html>

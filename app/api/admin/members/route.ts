@@ -195,6 +195,8 @@ export async function GET(request: NextRequest) {
 
     console.log('📋 Fetching members...', { page, limit, role, search, active });
 
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
+
     let query = supabaseAdmin
       .from('user_profiles')
       .select(`
@@ -216,11 +218,11 @@ export async function GET(request: NextRequest) {
       .range((page - 1) * limit, page * limit - 1);
 
     // Apply filters
-    if (role) {
+    if (role && role !== 'all') {
       query = query.eq('role', role);
     }
 
-    if (active !== null) {
+    if (active && active !== 'all') {
       query = query.eq('is_active', active === 'true');
     }
 
@@ -290,6 +292,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('👤 Creating new member...', { email, role });
+
+    const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
     // Check if user already exists in auth.users
     const { data: existingUser, error: userCheckError } = await supabaseAdmin.auth.admin.getUserByEmail(email);

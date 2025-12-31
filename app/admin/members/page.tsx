@@ -81,14 +81,6 @@ export default function MemberManagement() {
     try {
       setLoading(true);
 
-      // Get session token
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        console.error('No session token found');
-        return;
-      }
-
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
@@ -97,10 +89,9 @@ export default function MemberManagement() {
         ...(statusFilter !== 'all' && { active: statusFilter }),
       });
 
+      // Fetch without manual auth header - cookies will be sent automatically
       const response = await fetch(`/api/admin/members?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
+        credentials: 'include' // Ensure cookies are sent
       });
       console.log('🔍 API Response:', response.status, response.statusText);
 
