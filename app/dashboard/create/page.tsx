@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import { VideoAnalyzer } from '@/components/VideoAnalyzer';
 import { AIContentEditor } from '@/components/AIContentEditor';
 import { ReviewPreview } from '@/components/ReviewPreview';
-import { TemplateSelector } from '@/components/templates/TemplateSelector';
-import { TemplateConfigForm } from '@/components/templates/TemplateConfigForm';
-import { TemplatePreview } from '@/components/templates/TemplatePreview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,9 +17,9 @@ import { withUserRoute } from '@/lib/auth/middleware/route-protection';
 import { useAuth } from '@/lib/auth/SupabaseAuthProvider';
 import { useUser } from '@/lib/auth/hooks/useUser';
 import { supabaseBrowser as supabase } from '@/lib/auth/supabase-browser';
-import type { VideoInfo, AIAnalysis, AffiliateLink, Category, PromptTemplate } from '@/types';
+import type { VideoInfo, AIAnalysis, AffiliateLink, Category } from '@/types';
 
-type CreateStep = 'analyze' | 'template' | 'configure' | 'edit' | 'preview';
+type CreateStep = 'analyze' | 'template' | 'edit' | 'preview';
 type CreationMode = 'template' | 'traditional';
 
 function CreateReviewPage() {
@@ -36,18 +33,11 @@ function CreateReviewPage() {
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
 
-  // Template mode states
-  const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
-  const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({});
-  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState<string>('');
-
   // Review states
   const [customTitle, setCustomTitle] = useState('');
   const [customContent, setCustomContent] = useState('');
   const [affiliateLinks, setAffiliateLinks] = useState<AffiliateLink[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [savedReview, setSavedReview] = useState<{ id: string; slug: string } | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
@@ -113,78 +103,6 @@ function CreateReviewPage() {
     } else {
       // Stay on template step for selection
       setStep('template');
-    }
-  };
-
-  const handleTemplateSelect = (template: PromptTemplate) => {
-    setSelectedTemplate(template);
-    setStep('configure');
-  };
-
-  const handleConfigureComplete = async () => {
-    if (!selectedTemplate || !videoInfo || !analysis) return;
-
-    try {
-      setIsGenerating(true);
-
-      // Try to get session, refresh if needed
-      let { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        console.log('Session not found, attempting refresh...');
-        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-        session = refreshedSession;
-      }
-
-      if (!session?.access_token) {
-        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-      }
-
-      const response = await fetch('/api/reviews/create-with-template', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          template_id: selectedTemplate.id,
-          video_url: videoInfo.platform === 'youtube'
-            ? `https://www.youtube.com/watch?v=${videoInfo.videoId}`
-            : videoInfo.platform === 'tiktok'
-            ? `https://www.tiktok.com/video/${videoInfo.videoId}`
-            : videoInfo.videoId,
-          video_info: videoInfo,
-          ai_analysis: analysis, // ✅ Truyền kết quả phân tích AI
-          variables: templateVariables,
-          category_id: selectedCategoryId || null,
-          affiliate_links: affiliateLinks,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setGeneratedContent(data.data.review.custom_content || '');
-        setSavedReview({ id: data.data.review.id, slug: data.data.review.slug });
-
-        toast({
-          title: 'Tạo thành công!',
-          description: 'Review đã được tạo từ template',
-        });
-
-        setStep('preview');
-      } else {
-        throw new Error(data.error || 'Không thể tạo review');
-      }
-    } catch (error) {
-      console.error('Generate error:', error);
-      toast({
-        title: 'Lỗi',
-        description: error instanceof Error ? error.message : 'Không thể tạo review',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -259,15 +177,14 @@ function CreateReviewPage() {
   };
 
   const getStepNumber = (currentStep: CreateStep) => {
-    const steps: CreateStep[] = ['analyze', 'template', 'configure', 'edit', 'preview'];
+    const steps: CreateStep[] = ['analyze', 'template', 'edit', 'preview'];
     return steps.indexOf(currentStep) + 1;
   };
 
   const getStepLabel = (currentStep: CreateStep) => {
     const labels: Record<CreateStep, string> = {
       analyze: 'Phân tích',
-      template: 'Chọn Template',
-      configure: 'Cấu hình',
+      template: 'Chọn chế độ',
       edit: 'Chỉnh sửa',
       preview: 'Preview',
     };
@@ -317,37 +234,16 @@ function CreateReviewPage() {
               </div>
               <span className="hidden sm:inline">Chọn chế độ</span>
             </div>
-
-            {mode === 'template' && (
-              <>
-                <div className="w-8 h-0.5 bg-gray-300" />
-
-                {/* Step 3: Configure (template mode only) */}
-                <div className={`flex items-center gap-2 ${
-                  step === 'configure' ? 'text-blue-600 font-bold' :
-                  getStepNumber(step) > 3 ? 'text-green-600' : 'text-gray-400'
-                }`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    step === 'configure' ? 'bg-blue-600 text-white' :
-                    getStepNumber(step) > 3 ? 'bg-green-600 text-white' : 'bg-gray-200'
-                  }`}>
-                    3
-                  </div>
-                  <span className="hidden sm:inline">Cấu hình</span>
-                </div>
-              </>
-            )}
-
             <div className="w-8 h-0.5 bg-gray-300" />
 
-            {/* Step 4: Preview */}
+            {/* Step 3: Preview */}
             <div className={`flex items-center gap-2 ${
               step === 'preview' ? 'text-blue-600 font-bold' : 'text-gray-400'
             }`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                 step === 'preview' ? 'bg-blue-600 text-white' : 'bg-gray-200'
               }`}>
-                {mode === 'template' ? '4' : '3'}
+                3
               </div>
               <span className="hidden sm:inline">Hoàn tất</span>
             </div>
@@ -377,9 +273,9 @@ function CreateReviewPage() {
                 </Alert>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Template Mode */}
+                  {/* Template Mode - Redirect to new page */}
                   <button
-                    onClick={() => handleModeSelect('template')}
+                    onClick={() => router.push('/dashboard/create-from-template')}
                     className="p-6 border-2 border-blue-200 hover:border-blue-500 rounded-lg text-left transition-all hover:shadow-lg group"
                   >
                     <div className="flex items-center gap-3 mb-3">
@@ -392,10 +288,10 @@ function CreateReviewPage() {
                       </div>
                     </div>
                     <ul className="space-y-2 text-sm text-gray-600">
-                      <li>✅ Chọn từ 6+ templates có sẵn</li>
-                      <li>✅ Phong cách đa dạng (Casual, Pro, Funny)</li>
-                      <li>✅ Tối ưu cho từng platform</li>
-                      <li>✅ AI gợi ý template phù hợp</li>
+                      <li>✅ Quy trình 3 bước đơn giản</li>
+                      <li>✅ Tự động phân tích video</li>
+                      <li>✅ Tùy chỉnh tone, ngôn ngữ, độ dài</li>
+                      <li>✅ AI tạo nội dung chất lượng cao</li>
                     </ul>
                   </button>
 
@@ -423,93 +319,11 @@ function CreateReviewPage() {
                 </div>
               </CardContent>
             </Card>
-          ) : mode === 'template' ? (
-            <TemplateSelector
-              videoTitle={videoInfo.title}
-              videoDescription={videoInfo.description}
-              platform={videoInfo.platform === 'youtube' ? 'facebook' : videoInfo.platform}
-              onSelect={handleTemplateSelect}
-              selectedTemplate={selectedTemplate}
-            />
           ) : null}
         </div>
       )}
 
-      {/* Step 3: Configure Template Variables */}
-      {step === 'configure' && selectedTemplate && videoInfo && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cấu hình Template</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TemplateConfigForm
-                template={selectedTemplate}
-                videoData={{
-                  title: videoInfo.title,
-                  description: videoInfo.description,
-                  transcript: videoInfo.transcript,
-                  channelName: videoInfo.channelName,
-                }}
-                aiAnalysis={analysis}
-                onVariablesChange={setTemplateVariables}
-                onPreview={() => setShowTemplatePreview(true)}
-                showPreview={true}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Category Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Thông tin bổ sung</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="category">Danh mục</Label>
-                <select
-                  id="category"
-                  value={selectedCategoryId}
-                  onChange={(e) => setSelectedCategoryId(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">-- Chọn danh mục --</option>
-                  {Array.isArray(categories) && categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.icon} {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-4">
-            <Button variant="outline" onClick={() => setStep('template')}>
-              Quay lại
-            </Button>
-            <Button
-              onClick={handleConfigureComplete}
-              disabled={isGenerating || Object.values(templateVariables).some(v => !v)}
-              className="flex-1"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang tạo review...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Tạo Review với Template
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Edit (Traditional Mode) */}
+      {/* Step 3: Edit (Traditional Mode) */}
       {step === 'edit' && videoInfo && analysis && (
         <div className="space-y-6">
           <Card>
@@ -618,15 +432,13 @@ function CreateReviewPage() {
         </div>
       )}
 
-      {/* Step 5: Preview & Share */}
+      {/* Step 4: Preview & Share */}
       {step === 'preview' && savedReview && (
         <div className="space-y-6">
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {mode === 'template'
-                ? `✅ Review đã được tạo thành công từ template "${selectedTemplate?.name}"`
-                : '✅ Review đã được lưu thành công'}
+              ✅ Review đã được lưu thành công
             </AlertDescription>
           </Alert>
 
@@ -635,11 +447,7 @@ function CreateReviewPage() {
               <div className="space-y-4">
                 <div>
                   <h3 className="font-bold mb-2">Nội dung đã tạo:</h3>
-                  {mode === 'template' && generatedContent ? (
-                    <div className="bg-gray-50 rounded-lg p-4 whitespace-pre-wrap max-h-96 overflow-y-auto">
-                      {generatedContent}
-                    </div>
-                  ) : videoInfo && analysis ? (
+                  {videoInfo && analysis ? (
                     <ReviewPreview
                       videoInfo={videoInfo}
                       analysis={analysis}
@@ -667,16 +475,6 @@ function CreateReviewPage() {
             </Button>
           </div>
         </div>
-      )}
-
-      {/* Template Preview Dialog */}
-      {selectedTemplate && (
-        <TemplatePreview
-          template={selectedTemplate}
-          variables={templateVariables}
-          open={showTemplatePreview}
-          onOpenChange={setShowTemplatePreview}
-        />
       )}
     </div>
   );
