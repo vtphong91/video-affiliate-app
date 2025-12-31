@@ -132,6 +132,35 @@ export async function POST(request: NextRequest) {
       analysis = await analyzeVideo(videoInfo);
       console.log('✅ API Route - Step 2 AI COMPLETED - Analysis received');
 
+      // 🔍 DEBUG: Log analysis details for UI testing
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🔍 ANALYSIS DEBUG - Field Details:');
+      console.log('   - summary:', analysis.summary ? `✅ ${analysis.summary.length} chars` : '❌ MISSING');
+      console.log('   - pros:', `${analysis.pros.length} items`);
+      console.log('   - cons:', `${analysis.cons.length} items`);
+      console.log('   - keyPoints:', `${analysis.keyPoints.length} items`);
+      console.log('   - comparisonTable:', analysis.comparisonTable ? '✅ Present' : '❌ MISSING');
+      console.log('   - 🎯 targetAudience:', `${analysis.targetAudience.length} items`);
+      console.log('   - 🔍 seoKeywords:', `${analysis.seoKeywords.length} items`);
+      console.log('   - cta:', analysis.cta ? '✅ Present' : '❌ MISSING');
+      console.log('\n🎯 TARGET AUDIENCE CONTENT:');
+      if (analysis.targetAudience.length === 0) {
+        console.log('   ❌ EMPTY ARRAY - THIS IS THE BUG!');
+      } else {
+        analysis.targetAudience.forEach((audience, i) => {
+          console.log(`   ${i + 1}. ${audience}`);
+        });
+      }
+      console.log('\n🔍 SEO KEYWORDS CONTENT:');
+      if (analysis.seoKeywords.length === 0) {
+        console.log('   ❌ EMPTY ARRAY - THIS IS THE BUG!');
+      } else {
+        analysis.seoKeywords.forEach((keyword, i) => {
+          console.log(`   ${i + 1}. ${keyword}`);
+        });
+      }
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
       // Cache the result
       console.log('💾 API Route - Step 3: Caching analysis result...');
       await setCachedAnalysis(videoInfo.videoId, analysis, videoInfo.platform);

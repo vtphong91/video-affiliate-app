@@ -131,11 +131,76 @@ export async function analyzeVideo(
     }
   }
 
-  // All providers failed
+  // All providers failed - Generate smart fallback data
   console.error('❌ analyzeVideo - All providers failed');
-  throw new Error(
-    `All AI providers failed. Last error: ${lastError?.message || 'Unknown error'}`
-  );
+  console.warn('🛡️ analyzeVideo - Generating SMART FALLBACK data from video info...');
+
+  // Extract product name from title
+  const title = videoInfo.title || 'Sản phẩm';
+  const cleanTitle = title
+    .replace(/[📦🔥✨⭐👉🎁💯]/g, '') // Remove emojis
+    .replace(/review|đánh giá|unbox|mở hộp/gi, '') // Remove common keywords
+    .trim();
+
+  const fallbackAnalysis: AIAnalysis = {
+    summary: `Video review về ${cleanTitle}. Do AI providers tạm thời không khả dụng, nội dung này cần được chỉnh sửa thủ công. Vui lòng xem video gốc và cập nhật thông tin chi tiết.`,
+
+    pros: [
+      'Xem video để biết ưu điểm chi tiết',
+      'Cập nhật thông tin sau khi xem video',
+      'Điền thông tin thủ công',
+      'Review từ người dùng thực tế',
+      'Thông tin cần được bổ sung'
+    ],
+
+    cons: [
+      'Thông tin cần được cập nhật',
+      'Vui lòng xem video để biết nhược điểm',
+      'Điền thông tin thủ công'
+    ],
+
+    keyPoints: [
+      { time: '00:00', content: 'Mở đầu giới thiệu sản phẩm' },
+      { time: '02:00', content: 'Đánh giá chi tiết - cần cập nhật' },
+      { time: '05:00', content: 'Demo sử dụng thực tế' },
+      { time: '08:00', content: 'Kết luận và đánh giá tổng quan' }
+    ],
+
+    comparisonTable: {
+      headers: ['Tiêu chí', cleanTitle, 'Sản phẩm khác (cần cập nhật)', 'Sản phẩm khác (cần cập nhật)'],
+      rows: [
+        ['Giá cả', 'Cập nhật', 'Cập nhật', 'Cập nhật'],
+        ['Chất lượng', 'Xem video', 'Xem video', 'Xem video'],
+        ['Tính năng', 'Điền thủ công', 'Điền thủ công', 'Điền thủ công'],
+        ['Đánh giá', 'Xem chi tiết video', 'So sánh', 'So sánh']
+      ]
+    },
+
+    // ⭐ CRITICAL: Always provide these fields (never empty)
+    targetAudience: [
+      'Người quan tâm đến sản phẩm này, xem video để đánh giá phù hợp với nhu cầu cá nhân',
+      'Khách hàng cần tham khảo review trước khi mua, nên xem video gốc để có thông tin chi tiết',
+      'Người dùng đang so sánh các lựa chọn, cần cập nhật thông tin đối tượng phù hợp sau khi xem video'
+    ],
+
+    cta: `Xem video review chi tiết để có thông tin đầy đủ về ${cleanTitle}. Đánh giá này cần được cập nhật thủ công do AI tạm thời không khả dụng.`,
+
+    // ⭐ CRITICAL: Always provide 5 SEO keywords (never empty)
+    seoKeywords: [
+      cleanTitle,
+      `review ${cleanTitle}`,
+      `đánh giá ${cleanTitle}`,
+      `mua ${cleanTitle}`,
+      `giá ${cleanTitle}`
+    ]
+  };
+
+  console.warn('🛡️ analyzeVideo - Fallback data generated:');
+  console.warn('   - targetAudience:', fallbackAnalysis.targetAudience.length, 'items ✅');
+  console.warn('   - seoKeywords:', fallbackAnalysis.seoKeywords.length, 'items ✅');
+  console.warn('   - User MUST edit manually!');
+
+  return fallbackAnalysis;
 }
 
 export * from './openai';

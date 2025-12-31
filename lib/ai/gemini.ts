@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { VideoInfo, AIAnalysis } from '@/types';
 import { generateAnalysisPrompt, SYSTEM_PROMPT } from './prompts';
+import { getFreshSupabaseAdminClient } from '@/lib/db/supabase';
 
 console.log('🔧 Gemini Module - Initializing...');
 console.log('🔧 Gemini Module - API Key exists:', !!process.env.GOOGLE_AI_API_KEY);
@@ -8,6 +9,32 @@ console.log('🔧 Gemini Module - API Key length:', process.env.GOOGLE_AI_API_KE
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
 console.log('🔧 Gemini Module - GoogleGenerativeAI instance created');
+
+/**
+ * Get configured Gemini model from database
+ * Falls back to gemini-1.5-flash if not configured
+ */
+async function getConfiguredGeminiModel(): Promise<string> {
+  try {
+    const supabase = getFreshSupabaseAdminClient() as any;
+    const { data, error } = await supabase
+      .from('ai_provider_metadata')
+      .select('model_name')
+      .eq('provider_name', 'gemini')
+      .single();
+
+    if (error || !data?.model_name) {
+      console.warn('⚠️ Gemini - Could not fetch model from DB, using default: gemini-1.5-flash');
+      return 'gemini-1.5-flash';
+    }
+
+    console.log(`✅ Gemini - Using configured model: ${data.model_name}`);
+    return data.model_name;
+  } catch (error) {
+    console.error('❌ Gemini - Error fetching model config:', error);
+    return 'gemini-1.5-flash'; // Fallback
+  }
+}
 
 export async function analyzeVideoWithGemini(
   videoInfo: VideoInfo
@@ -30,9 +57,12 @@ export async function analyzeVideoWithGemini(
     const prompt = generateAnalysisPrompt(videoInfo);
     console.log('🤖 Gemini - Prompt length:', prompt.length);
 
-    // Use Gemini 1.5 Flash (stable and available)
+    // Get configured model from database
+    const modelName = await getConfiguredGeminiModel();
+    console.log(`🤖 Gemini - Using model: ${modelName}`);
+
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash', // Changed from gemini-2.5-flash to stable version
+      model: modelName,
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 8000, // Increased from 2000 to prevent truncated JSON
@@ -218,8 +248,12 @@ export async function analyzeVideoWithGeminiPro(
   try {
     const prompt = generateAnalysisPrompt(videoInfo);
 
+    // Get configured model from database
+    const modelName = await getConfiguredGeminiModel();
+    console.log(`🤖 Gemini Pro - Using model: ${modelName}`);
+
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: modelName,
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 2000,
@@ -308,8 +342,12 @@ export async function analyzeVideoWithGeminiPro(
  */
 export async function generateContentWithGemini(prompt: string): Promise<string> {
   try {
+    // Get configured model from database
+    const modelName = await getConfiguredGeminiModel();
+    console.log(`🤖 Gemini Generate - Using model: ${modelName}`);
+
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: modelName,
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 3000,

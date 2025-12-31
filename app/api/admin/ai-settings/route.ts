@@ -14,10 +14,17 @@ export async function GET(request: NextRequest) {
     // Get fresh admin client with cache-busting
     const supabaseAdmin = getFreshSupabaseAdminClient() as any;
 
-    // Get all provider settings with status
+    // Get all provider settings with metadata (query table instead of view)
     const { data: providers, error } = await supabaseAdmin
-      .from('ai_provider_status')
-      .select('*')
+      .from('ai_provider_settings')
+      .select(`
+        *,
+        ai_provider_metadata (
+          base_url,
+          model_name,
+          api_key_env_var
+        )
+      `)
       .order('priority_order', { ascending: true });
 
     if (error) {
@@ -29,12 +36,32 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Check which providers have API keys configured in environment
-    const providersWithStatus = providers?.map(provider => ({
-      ...provider,
-      api_key_configured: checkApiKeyConfigured(provider.provider_name),
-      can_enable: checkApiKeyConfigured(provider.provider_name)
-    })) || [];
+    // Enrich providers with calculated fields and flattened metadata
+    const providersWithStatus = providers?.map(provider => {
+      // Extract metadata (could be array or object)
+      const metadata = Array.isArray(provider.ai_provider_metadata)
+        ? provider.ai_provider_metadata[0]
+        : provider.ai_provider_metadata;
+
+      // Calculate success rate (same logic as VIEW)
+      const success_rate_percent = provider.total_requests > 0
+        ? Math.round((provider.successful_requests / provider.total_requests) * 100 * 100) / 100
+        : 0;
+
+      return {
+        ...provider,
+        // Calculated fields
+        success_rate_percent,
+        api_key_configured: checkApiKeyConfigured(provider.provider_name),
+        can_enable: checkApiKeyConfigured(provider.provider_name),
+        // Flatten metadata
+        base_url: metadata?.base_url || '',
+        model_name: metadata?.model_name || '',
+        api_key_env_var: metadata?.api_key_env_var || '',
+        // Remove nested object
+        ai_provider_metadata: undefined
+      };
+    }) || [];
 
     console.log(`✅ Fetched ${providersWithStatus.length} AI providers`);
 
