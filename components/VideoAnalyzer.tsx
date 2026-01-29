@@ -42,20 +42,35 @@ export function VideoAnalyzer({ onAnalysisComplete }: VideoAnalyzerProps) {
         body: JSON.stringify({ videoUrl }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Có lỗi xảy ra');
+      const data = await response.json();
+
+      // Check for API errors
+      if (!response.ok || data.success === false) {
+        throw new Error(data.error || 'Có lỗi xảy ra khi phân tích video');
       }
 
       setProgress('Đang phân tích nội dung với AI...');
 
-      const data = await response.json();
-      setVideoInfo(data.videoInfo);
+      // Handle both response formats:
+      // - MOCK_MODE: { videoInfo, analysis }
+      // - REAL_MODE: { success, data: { videoInfo, analysis } }
+      const videoInfoResult = data.data?.videoInfo || data.videoInfo;
+      const analysisResult = data.data?.analysis || data.analysis;
+
+      if (!videoInfoResult) {
+        throw new Error('Không thể lấy thông tin video. Vui lòng thử lại.');
+      }
+
+      if (!analysisResult) {
+        throw new Error('Không thể phân tích video. Vui lòng thử lại.');
+      }
+
+      setVideoInfo(videoInfoResult);
 
       setProgress('Hoàn thành!');
 
       // Notify parent
-      onAnalysisComplete(data.videoInfo, data.analysis);
+      onAnalysisComplete(videoInfoResult, analysisResult);
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err instanceof Error ? err.message : 'Không thể phân tích video');
