@@ -3,7 +3,8 @@ import { handleError, createErrorResponse, createSuccessResponse, logError } fro
 import { getUserIdFromRequest } from '@/lib/auth/helpers/auth-helpers';
 import {
   getPaginatedReviews,
-  excludeScheduledReviews
+  excludeScheduledReviews,
+  getReviewsByDateRange
 } from '@/lib/services/review-service';
 
 export const dynamic = 'force-dynamic';
@@ -17,8 +18,10 @@ export async function GET(request: NextRequest) {
     const excludeScheduled = searchParams.get('excludeScheduled') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
     const page = parseInt(searchParams.get('page') || '1');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
-    console.log('📋 Params:', { status, excludeScheduled, limit, page });
+    console.log('📋 Params:', { status, excludeScheduled, limit, page, startDate, endDate });
     console.log('🔍 [DEBUG] status type:', typeof status, '| value:', status, '| statusFilter will be:', status || undefined);
 
     // Get authenticated user ID
@@ -46,6 +49,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         createErrorResponse('VALIDATION_ERROR', 'Page must be >= 1'),
         { status: 400 }
+      );
+    }
+
+    // Check if date range filter is requested (for calendar view)
+    if (startDate && endDate) {
+      const reviews = await getReviewsByDateRange(userId, startDate, endDate, limit);
+      return NextResponse.json(
+        createSuccessResponse({
+          reviews,
+          total: reviews.length,
+        })
       );
     }
 

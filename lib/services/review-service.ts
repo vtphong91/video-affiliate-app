@@ -295,3 +295,59 @@ export async function excludeScheduledReviews(
   // Chỉ trả về reviews CHƯA BAO GIỜ có trong schedules
   return reviews.filter(review => !scheduledIds.has(review.id));
 }
+
+/**
+ * Get reviews by date range (for calendar view)
+ * Uses created_at for filtering since reviews don't have scheduled_for
+ */
+export async function getReviewsByDateRange(
+  userId: string,
+  startDate: string,
+  endDate: string,
+  limit: number = 100
+): Promise<ReviewWithCategory[]> {
+  console.log(`📅 Fetching reviews by date range: ${startDate} to ${endDate}`);
+
+  const supabaseAdmin = getFreshSupabaseAdminClient();
+
+  const { data: reviews, error } = await supabaseAdmin
+    .from('reviews')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('created_at', startDate)
+    .lte('created_at', endDate)
+    .order('created_at', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error('❌ Error fetching reviews by date range:', error);
+    throw new Error(`Failed to fetch reviews by date range: ${error.message}`);
+  }
+
+  if (!reviews || reviews.length === 0) {
+    console.log('📭 No reviews found in date range');
+    return [];
+  }
+
+  console.log(`✅ Found ${reviews.length} reviews in date range`);
+
+  // Fetch categories
+  const categoryIds = [...new Set(reviews.map((r: any) => r.category_id).filter(Boolean))];
+  let categoriesMap = new Map();
+
+  if (categoryIds.length > 0) {
+    const { data: categories } = await supabaseAdmin
+      .from('categories')
+      .select('id, name, slug')
+      .in('id', categoryIds);
+
+    if (categories) {
+      categories.forEach(cat => categoriesMap.set(cat.id, cat));
+    }
+  }
+
+  return reviews.map((review: any) => ({
+    ...review,
+    categories: review.category_id ? categoriesMap.get(review.category_id) : null
+  }));
+}

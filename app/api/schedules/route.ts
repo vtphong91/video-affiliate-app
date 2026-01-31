@@ -55,15 +55,17 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     // Get authenticated user ID
     const userId = await getUserIdFromRequest(request);
     if (!userId) {
       console.log('❌ No user ID found in request');
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Authentication required' 
+        {
+          success: false,
+          error: 'Authentication required'
         },
         { status: 401 }
       );
@@ -79,30 +81,65 @@ export async function GET(request: NextRequest) {
       .select('id, email, role, status, is_active')
       .eq('id', userId)
       .single();
-    
+
     if (profileError || !userProfile) {
       console.log('❌ User profile not found:', profileError);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'User profile not found' 
+        {
+          success: false,
+          error: 'User profile not found'
         },
         { status: 404 }
       );
     }
-    
+
     if (!userProfile.is_active || userProfile.status !== 'active') {
       console.log('❌ User not active:', { status: userProfile.status, is_active: userProfile.is_active });
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'User account is not active' 
+        {
+          success: false,
+          error: 'User account is not active'
         },
         { status: 403 }
       );
     }
-    
+
     console.log('✅ User profile verified:', { email: userProfile.email, role: userProfile.role });
+
+    // Check if date range filter is requested (for calendar view)
+    if (startDate && endDate) {
+      // Use date range filter for calendar view
+      let query = supabaseAdmin
+        .from('schedules')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('scheduled_for', startDate)
+        .lte('scheduled_for', endDate)
+        .order('scheduled_for', { ascending: true });
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      if (limit) {
+        query = query.limit(limit);
+      }
+
+      const { data: schedules, error } = await query;
+
+      if (error) {
+        console.error('Error fetching schedules by date range:', error);
+        throw error;
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          schedules: schedules || [],
+          total: schedules?.length || 0,
+        },
+      });
+    }
 
     // Get total count for pagination (user-specific)
     const totalCount = await db.getSchedulesCount(userId, status || undefined);
@@ -141,9 +178,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching schedules:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch schedules' 
+      {
+        success: false,
+        error: 'Failed to fetch schedules'
       },
       { status: 500 }
     );

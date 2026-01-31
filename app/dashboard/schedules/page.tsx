@@ -7,17 +7,19 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Pagination } from '@/components/ui/pagination';
 import { supabase } from '@/lib/db/supabase';
-import { 
-  Plus,  
-  Calendar, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Plus,
+  Calendar,
+  Clock,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   RefreshCw,
   Trash2,
   Eye,
-  Edit
+  Edit,
+  List,
+  CalendarDays,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { ScheduleCard } from '@/components/schedules/ScheduleCard';
@@ -25,6 +27,7 @@ import { CreateScheduleDialog } from '@/components/schedules/CreateScheduleDialo
 import { EditScheduleDialog } from '@/components/schedules/EditScheduleDialog';
 import { ScheduleDetailDialog } from '@/components/schedules/ScheduleDetailDialog';
 import { ScheduleStats } from '@/components/schedules/ScheduleStats';
+import { CalendarPlanningView } from '@/components/schedules/CalendarPlanningView';
 // import type { Schedule } from '@/lib/db/supabase';
 
 type ScheduleWithReview = any & {
@@ -69,6 +72,7 @@ export default function SchedulesPage() {
   const [viewingScheduleId, setViewingScheduleId] = useState<string | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [dialogKey, setDialogKey] = useState(0); // Counter to force dialog re-mount
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list'); // View mode toggle
   const { toast } = useToast();
 
   // Auto refresh state
@@ -504,34 +508,62 @@ export default function SchedulesPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {/* Auto Refresh Controls */}
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <label className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={autoRefreshEnabled}
-                    onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
-                    className="rounded"
-                  />
-                  Auto refresh
-                </label>
-                <select
-                  value={refreshInterval / (60 * 1000)}
-                  onChange={(e) => setRefreshInterval(parseInt(e.target.value) * 60 * 1000)}
-                  className="px-2 py-1 border rounded text-xs"
-                  disabled={!autoRefreshEnabled}
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center gap-1.5 px-3 ${
+                    viewMode === 'list' ? '' : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  <option value={1}>1 phút</option>
-                  <option value={3}>3 phút</option>
-                  <option value={5}>5 phút</option>
-                  <option value={10}>10 phút</option>
-                </select>
-                <span className="text-xs text-gray-500">
-                  Cập nhật lần cuối: {lastRefreshTime.toLocaleTimeString('vi-VN')}
-                </span>
+                  <List className="h-4 w-4" />
+                  Danh sách
+                </Button>
+                <Button
+                  variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('calendar')}
+                  className={`flex items-center gap-1.5 px-3 ${
+                    viewMode === 'calendar' ? '' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  Lịch
+                </Button>
               </div>
-              
-              <Button 
+
+              {/* Auto Refresh Controls - only show in list view */}
+              {viewMode === 'list' && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={autoRefreshEnabled}
+                      onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
+                      className="rounded"
+                    />
+                    Auto refresh
+                  </label>
+                  <select
+                    value={refreshInterval / (60 * 1000)}
+                    onChange={(e) => setRefreshInterval(parseInt(e.target.value) * 60 * 1000)}
+                    className="px-2 py-1 border rounded text-xs"
+                    disabled={!autoRefreshEnabled}
+                  >
+                    <option value={1}>1 phút</option>
+                    <option value={3}>3 phút</option>
+                    <option value={5}>5 phút</option>
+                    <option value={10}>10 phút</option>
+                  </select>
+                  <span className="text-xs text-gray-500">
+                    Cập nhật lần cuối: {lastRefreshTime.toLocaleTimeString('vi-VN')}
+                  </span>
+                </div>
+              )}
+
+              <Button
                 onClick={handleManualRefresh}
                 variant="outline"
                 className="flex items-center gap-2"
@@ -557,80 +589,100 @@ export default function SchedulesPage() {
         {/* Stats Cards */}
         <ScheduleStats stats={stats} />
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-8">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="all" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Tất cả ({stats.total})
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Chờ đăng ({stats.pending})
-            </TabsTrigger>
-            <TabsTrigger value="processing" className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Đang xử lý ({stats.processing})
-            </TabsTrigger>
-            <TabsTrigger value="posted" className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Đã đăng ({stats.posted})
-            </TabsTrigger>
-            <TabsTrigger value="failed" className="flex items-center gap-2">
-              <XCircle className="h-4 w-4" />
-              Thất bại ({stats.failed})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value={activeTab} className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getFilteredSchedules().length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {activeTab === 'all' ? 'Chưa có lịch đăng bài nào' : `Không có lịch ${activeTab}`}
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    {activeTab === 'all' 
-                      ? 'Tạo lịch đăng bài đầu tiên để bắt đầu tự động hóa' 
-                      : `Không có lịch đăng bài nào ở trạng thái ${activeTab}`
-                    }
-                  </p>
-                  {activeTab === 'all' && (
-                    <Button onClick={() => setShowCreateDialog(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Tạo Lịch Đầu Tiên
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                getFilteredSchedules().map((schedule) => (
-                  <ScheduleCard
-                    key={schedule.id}
-                    schedule={schedule}
-                    onDelete={handleDeleteSchedule}
-                    onRetry={handleRetrySchedule}
-                    onEdit={handleEditSchedule}
-                    onViewDetails={handleViewDetails}
-                  />
-                ))
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Pagination */}
-        {schedules.length > 0 && totalPages > 1 && (
+        {/* Calendar View */}
+        {viewMode === 'calendar' && (
           <div className="mt-8">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              itemsPerPage={itemsPerPage}
-              totalItems={totalItems}
-              showInfo={true}
+            <CalendarPlanningView
+              onViewDetails={(id, type) => {
+                if (type === 'schedule') {
+                  handleViewDetails(id);
+                } else {
+                  // Navigate to review page
+                  window.location.href = `/dashboard/reviews/${id}`;
+                }
+              }}
             />
           </div>
+        )}
+
+        {/* List View - Tabs */}
+        {viewMode === 'list' && (
+          <>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-8">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Tất cả ({stats.total})
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Chờ đăng ({stats.pending})
+                </TabsTrigger>
+                <TabsTrigger value="processing" className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Đang xử lý ({stats.processing})
+                </TabsTrigger>
+                <TabsTrigger value="posted" className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Đã đăng ({stats.posted})
+                </TabsTrigger>
+                <TabsTrigger value="failed" className="flex items-center gap-2">
+                  <XCircle className="h-4 w-4" />
+                  Thất bại ({stats.failed})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value={activeTab} className="mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {getFilteredSchedules().length === 0 ? (
+                    <div className="col-span-full text-center py-12">
+                      <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        {activeTab === 'all' ? 'Chưa có lịch đăng bài nào' : `Không có lịch ${activeTab}`}
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        {activeTab === 'all'
+                          ? 'Tạo lịch đăng bài đầu tiên để bắt đầu tự động hóa'
+                          : `Không có lịch đăng bài nào ở trạng thái ${activeTab}`
+                        }
+                      </p>
+                      {activeTab === 'all' && (
+                        <Button onClick={() => setShowCreateDialog(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Tạo Lịch Đầu Tiên
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    getFilteredSchedules().map((schedule) => (
+                      <ScheduleCard
+                        key={schedule.id}
+                        schedule={schedule}
+                        onDelete={handleDeleteSchedule}
+                        onRetry={handleRetrySchedule}
+                        onEdit={handleEditSchedule}
+                        onViewDetails={handleViewDetails}
+                      />
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Pagination */}
+            {schedules.length > 0 && totalPages > 1 && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={totalItems}
+                  showInfo={true}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {/* Create Schedule Dialog */}
